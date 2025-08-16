@@ -1,12 +1,31 @@
 module Plot
     using GLMakie
     using GeometryBasics
+    include("functions.jl")
+
+
 
     function pulsar(psr)
         f = Figure()
         ax = Axis3(f[1, 1], aspect = :equal)
         # Draw a sphere centered at (0,0,0) with radius r
-        mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = :teal, shading = true)
+        mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        println(psr.rotation_axis)
+        println(psr.magnetic_axis)
+
+        println(rot_vec)
+        println(mag_vec)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+        #arrows3d!(ax, [10000], [10], [10], [1, 0.5], color = [:red, :blue]) #,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
+
+
         # Draw light cylinder
         light_cylinder(psr, ax)
         display(f)
