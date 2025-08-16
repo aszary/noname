@@ -27,7 +27,7 @@ module Plot
 
 
         # Draw light cylinder
-        light_cylinder(psr, ax)
+        #light_cylinder(psr, ax)
         display(f)
     end
 
