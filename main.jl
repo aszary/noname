@@ -1,8 +1,7 @@
 module NoName
 
     include("modules/functions.jl")
-    include("modules/plot.jl")
-    
+    include("modules/plot.jl") 
 
     mutable struct Pulsar
         r # pulsar radiuis in [m]
