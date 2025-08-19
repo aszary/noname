@@ -15,16 +15,27 @@ module Plot
         # magnetic axis
         mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
 
-        println(psr.rotation_axis)
-        println(psr.magnetic_axis)
+        #println(psr.rotation_axis)
+        #println(psr.magnetic_axis)
 
-        println(rot_vec)
-        println(mag_vec)
+        #println(rot_vec)
+        #println(mag_vec)
 
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
         #arrows3d!(ax, [10000], [10], [10], [1, 0.5], color = [:red, :blue]) #,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
 
+        r = 1.2e4
+        theta = 30 # w stopniach
+        phi = 0
+        p_sp = [r, deg2rad(theta), phi]
+        p_car = Functions.spherical2cartesian(p_sp)
+
+        #draw points
+        scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
+
+        mx = 2e4
+        limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         # Draw light cylinder
         #light_cylinder(psr, ax)

@@ -27,6 +27,7 @@ module NoName
 
         psr = Pulsar()
         println(fieldnames(Pulsar))
+        println(psr.r_lc / 1e3, " km")
 
         Plot.pulsar(psr)
         println("Bye")
