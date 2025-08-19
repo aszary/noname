@@ -2,10 +2,13 @@ module Field
 
 
 
-    mutable struct TestClass
+    mutable struct Test
         locations
         magnetic_lines 
+        beq # Magnetic field strength at the stellar equator
+        rmax # Maximum radius in stellar radius units
     end
+
 
 
 
@@ -27,13 +30,21 @@ module Field
     end
 
 
-     """
-    Calculates magnetic fields using TestClass.
+
+    """
+    Magnetic field strength at the stellar equator (Handbook p. 267)
+    """
+    function beq(p, pdot)
+        return 3.2e19 * sqrt(p * pdot)
+    end
+
+
+    """
+    Calculates magnetic fields using Test.
     """
     function calculate_dipole!(psr)
-
-        return 
-        fv = psr.field_vacuum
+ 
+        fv = psr.fields
         fv.beq = beq(psr.p, psr.pdot)
         #println(fv)
 
@@ -50,7 +61,7 @@ module Field
                     e_sph = evac(pos_sph, psr.r, fv.beq, psr.omega)
                     push!(fv.locations, Functions.spherical2cartesian(pos_sph))
                     push!(fv.magnetic, Functions.vec_spherical2cartesian(pos_sph, b_sph))
-                    push!(fv.electric, Functions.vec_spherical2cartesian(pos_sph, e_sph))
+                    #push!(fv.electric, Functions.vec_spherical2cartesian(pos_sph, e_sph))
                 end
             end
         end
