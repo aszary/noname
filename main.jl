@@ -20,7 +20,7 @@ module NoName
             pdot = 1e-15 # period derivative in s/s
             r_lc = Functions.rlc(p, pdot)
             alpha = 30 # 30 deg by default
-            fields = Field.Test # using Test struct from Field module
+            fields = Field.Test() # using Test struct from Field module
             return new(r, p, pdot, r_lc, alpha, (r, 0, 0), (r, deg2rad(alpha), 0), fields)
         end
     end
@@ -30,6 +30,7 @@ module NoName
 
         psr = Pulsar()
         Field.calculate_dipole!(psr)
+        Field.generate_vacuum!(psr, step=100, stepsnum=20000)
         println(fieldnames(Pulsar))
         println(psr.r_lc / 1e3, " km")
 
