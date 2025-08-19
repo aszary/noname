@@ -2,9 +2,11 @@ module Field
 
 
 
-    mutable struct TestClass
-        locations
-        magnetic_lines 
+    mutable struct Test
+        rmax # maximum radius for which we will calculate magnetic field lines
+        locations # locations of points to calculate magnetic field
+        magnetic_lines # magnetic field lines
+        magnetic_field # magnetic field vectors 
     end
 
 
@@ -27,14 +29,12 @@ module Field
     end
 
 
-     """
-    Calculates magnetic fields using TestClass.
+    """
+    Calculates magnetic fields using Test.
     """
     function calculate_dipole!(psr)
 
-        return 
-        fv = psr.field_vacuum
-        fv.beq = beq(psr.p, psr.pdot)
+        fv = psr.fields
         #println(fv)
 
         rs = LinRange(psr.r, fv.rmax, fv.size)
