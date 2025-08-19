@@ -1,6 +1,7 @@
 module Plot
     using GLMakie
     using GeometryBasics
+    using LinearAlgebra
     include("functions.jl")
 
 
@@ -33,7 +34,8 @@ module Plot
 
         #draw points
         scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
-
+        #magnetic_field!(ax, psr)
+        magnetic_lines!(ax, psr)
         mx = 2e4
         limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
@@ -45,7 +47,7 @@ module Plot
 
     """
         Plots light cylinder
-    """
+    
     function light_cylinder(psr, ax)
         # Create wireframe cylinder with lines
         θ = range(0, 2π, length=200)
@@ -74,5 +76,26 @@ module Plot
         limits!(ax, -max_extent, max_extent, -max_extent, max_extent, -max_extent, max_extent)
 
     end
+    """
+    function magnetic_field!(ax, psr)
+    fv = psr.fields
+
+    positions = fv.locations
+    magnitudes = [norm(B) for B in fv.magnetic_fields]
+
+    xs = [p[1] for p in positions]
+    ys = [p[2] for p in positions]
+    zs = [p[3] for p in positions]
+
+    scatter!(ax, xs, ys, zs, color=magnitudes, colormap=:viridis, markersize=5)
+end
+function magnetic_lines!(ax, psr)
+    fv = psr.fields
+    for line in fv.magnetic_lines
+        xs, ys, zs = line[1], line[2], line[3]
+        lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
+    end
+end
+
 
 end # module end
