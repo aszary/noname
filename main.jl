@@ -20,7 +20,7 @@ module NoName
             pdot = 1e-15 # period derivative in s/s
             r_lc = Functions.rlc(p, pdot)
             alpha = 30 # 30 deg by default
-            fields = Field.Test # using test class for now
+            fields = Field.Test() # using test class for now
             return new(r, p, pdot, r_lc, alpha, (r, 0, 0), (r, deg2rad(alpha), 0), fields)
         end
     end

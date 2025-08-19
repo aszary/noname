@@ -1,12 +1,20 @@
 module Field
 
+    include("functions.jl")
 
 
     mutable struct Test
         rmax # maximum radius for which we will calculate magnetic field lines
+        size # number of points to calculate
+        beq # Magnetic field strength at the stellar equator
         locations # locations of points to calculate magnetic field
         magnetic_lines # magnetic field lines
         magnetic_field # magnetic field vectors 
+        function Test()
+            rmax = 500000 # 500 km 
+            size = 10
+            new(rmax, size, nothing, [], [], [])
+        end
     end
 
 
@@ -30,11 +38,36 @@ module Field
 
 
     """
+    Magnetic field strength at the stellar equator (Handbook p. 267)
+    """
+    function beq(p, pdot)
+        return 3.2e19 * sqrt(p * pdot)
+    end
+
+
+    """
+    Spherical components of magnetic field for an aligned rotator (Cerutti, 2016 p.3) for Q=0
+    """
+    function bvac(pos_sph, rstar, beq)
+        #println(beq)
+        r = pos_sph[1]
+        theta = pos_sph[2]
+        phi = pos_sph[3]
+        #println(rstar, r, beq)
+        br = beq * (rstar / r) ^ 3 * 2 * cos(theta)
+        btheta = beq * (rstar / r) ^ 3 * sin(theta)
+        bphi = 0
+        return(br, btheta, bphi)
+    end
+
+
+    """
     Calculates magnetic fields using Test.
     """
     function calculate_dipole!(psr)
 
         fv = psr.fields
+        fv.beq = beq(psr.p, psr.pdot)
         #println(fv)
 
         rs = LinRange(psr.r, fv.rmax, fv.size)
@@ -47,10 +80,8 @@ module Field
                     #println(rs[i], " ", thetas[j], " ", phis[k])
                     pos_sph = [rs[i], thetas[j], phis[k]]
                     b_sph = bvac(pos_sph, psr.r, fv.beq)
-                    e_sph = evac(pos_sph, psr.r, fv.beq, psr.omega)
                     push!(fv.locations, Functions.spherical2cartesian(pos_sph))
-                    push!(fv.magnetic, Functions.vec_spherical2cartesian(pos_sph, b_sph))
-                    push!(fv.electric, Functions.vec_spherical2cartesian(pos_sph, e_sph))
+                    push!(fv.magnetic_field, Functions.vec_spherical2cartesian(pos_sph, b_sph))
                 end
             end
         end
