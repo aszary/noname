@@ -41,7 +41,7 @@ module Plot
         limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         plot_magnetic_field!(ax, psr.fields)
-        #plot_magnetic_lines!(ax, psr.fields)
+        plot_magnetic_lines!(ax, psr.fields)
         
         # Draw light cylinder
         #light_cylinder(psr, ax)
