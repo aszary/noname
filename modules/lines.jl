@@ -1,4 +1,5 @@
 module Lines
+    include("field.jl")
     include("functions.jl")
 
     function calculate_polarcaps!(psr; phi_num=10)
@@ -25,15 +26,23 @@ module Lines
     end
 
     function generate_open!(psr)
+        fv = psr.fields
+
         # two polar caps
-        for pc in psr.polar_caps
+        for (i,pc) in enumerate(psr.polar_caps)
             # points at the polar cap
             xs = pc[1]
             ys = pc[2]
             zs = pc[3]
             # all points
-            for (i,x) in enumerate(xs) 
-                println(i)
+            for (j,x) in enumerate(xs) 
+                pos = [xs[j], ys[j], zs[j]]
+                pos_sph = Functions.cartesian2spherical(pos)
+                b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+                b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                println(i, " ", j, " ", pos, " ", pos_sph)
+                # TODO work here..
+                # push!(psr.open_lines[i], [[pos[1]], [pos[2]], [pos[3]]]) # adding initial position
 
             end
             

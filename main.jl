@@ -23,7 +23,7 @@ module NoName
             r_lc = Functions.rlc(p)
             alpha = 30 # 30 deg by default
             fields = Field.Test() # using test class for now
-            return new(r, p, pdot, r_lc, alpha, (r, 0, 0), (r, deg2rad(alpha), 0), fields, nothing, nothing)
+            return new(r, p, pdot, r_lc, alpha, (r, 0, 0), (r, deg2rad(alpha), 0), fields, nothing, [[], []])
         end
     end
 
