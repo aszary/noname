@@ -1,11 +1,12 @@
 module Functions 
     using PhysicalConstants.CODATA2018 # in SI units
+    using LinearAlgebra
 
 
     """
     Calculates rlc in meters
     """
-    function rlc(p, pdot)
+    function rlc(p)
         c = SpeedOfLightInVacuum.val # no units hereafter
         return c * p / (2 * pi)
     end
@@ -73,6 +74,27 @@ module Functions
         end
         return [r, theta, phi]
     end
+
+
+    """
+    theta_max(z, psr)
+
+    Eq. 3.23 in the handbook
+
+    Note this is not an opening angle! (Note 1.5 differecence E.g 3.29 in the handbook)
+
+    # Arguments
+
+    - z: distance from the star's center [in stellar radius]
+    - psr: pulsar class (struct) - to get period and star r
+
+    returns the theta component of the last open magnetic field line for a given distance from the star's
+    center and pulsar period [in radians]
+    """
+    function theta_max(z, psr)
+        return asin(sqrt(z * psr.r / rlc(psr.p)))
+    end
+
 
 
 end # module end

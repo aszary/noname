@@ -1,7 +1,6 @@
 module Plot
     using GLMakie
     using GeometryBasics
-    using LinearAlgebra
     include("functions.jl")
 
 
@@ -18,10 +17,7 @@ module Plot
 
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
-        magnetic_field!(ax, psr)
-        magnetic_lines!(ax, psr)
-
-        #draw points
+        #draw test points
         r = 1.2e4
         theta = 30 # w stopniach
         phi = 0
@@ -29,11 +25,23 @@ module Plot
         p_car = Functions.spherical2cartesian(p_sp)
         scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
 
-        mx = 2e4
-        limits!(ax, -mx, mx, -mx, mx, -mx, mx)
+        #magnetic_field!(ax, psr)
+
+        #magnetic_lines!(ax, psr)
+
+        # draw polar caps
+        for pc in psr.polar_caps
+            lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
+        end
+
+        #mx = 2e4
+        #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         # Draw light cylinder
         #light_cylinder(psr, ax)
+
+        # Access the camera
+        cam = cameracontrols(ax.scene) # TODO
         display(f)
     end
 
@@ -75,7 +83,7 @@ module Plot
         fv = psr.fields
 
         positions = fv.locations
-        magnitudes = [norm(B) for B in fv.magnetic_fields]
+        magnitudes = [Functions.norm(B) for B in fv.magnetic_fields]
 
         xs = [p[1] for p in positions]
         ys = [p[2] for p in positions]
