@@ -41,5 +41,39 @@ module Functions
         return [v_x, v_y, v_z]
     end    
 
+    """
+    Converts cartesian cordinates to spherical ones...
+    """
+    function cartesian2spherical(cartesian)
+        x = cartesian[1]
+        y = cartesian[2]
+        z = cartesian[3]
+        r = sqrt(x^2 + y^2 + z^2)
+        if z > 0
+            theta = atan(sqrt(x^2 + y^2) / z)
+        elseif z < 0
+            theta = pi + atan(sqrt(x^2 + y^2) / z)
+        elseif (z == 0) && (x*y != 0)
+            theta = pi
+        else
+            theta = 0 # undefined changed to zero
+        end
+        if x > 0
+            phi = atan(y / x)
+        elseif (x < 0) && (y >=0)
+            phi = atan(y / x) + pi
+        elseif (x < 0) && (y < 0)
+            phi = atan(y / x) - pi
+        elseif (x == 0) && (y > 0)
+            phi = pi
+        elseif (x == 0) && (y < 0)
+            phi = -pi
+        elseif (x == 0) && (y ==0) # undefined changed to zero
+            phi = 0
+        end
+        return [r, theta, phi]
+    end
+
+
 end # module end
 

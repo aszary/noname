@@ -1,6 +1,7 @@
 module Plot
     using GLMakie
     using GeometryBasics
+    using LinearAlgebra
     include("functions.jl")
 
 
@@ -17,24 +18,15 @@ module Plot
 
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
-        println(size(psr.fields.magnetic_field))
-        for (i, loc) in enumerate(psr.fields.locations)
-            bf = psr.fields.magnetic_field[i]
-            fv = psr.fields
-            #println(loc)
-            scatter!(ax, [loc[1]], [loc[2]], [loc[3]], markersize=5, color=:blue)
-            arrows3d!(ax, [loc[1]], [loc[2]], [loc[3]], [bf[1]/fv.beq], [bf[2]/fv.beq], [bf[3]/fv.beq], color = [:blue]) #,  shaftradius = 0.00001, tipradius = 0.00001, tiplength=0.00001)
-        end
-        #arrows3d!(ax, [10000], [10], [10], [1, 0.5], color = [:red, :blue]) #,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+        magnetic_field!(ax, psr)
+        magnetic_lines!(ax, psr)
 
-
-        r = 1.2e6
+        #draw points
+        r = 1.2e4
         theta = 30 # w stopniach
         phi = 0
         p_sp = [r, deg2rad(theta), phi]
         p_car = Functions.spherical2cartesian(p_sp)
-
-        #draw points
         scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
 
         mx = 2e4
@@ -77,5 +69,28 @@ module Plot
         limits!(ax, -max_extent, max_extent, -max_extent, max_extent, -max_extent, max_extent)
 
     end
+
+
+    function magnetic_field!(ax, psr)
+        fv = psr.fields
+
+        positions = fv.locations
+        magnitudes = [norm(B) for B in fv.magnetic_fields]
+
+        xs = [p[1] for p in positions]
+        ys = [p[2] for p in positions]
+        zs = [p[3] for p in positions]
+
+        scatter!(ax, xs, ys, zs, color=magnitudes, colormap=:viridis, markersize=5)
+    end 
+
+    function magnetic_lines!(ax, psr)
+        fv = psr.fields
+        for line in fv.magnetic_lines
+            xs, ys, zs = line[1], line[2], line[3]
+            lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
+        end
+    end
+
 
 end # module end

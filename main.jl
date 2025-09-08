@@ -30,6 +30,7 @@ module NoName
 
         psr = Pulsar()
         Field.calculate_dipole!(psr)
+        Field.generate_lines!(psr)
         #println(fieldnames(Pulsar))
         #println(psr.r_lc / 1e3, " km")
 
