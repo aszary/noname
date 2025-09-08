@@ -16,10 +16,14 @@ module Plot
         mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
 
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
+        println(size(psr.fields.magnetic_field))
         for (i, loc) in enumerate(psr.fields.locations)
             bf = psr.fields.magnetic_field[i]
+            fv = psr.fields
             #println(loc)
-            arrows3d!(ax, [loc[1]], [loc[2]], [loc[3]], [bf[1]], [bf[2]], [bf[3]], color = [:blue]) #,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+            scatter!(ax, [loc[1]], [loc[2]], [loc[3]], markersize=5, color=:blue)
+            arrows3d!(ax, [loc[1]], [loc[2]], [loc[3]], [bf[1]/fv.beq], [bf[2]/fv.beq], [bf[3]/fv.beq], color = [:blue]) #,  shaftradius = 0.00001, tipradius = 0.00001, tiplength=0.00001)
         end
         #arrows3d!(ax, [10000], [10], [10], [1, 0.5], color = [:red, :blue]) #,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
