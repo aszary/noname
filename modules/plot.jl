@@ -34,6 +34,14 @@ module Plot
             lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
         end
 
+        # draw open lines
+        for i in eachindex(psr.open_lines)
+            for j in eachindex(psr.open_lines[i])
+                lines!(ax, psr.open_lines[i][j][1], psr.open_lines[i][j][2], psr.open_lines[i][j][3], color=:green)         
+            end
+        end
+
+
         mx = 2e4
         limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
