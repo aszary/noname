@@ -77,5 +77,17 @@ module Functions
     end
 
 
+    """
+    returns radius of the polar in meters
+    """
+    function rdp(p, r)
+        #https://juliaphysics.github.io/PhysicalConstants.jl/stable/reference/
+        c = SpeedOfLightInVacuum.val # no units hereafter
+        #println((2. * pi * r ^ 3. / (SpeedOfLightInVacuum * p)) ^ 0.5)
+        return (2. * pi * r ^ 3. / (c * p)) ^ 0.5
+    end
+
+
+
 end # module end
 

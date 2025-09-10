@@ -10,14 +10,17 @@ module Field
         locations
         magnetic_lines 
         magnetic_fields
+        magnetic_lines_from_cap
+        
 
          
         function Test()
            
             rmax = 50e3
             size= 12
+
             new( rmax, size, nothing, [], [], [])
-            #return new(size, rmax, [], [], [], nothing, [], [], [], [], [], [], [])
+            #return new(size, rmax, [], [], [], nothing, [], [], [], [], [], [], [], [])
         end
     end
 
@@ -176,6 +179,59 @@ module Field
         end
     end
 
+    function generate_polar_cap!(psr)
+        θ_pc = asin(sqrt(psr.r / psr.r_lc))   # polar cap opening angle
+        φs = range(0, 2π; length=200)         # evenly spaced azimuths
+
+        # North cap (around +z)
+        north = [(psr.r, θ_pc, φ) for φ in φs]
+
+        # South cap (around -z, just mirror across equator)
+        south = [(psr.r, π - θ_pc, φ) for φ in φs]
+
+        # Store both
+        psr.polar_cap = vcat(north, south)
+    end
+
+    function generate_magnetic_lines_from_polar_cap!(psr::Test; num_lines_from_cap=100, step=1, stepsnum=1000)
+        # Clear previous polar cap lines
+        psr.magnetic_lines_from_cap = []
+
+        # Example: evenly spaced points around the polar cap
+        θ_pc = asin(sqrt(psr.rmax / psr.r_lc))  # polar cap angle
+        φs = range(0, 2π, length=num_lines_from_cap)
+
+        for φ in φs
+            # Starting point on polar cap
+            x0 = psr.rmax * sin(θ_pc) * cos(φ)
+            y0 = psr.rmax * sin(θ_pc) * sin(φ)
+            z0 = psr.rmax * cos(θ_pc)
+
+            # Generate a magnetic field line (simplified example)
+            line_x = Float64[]
+            line_y = Float64[]
+            line_z = Float64[]
+
+            pos = [x0, y0, z0]
+
+            for s in 1:stepsnum
+                # Compute local B vector
+                B = compute_B_field(psr, pos)  # You likely already have this function
+                pos = pos .+ step * (B ./ norm(B))
+
+                push!(line_x, pos[1])
+                push!(line_y, pos[2])
+                push!(line_z, pos[3])
+            end
+
+            push!(psr.magnetic_lines_from_cap, (line_x, line_y, line_z))
+        end
+    end
+
+
+
+
+    
 
 
 end # module end

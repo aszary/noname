@@ -42,6 +42,9 @@ module Plot
 
         plot_magnetic_field!(ax, psr.fields)
         plot_magnetic_lines!(ax, psr.fields)
+        plot_polar_cap!(ax, psr; color=:red, linewidth=2.0)
+        #plot_magnetic_lines_from_polar_cap!(ax, psr; color=:blue, linewidth=1.0)
+
         
         # Draw light cylinder
         #light_cylinder(psr, ax)
@@ -88,6 +91,57 @@ module Plot
             lines!(ax, ml[1], ml[2], ml[3], color=:blue, linewidth=1.0, transparency=true)
         end
     end
+
+    function plot_polar_cap!(ax, psr; color=:red, linewidth=2.0)
+        # group points by cap (north/south)
+        caps = Dict(:north => (Float64[], Float64[], Float64[]),
+                    :south => (Float64[], Float64[], Float64[]))
+
+        for (r_pc, θ, φ) in psr.polar_cap
+            r = psr.r
+            x = r * sin(θ) * cos(φ)
+            y = r * sin(θ) * sin(φ)
+            z = r * cos(θ)
+
+            if z ≥ 0
+                push!(caps[:north][1], x)
+                push!(caps[:north][2], y)
+                push!(caps[:north][3], z)
+            else
+                push!(caps[:south][1], x)
+                push!(caps[:south][2], y)
+                push!(caps[:south][3], z)
+            end
+        end
+
+        # plot separately
+        lines!(ax, caps[:north]..., color=color, linewidth=linewidth)
+        lines!(ax, caps[:south]..., color=color, linewidth=linewidth)
+    end
+
+   function plot_magnetic_lines_from_polar_cap!(ax, psr; color=:blue, linewidth=1.0)
+        for line in psr.fields.magnetic_lines
+            lines!(ax, line[1], line[2], line[3], color=color, linewidth=linewidth)
+        end
+    end
+
+
+
+    """
+    function plot_polar_cap!(ax, psr; color=:red, linewidth=2.0)
+        θ_pc = asin(sqrt(psr.r / psr.r_lc))
+        φs = range(0, 2π; length=200)
+
+        xs = psr.r .* sin(θ_pc) .* cos.(φs)
+        ys = psr.r .* sin(θ_pc) .* sin.(φs)
+        zs = psr.r .* cos(θ_pc) .* ones(length(φs))
+
+        lines!(ax, xs, ys, zs, color=color, linewidth=linewidth)
+    end
+
+    """
+
+
 
 
 
