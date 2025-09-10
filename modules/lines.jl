@@ -41,8 +41,9 @@ module Lines
                 b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
                 b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
                 println(i, " ", j, " ", pos, " ", pos_sph)
-                # TODO work here..
-                # push!(psr.open_lines[i], [[pos[1]], [pos[2]], [pos[3]]]) # adding initial position
+                # TODO start here..
+                push!(psr.open_lines[i], [[pos[1]], [pos[2]], [pos[3]]]) # adding initial position
+                println("\t$(pos[1]) ", psr.open_lines[i])
 
             end
             

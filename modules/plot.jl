@@ -25,17 +25,17 @@ module Plot
         p_car = Functions.spherical2cartesian(p_sp)
         scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
 
-        #magnetic_field!(ax, psr)
+        magnetic_field!(ax, psr)
 
-        #magnetic_lines!(ax, psr)
+        magnetic_lines!(ax, psr)
 
         # draw polar caps
         for pc in psr.polar_caps
             lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
         end
 
-        #mx = 2e4
-        #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
+        mx = 2e4
+        limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         # Draw light cylinder
         #light_cylinder(psr, ax)
