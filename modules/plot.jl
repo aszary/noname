@@ -21,7 +21,7 @@ module Plot
 
         #println(rot_vec)
         #println(mag_vec)
-
+        #drawing arrows
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
         #arrows3d!(ax, [10000], [10], [10], [1, 0.5], color = [:red, :blue]) #,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
@@ -33,9 +33,10 @@ module Plot
         p_car = Functions.spherical2cartesian(p_sp)
 
         #draw points
-        scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
+        #scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
         #magnetic_field!(ax, psr)
         magnetic_lines!(ax, psr)
+        polarcap!(ax, psr)
         mx = 2e4
         limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
@@ -77,6 +78,7 @@ module Plot
 
     end
     """
+    #calculates magnetic field at positions and colors them by magnitude
     function magnetic_field!(ax, psr)
     fv = psr.fields
 
@@ -89,12 +91,33 @@ module Plot
 
     scatter!(ax, xs, ys, zs, color=magnitudes, colormap=:viridis, markersize=5)
 end
+#calulates and plots magnetic field lines
 function magnetic_lines!(ax, psr)
     fv = psr.fields
     for line in fv.magnetic_lines
         xs, ys, zs = line[1], line[2], line[3]
         lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
     end
+end
+function polarcap!(ax, psr; color=:orange, linewidth=2)
+
+    #calculates northern polar cap (circle)
+    cart_points = [Functions.spherical2cartesian(sp) for sp in psr.pc]
+
+    xs = [p[1] for p in cart_points]
+    ys = [p[2] for p in cart_points]
+    zs = [p[3] for p in cart_points]
+
+    lines!(ax, [xs; xs[1]], [ys; ys[1]], [zs; zs[1]], color=color, linewidth=linewidth)
+    #calculates southern polar cap (circle)
+    pc_south = [[psr.r, pi - sp[2], sp[3]] for sp in psr.pc]
+    cart_points_south = [Functions.spherical2cartesian(sp) for sp in pc_south]
+
+    xs = [p[1] for p in cart_points_south]
+    ys = [p[2] for p in cart_points_south]
+    zs = [p[3] for p in cart_points_south]
+
+    lines!(ax, [xs; xs[1]], [ys; ys[1]], [zs; zs[1]], color=color, linewidth=2)
 end
 
 

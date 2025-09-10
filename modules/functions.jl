@@ -72,5 +72,8 @@ module Functions
         end
         return [r, theta, phi]
     end
+    function theta_max(z, psr)
+        return asin(sqrt(z * psr.r / Functions.rlc(psr.p, psr.pdot)))
+    end
 end # module end
 

@@ -12,7 +12,7 @@ module NoName
         alpha # inclination angle in [deg.]
         magnetic_axis # in spherical coordinates
         rotation_axis # in spherical coordinates
-        
+        pc #polar cap in spherical coordinates
         fields  # magnetic and electric fields
 
         function Pulsar()
@@ -23,7 +23,7 @@ module NoName
             alpha = 30 # 30 deg by default
         
             fields = Field.Test() # usingt testt class for now
-            return new(r, p, pdot, r_lc, alpha, (r, 0, 0), (r, deg2rad(alpha), 0), fields)
+            return new(r, p, pdot, r_lc, alpha, (r, 0, 0), (r, deg2rad(alpha), 0),(0, 0, 0), fields)
         end
     end
 
@@ -33,6 +33,8 @@ module NoName
         psr = Pulsar()
         Field.calculate_dipole!(psr)
         Field.generate_lines!(psr)
+        Field.calculate_polarcap!(psr)
+        Field.generate_polarcap_lines!(psr)
         #println(fieldnames(Pulsar))
         #println(psr.r_lc / 1e3, " km")
         Plot.pulsar(psr)

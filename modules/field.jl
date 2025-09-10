@@ -59,87 +59,171 @@ module Field
         return(br, btheta, bphi)
     end
 
-     """
-    Calculates magnetic fields using TestClass.
+   
     """
-    function calculate_dipole!(psr)
+    Calculate the dipole magnetic field on a grid of spherical coordinates
+    and store the field vectors (converted to Cartesian) in psr.fields.
+    """
+function calculate_dipole!(psr)
+    fv = psr.fields
+    fv.beq = beq(psr.p, psr.pdot)   # magnetic field at equator from P and Pdot
 
-     
-        fv = psr.fields
-        fv.beq = beq(psr.p, psr.pdot)
-        #println(fv)
+    # define a 3D grid in spherical coordinates
+    rs = LinRange(psr.r, fv.rmax, fv.size)
+    thetas = LinRange(0, pi, fv.size)
+    phis = LinRange(0, 2pi, fv.size)
 
-        rs = LinRange(psr.r, fv.rmax, fv.size)
-        thetas = LinRange(0, pi, fv.size)
-        phis = LinRange(0, 2pi, fv.size)
+    # loop over all grid points
+    for i in 1:fv.size
+        for j in 1:fv.size
+            for k in 1:fv.size
+                pos_sph = [rs[i], thetas[j], phis[k]]
 
-        for i in 1:fv.size
-            for j in 1:fv.size
-                for k in 1:fv.size
-                    #println(rs[i], " ", thetas[j], " ", phis[k])
-                    pos_sph = [rs[i], thetas[j], phis[k]]
-                    b_sph = bvac(pos_sph, psr.r, fv.beq)
-                    #e_sph = evac(pos_sph, psr.r, fv.beq, psr.omega)
-                    push!(fv.locations, Functions.spherical2cartesian(pos_sph))
-                    push!(fv.magnetic_fields, Functions.vec_spherical2cartesian(pos_sph, b_sph))
-                    #push!(fv.electric, Functions.vec_spherical2cartesian(pos_sph, e_sph))
-                end
+                # magnetic field in spherical coordinates
+                b_sph = bvac(pos_sph, psr.r, fv.beq)
+
+                # save position and field vector in Cartesian coordinates
+                push!(fv.locations, Functions.spherical2cartesian(pos_sph))
+                push!(fv.magnetic_fields, Functions.vec_spherical2cartesian(pos_sph, b_sph))
             end
         end
     end
-    function generate_lines!(psr; step=10, stepsnum=20000, phi=nothing)
-        fv = psr.fields
+end
 
-        # starting points
-        r = psr.r
-        #thetas = LinRange(0, pi/2, fv.size)
-        #thetas = LinRange(0, pi, fv.size+1)[1:end-1]
-        thetas = LinRange(0, pi, fv.size)
-        if phi === nothing
-            phis = LinRange(0, 2pi, fv.size+1)[1:end-1] # get rid of last point
-        else
-            phis = [phi, phi+pi]
-        end
 
-        # TODO add the second half! done? but too many lines?
-        
-        for i in 1:size(thetas)[1]
-            for j in 1:size(phis)[1]
-                pos_sph = [r, thetas[i], phis[j]]
-                b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
-                pos = Functions.spherical2cartesian(pos_sph)                
-                b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
-                push!(fv.magnetic_lines, [[pos[1]], [pos[2]], [pos[3]]]) # adding initial position
-                ml = fv.magnetic_lines[end]
-                posb = copy(pos)
-                step = abs(step) # start with positive step
-                for k in 1:stepsnum
-                    # new fields
-                    posb_sph = Functions.cartesian2spherical(posb)
-                    if posb_sph[1] < psr.r
-                        # going the other direction if needed (e.g. southern hemisphere) or break
-                        if size(ml[1], 1) > 2
-                            #println("$i $j $k - break")
-                            break
-                        else
-                            step = - step
-                            #println("$i $j $k - minus")
-                        end
+"""
+Generate magnetic field lines starting from the stellar surface
+for many (theta, phi) positions. Each line is followed step by step
+by integrating along the field direction.
+"""
+function generate_lines!(psr; step=10, stepsnum=20000, phi=nothing)
+    fv = psr.fields
+    r = psr.r  # start radius at stellar surface
+
+    # sampling in theta and phi
+    thetas = LinRange(0, pi, fv.size)
+    if phi === nothing
+        phis = LinRange(0, 2pi, fv.size+1)[1:end-1]  # avoid duplicate point at 2pi
+    else
+        phis = [phi, phi+pi]   # symmetric pair if single phi requested
+    end
+
+    # loop over starting positions
+    for i in 1:length(thetas)
+        for j in 1:length(phis)
+            pos_sph = [r, thetas[i], phis[j]]
+            b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+
+            pos = Functions.spherical2cartesian(pos_sph)
+            b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+
+            # initialize a new magnetic line with starting point
+            push!(fv.magnetic_lines, [[pos[1]], [pos[2]], [pos[3]]])
+            ml = fv.magnetic_lines[end]
+
+            posb = copy(pos)
+            step = abs(step)  # step size along the field line
+
+            # follow the line for a fixed number of steps
+            for k in 1:stepsnum
+                posb_sph = Functions.cartesian2spherical(posb)
+
+                # if we cross inside the star
+                if posb_sph[1] < psr.r
+                    if size(ml[1], 1) > 2
+                        break   # stop if we already have a valid line
+                    else
+                        step = -step  # otherwise reverse direction
                     end
-                    #println(k)
-                    b_sph = Field.bvac(posb_sph, psr.r, fv.beq)
-                    b = Functions.vec_spherical2cartesian(posb_sph, b_sph)
-                    st = b / norm(b) * step
-                    posb += st # new position for magnetic
-                    push!(ml[1], posb[1])
-                    push!(ml[2], posb[2])
-                    push!(ml[3], posb[3])
                 end
-                
-                
+
+                # recalculate field at new position
+                b_sph = Field.bvac(posb_sph, psr.r, fv.beq)
+                b = Functions.vec_spherical2cartesian(posb_sph, b_sph)
+
+                # move along normalized field vector
+                st = b / norm(b) * step
+                posb += st
+
+                # append new point to the magnetic line
+                push!(ml[1], posb[1])
+                push!(ml[2], posb[2])
+                push!(ml[3], posb[3])
             end
         end
     end
+end
+
+
+"""
+Calculate the polar cap contour on the stellar surface.
+Only one (northern) polar cap is computed here.
+"""
+function calculate_polarcap!(psr; phi_num=100)
+    theta = Functions.theta_max(1, psr)   # maximum opening angle for open field lines
+    phis = range(0, 2*pi, length=phi_num)
+
+    # store spherical coordinates of the polar cap rim
+    psr.pc = [[psr.r, theta, ph] for ph in phis]
+end
+
+
+"""
+Generate magnetic field lines starting only from the edge of the polar caps
+(north and south). Each starting point lies on the polar cap rim, and
+field lines are traced step by step along the field direction.
+"""
+function generate_polarcap_lines!(psr; phi_num=10, step=10, stepsnum=200000)
+    fv = psr.fields
+    r = psr.r
+    
+    # polar cap angle
+    theta = Functions.theta_max(1, psr)
+    phis = range(0, 2pi, length=phi_num)
+
+    for ph in phis
+        # start lines from both north and south polar caps
+        for theta0 in (theta, pi - theta)
+            pos_sph = [r, theta0, ph]
+            b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+            pos = Functions.spherical2cartesian(pos_sph)
+
+            # initialize new line
+            push!(fv.magnetic_lines, [[pos[1]], [pos[2]], [pos[3]]])
+            ml = fv.magnetic_lines[end]
+
+            posb = copy(pos)
+            step_dir = abs(step)
+
+            # follow the field line
+            for k in 1:stepsnum
+                posb_sph = Functions.cartesian2spherical(posb)
+
+                # if we enter inside the star
+                if posb_sph[1] < psr.r
+                    if size(ml[1], 1) > 2
+                        break   # stop if the line is already long enough
+                    else
+                        step_dir = - step_dir  # reverse integration direction
+                    end
+                end
+
+                # recalculate field
+                b_sph = Field.bvac(posb_sph, psr.r, fv.beq)
+                b = Functions.vec_spherical2cartesian(posb_sph, b_sph)
+
+                # step along field
+                st = b / norm(b) * step_dir
+                posb += st
+
+                # save point to the line
+                push!(ml[1], posb[1])
+                push!(ml[2], posb[2])
+                push!(ml[3], posb[3])
+            end
+        end
+    end
+end
 
 
 end # module end
