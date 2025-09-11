@@ -10,7 +10,7 @@ module Field
         locations
         magnetic_lines 
         magnetic_fields
-        magnetic_lines_from_cap
+        magnetic_lines_from_cap   
         
 
          
@@ -19,8 +19,8 @@ module Field
             rmax = 50e3
             size= 12
 
-            new( rmax, size, nothing, [], [], [])
-            #return new(size, rmax, [], [], [], nothing, [], [], [], [], [], [], [], [])
+            new( rmax, size, nothing, [], [], [], [])
+            #return new(size, rmax, [], [], [], nothing, [], [], [], [], [], [], [])
         end
     end
 
@@ -183,50 +183,54 @@ module Field
         θ_pc = asin(sqrt(psr.r / psr.r_lc))   # polar cap opening angle
         φs = range(0, 2π; length=200)         # evenly spaced azimuths
 
-        # North cap (around +z)
+            # North cap (around +z)
         north = [(psr.r, θ_pc, φ) for φ in φs]
 
-        # South cap (around -z, just mirror across equator)
+            # South cap (around -z, just mirror across equator)
         south = [(psr.r, π - θ_pc, φ) for φ in φs]
 
-        # Store both
+            # Store both
         psr.polar_cap = vcat(north, south)
     end
 
-    function generate_magnetic_lines_from_polar_cap!(psr::Test; num_lines_from_cap=100, step=1, stepsnum=1000)
-        # Clear previous polar cap lines
-        psr.magnetic_lines_from_cap = []
 
-        # Example: evenly spaced points around the polar cap
-        θ_pc = asin(sqrt(psr.rmax / psr.r_lc))  # polar cap angle
-        φs = range(0, 2π, length=num_lines_from_cap)
+    function generate_magnetic_lines_from_polar_cap!(psr; num_lines_from_cap=50, step=100, stepsnum=20000)
 
-        for φ in φs
-            # Starting point on polar cap
-            x0 = psr.rmax * sin(θ_pc) * cos(φ)
-            y0 = psr.rmax * sin(θ_pc) * sin(φ)
-            z0 = psr.rmax * cos(θ_pc)
+        f = psr.fields
+        empty!(f.magnetic_lines_from_cap)    # clear previous cap lines
 
-            # Generate a magnetic field line (simplified example)
-            line_x = Float64[]
-            line_y = Float64[]
-            line_z = Float64[]
+        for cap_sign in (-1, 1)  # -1 = south, 1 = north
+            for i in 1:num_lines_from_cap
+                # --- starting point on the star surface ---
+                θ_pc = asin(sqrt(psr.r / psr.r_lc))
+                φ = 2π * rand()                      # random azimuth
+                r0 = psr.r
+                θ0 = cap_sign == 1 ? θ_pc : π - θ_pc
+                φ0 = φ
 
-            pos = [x0, y0, z0]
+                pos = Functions.spherical2cartesian([r0, θ0, φ0])
+                line_x, line_y, line_z = [pos[1]], [pos[2]], [pos[3]]
 
-            for s in 1:stepsnum
-                # Compute local B vector
-                B = compute_B_field(psr, pos)  # You likely already have this function
-                pos = pos .+ step * (B ./ norm(B))
+                # integrate along the field
+                step_sign = cap_sign                  # north +1, south -1
+                for k in 1:stepsnum
+                    pos_sph = Functions.cartesian2spherical(pos)
+                    if pos_sph[1] > f.rmax; break; end
 
-                push!(line_x, pos[1])
-                push!(line_y, pos[2])
-                push!(line_z, pos[3])
+                    b_sph = Field.bvac(pos_sph, psr.r, f.beq)
+                    b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                    pos += step_sign * step * b / norm(b)
+
+                    push!(line_x, pos[1])
+                    push!(line_y, pos[2])
+                    push!(line_z, pos[3])
+                end
+
+                push!(f.magnetic_lines_from_cap, (line_x, line_y, line_z))
             end
-
-            push!(psr.magnetic_lines_from_cap, (line_x, line_y, line_z))
         end
     end
+
 
 
 

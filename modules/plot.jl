@@ -43,7 +43,7 @@ module Plot
         plot_magnetic_field!(ax, psr.fields)
         plot_magnetic_lines!(ax, psr.fields)
         plot_polar_cap!(ax, psr; color=:red, linewidth=2.0)
-        #plot_magnetic_lines_from_polar_cap!(ax, psr; color=:blue, linewidth=1.0)
+        plot_magnetic_lines_from_polar_cap!(ax, psr.fields)
 
         
         # Draw light cylinder
@@ -51,38 +51,25 @@ module Plot
         display(f)
     end
 
-    function plot_magnetic_field!(ax, fi; scale=2e3, scatter=true)
-        # Extract positions and vectors
-        xs = [p[1] for p in fi.locations]
-        ys = [p[2] for p in fi.locations]
-        zs = [p[3] for p in fi.locations]
+    function plot_magnetic_field!(ax, fi; marker_size=10, colormap=:plasma)
+        # Convert positions to flat Float32 arrays
+        xs = Float32[p[1] for p in fi.locations]
+        ys = Float32[p[2] for p in fi.locations]
+        zs = Float32[p[3] for p in fi.locations]
 
-        us = [v[1] for v in fi.magnetic_fields]
-        vs = [v[2] for v in fi.magnetic_fields]
-        ws = [v[3] for v in fi.magnetic_fields]
+        # Magnitude of B for coloring
+        Bmag = Float32[norm(v) for v in fi.magnetic_fields]
 
-        # Draw arrows
-        for (p, v) in zip(fi.locations, fi.magnetic_fields)
-            p1 = Point3f(p...)
-            p2 = Point3f((p .+ scale * (v ./ norm(v)))...)
-            lines!(ax, [p1[1], p2[1]], [p1[2], p2[2]], [p1[3], p2[3]], color = (:blue, 0.4))
-        end
-
-        # Optional scatter colored by |B|
-        if scatter
-            Bmag = [norm(v) for v in fi.magnetic_fields]
-            meshscatter!(ax, xs, ys, zs; markersize=0.5, color=Bmag, colormap=:seismic)
-        end
-
-        #for i in 1:length(fi.locations)
-        #    x0, y0, z0 = fi.locations[i]
-        #    bx, by, bz = fi.magnetic_fields[i]
-        #    # scale the vector for visibility
-        #    scale = 0.5 * psr.r / maximum(norm.(fi.magnetic_fields))
-        #    x1, y1, z1 = x0 + bx*scale, y0 + by*scale, z0 + bz*scale
-        #    lines!(ax, [x0, x1], [y0, y1], [z0, z1], color = (:blue, 0.5))
-        #end
+        # Plot as scatter (dots)
+        scatter!(ax, xs, ys, zs;
+                markersize=marker_size,
+                color=Bmag,
+                colormap=colormap,
+                transparency=true,
+                alpha=0.8)
     end
+
+
 
     
     function plot_magnetic_lines!(ax, fv)
@@ -119,11 +106,16 @@ module Plot
         lines!(ax, caps[:south]..., color=color, linewidth=linewidth)
     end
 
-   function plot_magnetic_lines_from_polar_cap!(ax, psr; color=:blue, linewidth=1.0)
-        for line in psr.fields.magnetic_lines
-            lines!(ax, line[1], line[2], line[3], color=color, linewidth=linewidth)
+
+   function plot_magnetic_lines_from_polar_cap!(ax, f; color=:blue, linewidth=1.0)
+        for ml in f.magnetic_lines_from_cap
+            lines!(ax, ml[1], ml[2], ml[3], color=color, linewidth=linewidth)
         end
     end
+
+
+
+
 
 
 
