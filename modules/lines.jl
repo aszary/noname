@@ -46,11 +46,8 @@ module Lines
                 pos_sph = Functions.cartesian2spherical(pos)
                 b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
                 b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
-                #println(i, " ", j, " ", pos, " ", pos_sph)
-                # TODO start here..
                 push!(psr.open_lines[i], [[pos[1]], [pos[2]], [pos[3]]]) # adding initial position
                 ml = psr.open_lines[i][j] # magnetic line add values to ml[1] is x ml[2] is y ml[3] is z 
-                #println("\t$(pos[1]) ", size(psr.open_lines[i][j]), ml, " ", ml[2])
                 for k in 1:stepsnum
                     pos_sph = Functions.cartesian2spherical(pos)
                     b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
@@ -60,12 +57,8 @@ module Lines
                     push!(ml[1], pos[1])
                     push!(ml[2], pos[2])
                     push!(ml[3], pos[3])
-                    #println(k)
 
                 end
-                #println(ml)
-
-                #return
 
             end
             
