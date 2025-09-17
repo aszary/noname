@@ -52,8 +52,8 @@ module Plot
         # Draw light cylinder
         #light_cylinder(psr, ax)
 
-        
-        cam3d!(ax.scene, eyeposition=[5000, 5000, 5000])
+        # TODO changes view somwhat, dig into cam3d! 
+        cam3d!(ax.scene, eyeposition=[1000, 1000, 10000])
 
         #= 
        cam = camera(ax.scene) 
