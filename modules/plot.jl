@@ -7,10 +7,13 @@ module Plot
 
 
     function pulsar(psr)
-        f = Figure()
-        ax = Axis3(f[1, 1], aspect = :equal)
+        fig, ax, p = mesh(Sphere(Point3f(0,0,0), psr.r), color = (:teal, 0.7), transparency = true, shading = false)
+        #f = Figure()
+        #ax = Axis3(f[1, 1], aspect = :equal)
+
+
         # Draw a sphere centered at (0,0,0) with radius r
-        mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
         # rotation axis
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
         # magnetic axis
@@ -35,14 +38,21 @@ module Plot
         #draw points
         #scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
         #magnetic_field!(ax, psr)
-        magnetic_lines!(ax, psr)
+        #magnetic_lines!(ax, psr)
         polarcap!(ax, psr)
         mx = 2e4
-        limits!(ax, -mx, mx, -mx, mx, -mx, mx)
+        #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         # Draw light cylinder
         #light_cylinder(psr, ax)
-        display(f)
+
+        # ustaw kamerę
+        cam3d!(ax.scene,
+            eyeposition =  Vec3f(9.78646, 184.23686, 140),
+            #lookat      = Vec3f(0, 0, 0),
+            upvector    = Vec3f(0, 1, 0)
+        )
+        display(fig)
     end
 
 
