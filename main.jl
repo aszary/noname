@@ -40,7 +40,6 @@ module NoName
         Field.generate_polar_cap!(psr)
         Field.generate_magnetic_lines_from_polar_cap!(psr; num_lines_from_cap=50, step=100, stepsnum=20000)
 
-
         println(fieldnames(Pulsar))
         println(psr.r_lc / 1e3, " km")
         println("Polar cap radius: ", psr.r_pc / 1e3, " km")

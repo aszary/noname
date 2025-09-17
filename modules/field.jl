@@ -20,7 +20,6 @@ module Field
             size= 12
 
             new( rmax, size, nothing, [], [], [], [])
-            #return new(size, rmax, [], [], [], nothing, [], [], [], [], [], [], [])
         end
     end
 

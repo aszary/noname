@@ -10,10 +10,14 @@ module Plot
     function pulsar(psr)
         fi = psr.fields
 
-        f = Figure()
-        ax = Axis3(f[1, 1], aspect = :equal)
+
+        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        
+        #f = Figure()
+        
+        #ax = Axis3(f[1, 1], aspect = :equal, perspectiveness = 0)
         # Draw a sphere centered at (0,0,0) with radius r
-        mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
         # rotation axis
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
         # magnetic axis
@@ -38,17 +42,18 @@ module Plot
         scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
 
         mx = 2e4
-        limits!(ax, -mx, mx, -mx, mx, -mx, mx)
+        #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
+        
         plot_magnetic_field!(ax, psr.fields)
-        plot_magnetic_lines!(ax, psr.fields)
+        #plot_magnetic_lines!(ax, psr.fields)
         plot_polar_cap!(ax, psr; color=:red, linewidth=2.0)
         plot_magnetic_lines_from_polar_cap!(ax, psr.fields)
 
         
         # Draw light cylinder
         #light_cylinder(psr, ax)
-        display(f)
+        display(fig)
     end
 
     function plot_magnetic_field!(ax, fi; marker_size=10, colormap=:plasma)
@@ -66,7 +71,7 @@ module Plot
                 color=Bmag,
                 colormap=colormap,
                 transparency=true,
-                alpha=0.8)
+                alpha=0.5)
     end
 
 
@@ -113,36 +118,7 @@ module Plot
         end
     end
 
-
-
-
-
-
-
-    """
-    function plot_polar_cap!(ax, psr; color=:red, linewidth=2.0)
-        θ_pc = asin(sqrt(psr.r / psr.r_lc))
-        φs = range(0, 2π; length=200)
-
-        xs = psr.r .* sin(θ_pc) .* cos.(φs)
-        ys = psr.r .* sin(θ_pc) .* sin.(φs)
-        zs = psr.r .* cos(θ_pc) .* ones(length(φs))
-
-        lines!(ax, xs, ys, zs, color=color, linewidth=linewidth)
-    end
-
-    """
-
-
-
-
-
-
      
-
-    """
-        Plots light cylinder
-    """
     function light_cylinder(psr, ax)
         # Create wireframe cylinder with lines
         θ = range(0, 2π, length=200)
