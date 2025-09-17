@@ -6,10 +6,14 @@ module Plot
 
 
     function pulsar(psr)
-        f = Figure()
-        ax = Axis3(f[1, 1], aspect = :equal)
+        #fig = Figure()
+        #ax = Axis3(f[1, 1], aspect = :equal)
+
+        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
         # Draw a sphere centered at (0,0,0) with radius r
-        mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        
         # rotation axis
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
         # magnetic axis
@@ -43,14 +47,48 @@ module Plot
 
 
         mx = 2e4
-        limits!(ax, -mx, mx, -mx, mx, -mx, mx)
+        #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         # Draw light cylinder
         #light_cylinder(psr, ax)
 
-        # Access the camera
-        cam = cameracontrols(ax.scene) # TODO
-        display(f)
+        
+        cam3d!(ax.scene, eyeposition=[5000, 5000, 5000])
+
+        #= 
+       cam = camera(ax.scene) 
+        # Try accessing the scene's camera directly
+        println("Scene camera type: ", typeof(cam))
+        println("Scene camera fields: ", fieldnames(typeof(cam)))
+        println("Scene camera properties: ", propertynames(cam))
+
+        # Add a button to print camera state
+        #button = Button(f[7, 1], label = "Print Camera State")
+        button = Button(fig[1, 1], label = "Print", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+
+
+        on(button.clicks) do n
+            println("\n--- Camera State (Click $n) ---")
+            println("Camera type: ", typeof(cam))
+            println("Eye position: ", cam.eyeposition[])
+            println("View direction: ", cam.view_direction[])
+            println("Up vector: ", cam.upvector[])
+        end
+        
+        cam.eyeposition[]= [21818.455, 23425.26, 25757.416]
+        notify(cam.eyeposition)
+
+
+        # Update the camera
+        update_cam!(ax.scene)
+        =#
+        display(fig)
+
+
+
     end
 
 
