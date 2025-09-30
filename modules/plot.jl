@@ -53,10 +53,8 @@ module Plot
         #light_cylinder(psr, ax)
 
         # TODO changes view somwhat, dig into cam3d! 
-        cam3d!(ax.scene, eyeposition=[1000, 1000, 10000])
+        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
 
-        #= 
-       cam = camera(ax.scene) 
         # Try accessing the scene's camera directly
         println("Scene camera type: ", typeof(cam))
         println("Scene camera fields: ", fieldnames(typeof(cam)))
@@ -74,17 +72,10 @@ module Plot
             println("\n--- Camera State (Click $n) ---")
             println("Camera type: ", typeof(cam))
             println("Eye position: ", cam.eyeposition[])
-            println("View direction: ", cam.view_direction[])
+            println("View direction: ", cam.lookat[])
             println("Up vector: ", cam.upvector[])
         end
         
-        cam.eyeposition[]= [21818.455, 23425.26, 25757.416]
-        notify(cam.eyeposition)
-
-
-        # Update the camera
-        update_cam!(ax.scene)
-        =#
         display(fig)
 
 
