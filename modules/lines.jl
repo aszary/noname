@@ -25,6 +25,7 @@ module Lines
             z2[i] = ca2[3]
         end
         psr.polar_caps = [[x, y, z], [x2, y2, z2]]
+        psr.pc = [x, y, z]
     end
 
     function generate_open!(psr, step=10, stepsnum=2000)

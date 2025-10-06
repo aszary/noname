@@ -46,17 +46,30 @@ module Plot
         end
 
 
-        # plot sparks
+        # plot sparks for random_sparks! function, not very useful
+        #=
         if psr.sparks !== nothing
             for sp in psr.sparks
                 scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
             end
         end
+        =#
 
         # plot grid
         if psr.grid !== nothing
             scatter!(ax, psr.grid[1], psr.grid[2], psr.grid[3], marker=:diamond, color=:blue)
         end       
+
+        # plot sparks for random_sparks_grid
+        gr = psr.grid
+        if psr.sparks != nothing
+            for (i, j) in psr.sparks
+                scatter!(ax, gr[1][i], gr[2][j], gr[3][i, j], marker=:xcross, color=:red)
+            end
+        end
+
+
+
 
         #mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)

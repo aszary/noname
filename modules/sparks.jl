@@ -74,7 +74,56 @@ module Sparks
     end
 
 
+    """
+    Random sparks for new grid shape (x[size], y[size], z[size, size])
+    sparks only by index [i, j] -> location is in grid
 
+    # Arguments
+
+    - min_dist: minimum distant in meters
+
+    """
+    function random_sparks_grid!(psr; min_dist=30, trials=1000)
+        gr = psr.grid
+        grid_size = size(gr[1])[1]
+        sp = []
+        for i in 1:trials
+            ii = rand(1:grid_size)
+            jj = rand(1:grid_size)
+            x = gr[1][ii]
+            y = gr[2][jj]
+            z = gr[3][ii, jj]
+            if !([ii, jj] in sp) && (z !=0) # not in sparks # remember to skip z=0
+                md = 2 * min_dist
+                # check distance between sparks
+                for si in sp
+                    sx = gr[1][si[1]]
+                    sy = gr[2][si[2]]
+                    sz = gr[3][si[1], si[2]]
+                    dist = norm([sx, sy, sz] - [x, y, z])
+                    #println(dist)
+                    if dist < md
+                        md = dist
+                    end
+                end
+                for i in 1:size(psr.pc[1])[1]
+                    dist = norm([x, y, z] - [psr.pc[1][i], psr.pc[2][i], psr.pc[3][i]])
+                    if dist < md
+                        md = dist
+                    end
+                end
+                if md > min_dist
+                    push!(sp, [ii, jj])
+                end
+            end
+        end
+        #psr.sparks = convert(Array{Float64,1}, sp)
+        psr.sparks = sp
+        println("Number of sparks added: ", size(sp)[1])
+    end
+
+
+    
     """
     Calculates electric potential, electric field and drift velocity for sparks defined by grid indexes...
     """

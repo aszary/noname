@@ -17,7 +17,8 @@ module NoName
         magnetic_axis # in spherical coordinates
         rotation_axis # in spherical coordinates
         fields # magnetic and electric fields
-        polar_caps # polar caps boundries (xs, ys, zs)
+        polar_caps # two polar caps boundries (xs, ys, zs)
+        pc # single polar cap
         open_lines # magnetic lines at polar cap boundries
         sparks # sparks locations
         grid # grid at the polar cap to calculate potential
@@ -32,10 +33,11 @@ module NoName
             rotation_axis = (r, deg2rad(alpha), 0)
             fields = Field.Test() # using test class for now
             polar_caps = nothing
+            pc = nothing
             open_lines = [[], []]
             sparks = nothing
             grid = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, open_lines , sparks, grid)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid)
         end
     end
 
@@ -47,8 +49,9 @@ module NoName
         Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
         Lines.generate_open!(psr)
-        Sparks.random_sparks!(psr) # cannot calculate potential (points beyond grid)
+        #Sparks.random_sparks!(psr) # cannot calculate potential (points beyond grid. do not use it, just for show) 
         Sparks.create_grid!(psr)
+        Sparks.random_sparks_grid!(psr)
         
         #Sparks.calculate_potential!(psr)
         #println(fieldnames(Pulsar))
