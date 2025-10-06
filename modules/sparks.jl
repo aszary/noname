@@ -1,6 +1,8 @@
 module Sparks
     using LinearAlgebra
+    using PyCall
     include("functions.jl")
+    include("field.jl")
 
 
     """
@@ -231,6 +233,16 @@ module Sparks
     end
 
 
+    """
+    Electric potential [Filaments]
+
+    # Arguments
+
+    -r: distance from the spark forming region
+    """
+    function v(r; a=1)
+        return a * log(r)
+    end
 
 
 end # module end

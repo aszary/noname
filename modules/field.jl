@@ -143,6 +143,18 @@ module Field
         end
     end
 
+    """
+    dipolar component of magnetic field at the surface based on x, y components
+    |B_d| = 2 at the pole
+    """
+    function bd(x, y, psr)
+        d = sqrt(x ^ 2 + y ^ 2)
+        theta = asin(d / psr.r)
+        bd_sph = dipole(1, theta)
+        #println(dipole(1, 0))
+        bd = Functions.spherical2cartesian(bd_sph)
+        return bd
+    end
 
 
 

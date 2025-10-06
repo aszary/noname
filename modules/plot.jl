@@ -62,7 +62,7 @@ module Plot
 
         # plot sparks for random_sparks_grid
         gr = psr.grid
-        if psr.sparks != nothing
+        if psr.sparks !== nothing
             for (i, j) in psr.sparks
                 scatter!(ax, gr[1][i], gr[2][j], gr[3][i, j], marker=:xcross, color=:red)
             end
@@ -71,13 +71,36 @@ module Plot
 
 
 
+        # calculate electric potential
+        gr = psr.grid
+        grid_size = size(gr[1])[1]
+
+        # data for potential plotting
+        x = Array{Float64}(undef, grid_size * grid_size)
+        y = Array{Float64}(undef, grid_size * grid_size)
+        z = Array{Float64}(undef, grid_size * grid_size)
+        v = Array{Float64}(undef, grid_size * grid_size)
+        ex = Array{Float64}(undef, grid_size * grid_size)
+        ey = Array{Float64}(undef, grid_size * grid_size)
+
+        ind = 0
+        for i in 1:grid_size
+            for j in 1:grid_size
+                ind += 1
+                x[ind] = gr[1][i]
+                y[ind] = gr[2][j]
+                z[ind] = gr[3][i,j]
+                v[ind] = psr.potential[i, j]
+                ex[ind] = psr.electric_field[1][i, j]
+                ey[ind] = psr.electric_field[2][i, j]
+            end
+        end
+
+
+
         #mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
-        # Draw light cylinder
-        #light_cylinder(psr, ax)
-
-        # TODO changes view somwhat, dig into cam3d! 
         cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
 
         # Try accessing the scene's camera directly
