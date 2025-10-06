@@ -53,6 +53,10 @@ module Plot
             end
         end
 
+        # plot grid
+        if psr.grid !== nothing
+            scatter!(ax, psr.grid[1], psr.grid[2], psr.grid[3], marker=:diamond, color=:blue)
+        end       
 
         #mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)

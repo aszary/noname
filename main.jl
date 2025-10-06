@@ -20,6 +20,7 @@ module NoName
         polar_caps # polar caps boundries (xs, ys, zs)
         open_lines # magnetic lines at polar cap boundries
         sparks # sparks locations
+        grid # grid at the polar cap to calculate potential
         function Pulsar()
             r = 10000 # 10 km in merters
             p = 1 # period in seconds
@@ -33,7 +34,8 @@ module NoName
             polar_caps = nothing
             open_lines = [[], []]
             sparks = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, open_lines , sparks)
+            grid = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, open_lines , sparks, grid)
         end
     end
 
@@ -45,7 +47,10 @@ module NoName
         Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
         Lines.generate_open!(psr)
-        Sparks.random_sparks!(psr)
+        Sparks.random_sparks!(psr) # cannot calculate potential (points beyond grid)
+        Sparks.create_grid!(psr)
+        
+        #Sparks.calculate_potential!(psr)
         #println(fieldnames(Pulsar))
         #println(psr.r_lc / 1e3, " km")
 
