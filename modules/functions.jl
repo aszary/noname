@@ -96,6 +96,25 @@ module Functions
     end
 
 
+    """
+    r_dp(p, r)
+
+    Polar cap radius assuming purely dipolar configuration of the magnetic field at the surface
+
+    # Arguments
+
+    - p: pulsar period
+    - r: neutron star radius
+
+    returns radius of the polar in meters
+    """
+    function rdp(p, r)
+        #https://juliaphysics.github.io/PhysicalConstants.jl/stable/reference/
+        c = SpeedOfLightInVacuum.val # no units hereafter
+        return (2. * pi * r ^ 3. / (c * p)) ^ 0.5
+    end
+
+
 
 end # module end
 

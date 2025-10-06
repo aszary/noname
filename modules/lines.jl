@@ -57,11 +57,8 @@ module Lines
                     push!(ml[1], pos[1])
                     push!(ml[2], pos[2])
                     push!(ml[3], pos[3])
-
                 end
-
             end
-            
         end
     end
 

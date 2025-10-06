@@ -46,7 +46,15 @@ module Plot
         end
 
 
-        mx = 2e4
+        # plot sparks
+        if psr.sparks !== nothing
+            for sp in psr.sparks
+                scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+            end
+        end
+
+
+        #mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         # Draw light cylinder
