@@ -178,6 +178,23 @@ module Field
         end
     end
 
+    function pc(psr; phi_num=10)
+        theta =Functions.theta_max(1, psr)
+        phis = range(0, 2*pi, length=phi_num)
+        x=Array{Float64}(undef, phi_num)
+        y=Array{Float64}(undef, phi_num)
+        z=Array{Float64}(undef, phi_num)
+
+        for(i, phi) in enumerate(phis)
+            car = Functions.spherical2cartesian([psr.r, theta, phi])
+            x[i] = car[1]
+            y[i] = car[2]
+            z[i] = car[3]
+        end
+        psr.pc = [x, y, z]
+        
+    end
+
     function generate_polar_cap!(psr)
         θ_pc = asin(sqrt(psr.r / psr.r_lc))   # polar cap opening angle
         φs = range(0, 2π; length=200)         # evenly spaced azimuths
@@ -190,6 +207,7 @@ module Field
 
             # Store both
         psr.polar_cap = vcat(north, south)
+
     end
 
 
@@ -230,8 +248,19 @@ module Field
         end
     end
 
-
-
+    """
+    dipolar component of magnetic field at the surface based on x, y components
+    |B_d| = 2 at the pole
+    """
+    function bd(x, y, psr)
+        d = sqrt(x ^ 2 + y ^ 2)
+        theta = asin(d / psr.r)
+        bd_sph = dipole(1, theta)
+        #println(dipole(1, 0))
+        bd = Functions.spherical2cartesian(bd_sph)
+        return bd
+    end
+    
 
 
     

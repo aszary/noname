@@ -5,6 +5,7 @@ module Plot
 
     include("functions.jl")
     include("field.jl")
+    include("sparks.jl")
 
 
     function pulsar(psr)
@@ -49,6 +50,10 @@ module Plot
         #plot_magnetic_lines!(ax, psr.fields)
         plot_polar_cap!(ax, psr; color=:red, linewidth=2.0)
         plot_magnetic_lines_from_polar_cap!(ax, psr.fields)
+        plot_grids(psr, ax)
+        plot_sparks(psr, ax)
+
+        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
 
         
         # Draw light cylinder
@@ -118,6 +123,28 @@ module Plot
         end
     end
 
+    #function plot_sparks(psr, ax)
+    #    if psr.sparks != nothing
+    #        for s in psr.sparks
+    #            scatter!(ax, s[1], s[2], s[3], marker=:xcross, color=:red)
+    #        end
+    #    end
+    #end
+
+    function plot_grids(psr, ax)
+        if psr.grid !== nothing
+            scatter!(ax, psr.grid[1], psr.grid[2], psr.grid[3], marker=:circle, color=:blue)
+        end
+    end
+
+
+    function plot_sparks(psr, ax)  gr = psr.grid
+        if psr.sparks !== nothing
+            for (i, j) in psr.sparks
+                scatter!(ax, gr[1][i], gr[2][j], gr[3][i, j], marker=:xcross, color=:red)
+            end
+        end
+    end
      
     function light_cylinder(psr, ax)
         # Create wireframe cylinder with lines
