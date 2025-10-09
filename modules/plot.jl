@@ -3,7 +3,8 @@ module Plot
     using GeometryBasics
     using LinearAlgebra
     include("functions.jl")
-
+    include("field.jl")
+    include("sparks.jl")
 
 
     function pulsar(psr)
@@ -39,19 +40,16 @@ module Plot
         #scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
         #magnetic_field!(ax, psr)
         #magnetic_lines!(ax, psr)
+        plot_grids(psr, ax)
+        plot_sparks(psr, ax)
         polarcap!(ax, psr)
         mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
         # Draw light cylinder
         #light_cylinder(psr, ax)
-
-        # ustaw kamerę
-        cam3d!(ax.scene,
-            eyeposition =  Vec3f(9.78646, 184.23686, 140),
-            #lookat      = Vec3f(0, 0, 0),
-            upvector    = Vec3f(0, 1, 0)
-        )
+        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
+    
         display(fig)
     end
 
@@ -129,6 +127,19 @@ function polarcap!(ax, psr; color=:orange, linewidth=2)
 
     lines!(ax, [xs; xs[1]], [ys; ys[1]], [zs; zs[1]], color=color, linewidth=2)
 end
+function plot_grids(psr, ax)
+        if psr.grid !== nothing
+            scatter!(ax, psr.grid[1], psr.grid[2], psr.grid[3], marker=:circle, color=:blue)
+        end
+    end
 
+
+    function plot_sparks(psr, ax)  gr = psr.grid
+        if psr.sparks !== nothing
+            for (i, j) in psr.sparks
+                scatter!(ax, gr[1][i], gr[2][j], gr[3][i, j], marker=:xcross, color=:red)
+            end
+        end
+    end
 
 end # module end

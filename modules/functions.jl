@@ -5,7 +5,7 @@ module Functions
     """
     Calculates rlc in meters
     """
-    function rlc(p, pdot)
+    function rlc(p)
         c = SpeedOfLightInVacuum.val # no units hereafter
         return c * p / (2 * pi)
     end
@@ -72,8 +72,17 @@ module Functions
         end
         return [r, theta, phi]
     end
+    """
+    returns radius of the polar in meters
+    """
+    function rdp(p, r)
+        #https://juliaphysics.github.io/PhysicalConstants.jl/stable/reference/
+        c = SpeedOfLightInVacuum.val # no units hereafter
+        #println((2. * pi * r ^ 3. / (SpeedOfLightInVacuum * p)) ^ 0.5)
+        return (2. * pi * r ^ 3. / (c * p)) ^ 0.5
+    end
     function theta_max(z, psr)
-        return asin(sqrt(z * psr.r / Functions.rlc(psr.p, psr.pdot)))
+        return asin(sqrt(z * psr.r / rlc(psr.p)))
     end
 end # module end
 

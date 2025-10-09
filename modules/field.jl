@@ -153,7 +153,22 @@ function generate_lines!(psr; step=10, stepsnum=20000, phi=nothing)
         end
     end
 end
+function pc(psr; phi_num=10)
+        theta =Functions.theta_max(1, psr)
+        phis = range(0, 2*pi, length=phi_num)
+        x=Array{Float64}(undef, phi_num)
+        y=Array{Float64}(undef, phi_num)
+        z=Array{Float64}(undef, phi_num)
 
+        for(i, phi) in enumerate(phis)
+            car = Functions.spherical2cartesian([psr.r, theta, phi])
+            x[i] = car[1]
+            y[i] = car[2]
+            z[i] = car[3]
+        end
+        psr.pc = [x, y, z]
+        
+end
 
 """
 Calculate the polar cap contour on the stellar surface.
@@ -166,6 +181,7 @@ function calculate_polarcap!(psr; phi_num=100)
     # store spherical coordinates of the polar cap rim
     psr.pc = [[psr.r, theta, ph] for ph in phis]
 end
+
 
 
 """
@@ -224,6 +240,19 @@ function generate_polarcap_lines!(psr; phi_num=10, step=10, stepsnum=200000)
         end
     end
 end
+
+    """
+    dipolar component of magnetic field at the surface based on x, y components
+    |B_d| = 2 at the pole
+    """
+    function bd(x, y, psr)
+        d = sqrt(x ^ 2 + y ^ 2)
+        theta = asin(d / psr.r)
+        bd_sph = dipole(1, theta)
+        #println(dipole(1, 0))
+        bd = Functions.spherical2cartesian(bd_sph)
+        return bd
+    end
 
 
 end # module end
