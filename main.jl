@@ -63,7 +63,10 @@ module NoName
         #println(fieldnames(Pulsar))
         #println(psr.r_lc / 1e3, " km")
 
-        Plot.pulsar(psr)
+        
+        #Plot.pulsar(psr)
+        #Plot.potential2D(psr)
+        Plot.potential2Dv2(psr)
         println("Bye")
     end
 

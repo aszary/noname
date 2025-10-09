@@ -1,6 +1,7 @@
 module Plot
     using GLMakie
     using GeometryBasics
+    using Glob
     include("functions.jl")
 
 
@@ -131,39 +132,6 @@ module Plot
     end
 
 
-    """
-        Plots light cylinder
-    """
-    function light_cylinder(psr, ax)
-        # Create wireframe cylinder with lines
-        θ = range(0, 2π, length=200)
-        height = 3 * psr.r
-        radius = 2* psr.r
-        #radius = 2* psr.r_lc
-        
-        # Vertical lines
-        for t in θ[1:end-1]  # Skip last point to avoid duplication
-            x_line = [radius * cos(t), radius * cos(t)]
-            y_line = [radius * sin(t), radius * sin(t)]
-            z_line = [-2 * psr.r, height]
-            lines!(ax, Point3f.(x_line, y_line, z_line), color = :red, alpha = 0.5, linewidth = 2)
-        end
-        
-        # Horizontal circles at different heights
-        z_levels = range(0, height, length=5)
-        for z in z_levels
-            x_circle = [radius * cos(t) for t in θ]
-            y_circle = [radius * sin(t) for t in θ]
-            z_circle = fill(z, length(θ))
-            lines!(ax, Point3f.(x_circle, y_circle, z_circle), color = :red, alpha = 0.5, linewidth = 2)
-        end
-        # Set equal limits for all axes
-        max_extent = max(height, radius)  # Assuming cylinder height is 2*psr.r
-        limits!(ax, -max_extent, max_extent, -max_extent, max_extent, -max_extent, max_extent)
-
-    end
-
-
     function magnetic_field!(ax, psr)
         fv = psr.fields
 
@@ -177,12 +145,119 @@ module Plot
         scatter!(ax, xs, ys, zs, color=magnitudes, colormap=:viridis, markersize=5)
     end 
 
+
     function magnetic_lines!(ax, psr)
         fv = psr.fields
         for line in fv.magnetic_lines
             xs, ys, zs = line[1], line[2], line[3]
             lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
         end
+    end
+
+
+    function potential2D(psr)
+        gr = psr.grid
+        grid_size = size(gr[1])[1]
+
+        # data for potential plotting
+        x = Array{Float64}(undef, grid_size * grid_size)
+        y = Array{Float64}(undef, grid_size * grid_size)
+        z = Array{Float64}(undef, grid_size * grid_size)
+        v = Array{Float64}(undef, grid_size * grid_size)
+        ex = Array{Float64}(undef, grid_size * grid_size)
+        ey = Array{Float64}(undef, grid_size * grid_size)
+        vx = Array{Float64}(undef, grid_size * grid_size)
+        vy = Array{Float64}(undef, grid_size * grid_size)
+
+        ind = 0
+        for i in 1:grid_size
+            for j in 1:grid_size
+                ind += 1
+                x[ind] = gr[1][i]
+                y[ind] = gr[2][j]
+                z[ind] = gr[3][i,j]
+                v[ind] = psr.potential[i, j]
+                ex[ind] = psr.electric_field[1][i, j]
+                ey[ind] = psr.electric_field[2][i, j]
+                vx[ind] = psr.drift_velocity[1][i, j]
+                vy[ind] = psr.drift_velocity[2][i, j]
+            end
+        end
+
+        fig, ax1, p = heatmap(x, y, v, interpolate=false) #, colorrange=[-155, -135])
+        #hm = meshscatter!(ax1, x, y, ze; markersize=1.25, color=v, transparency=false)
+        #arrows!(x, y, ex, ey, color=:white)
+        arrows!(x, y, vx, vy, color=:white)
+
+        display(fig)
+    end
+
+
+    function potential2Dv2(psr)
+        gr = psr.grid
+        grid_size = size(gr[1])[1]
+
+        # data for potential plotting
+        x = Array{Float64}(undef, grid_size * grid_size)
+        y = Array{Float64}(undef, grid_size * grid_size)
+        z = Array{Float64}(undef, grid_size * grid_size)
+        v = Array{Float64}(undef, grid_size * grid_size)
+        ex = Array{Float64}(undef, grid_size * grid_size)
+        ey = Array{Float64}(undef, grid_size * grid_size)
+        vx = Array{Float64}(undef, grid_size * grid_size)
+        vy = Array{Float64}(undef, grid_size * grid_size)
+
+        ind = 0
+        for i in 1:grid_size
+            for j in 1:grid_size
+                ind += 1
+                x[ind] = gr[1][i]
+                y[ind] = gr[2][j]
+                z[ind] = gr[3][i,j]
+                v[ind] = psr.potential[i, j]
+                ex[ind] = psr.electric_field[1][i, j]
+                ey[ind] = psr.electric_field[2][i, j]
+                vx[ind] = psr.drift_velocity[1][i, j]
+                vy[ind] = psr.drift_velocity[2][i, j]
+            end
+        end
+
+        #fig = Figure(; resolution=(600, 600))
+        #ax = Axis(fig[1, 1]; aspect=(1,1))
+        #heatmap!(fig, x, y, v, interpolate=false) #, colorrange=[-155, -135])
+
+        fig, ax1, p = heatmap(x, y, v, interpolate=false) #, colorrange=[-155, -135])
+        #resize!(fig, (700, 700)) # changes resolution
+        resize_to_layout!(fig)
+        #hm = meshscatter!(ax1, x, y, ze; markersize=1.25, color=v, transparency=false)
+
+        #arrows!(x, y, ex, ey, color=:white)
+        #arrows!(x, y, vx, vy, color=:white)
+
+        # get last file
+        filename = get_newfilename("output", "potential2D_", "png")
+        println("Filename: $filename")
+
+        save(filename, fig)
+        #save("output/potential2D.svg",fig) # does not work
+        #save("output/potential2D.pdf",fig) # does not work
+        display(fig)
+    end
+ 
+
+    """
+    Returns new file name incremented by +1
+    """
+    function get_newfilename(dir, filestart, ext="mp4")
+        # get last file
+        files = glob("$filestart*.$ext", "$dir")
+        if length(files) == 0
+                return "$dir/$(filestart)1.$ext"
+        end
+        files = replace.(files, "$dir/$filestart"=>"", ".$ext"=>"")
+        nums = parse.(Int, files)
+        num = maximum(nums) + 1
+        return "$dir/$filestart$num.$ext"
     end
 
 
