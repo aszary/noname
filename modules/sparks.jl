@@ -45,7 +45,7 @@ module Sparks
 
     # try this https://stackoverflow.com/questions/40338386/calculating-a-3d-gradient-with-unevenly-spaced-points next time?
     """
-    function create_grid!(psr; size=50)
+    function create_grid!(psr; size=100)
         r = psr.r # stellar radius in meters
 
         pc = psr.polar_caps[1]
@@ -177,46 +177,49 @@ module Sparks
         ex = Array{Float64}(undef, grid_size, grid_size)
         ey = Array{Float64}(undef, grid_size, grid_size)
 
-        # julia using diff (bad results!)
-        """
-        grad_vx = diff(vs, dims=1) # 199x200
-        grad_vy = diff(vs, dims=2) # 200x199
-
-        for i in 1:grid_size-1
-            for j in 1:grid_size
-                ex[i, j] = -grad_vx[i, j]
-            end
-        end
-        # dirty hacks below
-        for j in 1:grid_size
-            ex[grid_size, j] = -grad_vx[grid_size-1, j]
-        end
-
-        for i in 1:grid_size
-            for j in 1:grid_size-1
-                ey[i, j] = -grad_vy[i, j]
-            end
-        end
-        for j in 1:grid_size
-            ey[j, grid_size] = -grad_vy[j, grid_size-1]
-        end
-        """
-
         # python gradient calculation
-        # TODO find julia solution
+        # TODO find julia solution (done?)
+        #=
         np = pyimport("numpy")
         grad_v2 = np.gradient(vs)
         grad_vx = grad_v2[1]
         grad_vy = grad_v2[2]
-        ex = - grad_vx
-        ey =  - grad_vy
+        ex0 = - grad_vx
+        ey0 =  - grad_vy
+        =#
+
+        # julia solution (Claude)!
+        # Obliczanie gradientu (jak numpy.gradient)
+        dx = gr[1][2] - gr[1][1]
+        dy = gr[2][2] - gr[2][1]
+
+        grad_vx = similar(vs)
+        grad_vy = similar(vs)
+
+        # Gradient w kierunku x (pierwszy wymiar - wiersze)
+        grad_vx[1, :] .= (vs[2, :] .- vs[1, :]) ./ dx
+        grad_vx[end, :] .= (vs[end, :] .- vs[end-1, :]) ./ dx
+        for i in 2:grid_size-1
+            grad_vx[i, :] .= (vs[i+1, :] .- vs[i-1, :]) ./ (2*dx)
+        end
+
+        # Gradient w kierunku y (drugi wymiar - kolumny)
+        grad_vy[:, 1] .= (vs[:, 2] .- vs[:, 1]) ./ dy
+        grad_vy[:, end] .= (vs[:, end] .- vs[:, end-1]) ./ dy
+        for j in 2:grid_size-1
+            grad_vy[:, j] .= (vs[:, j+1] .- vs[:, j-1]) ./ (2*dy)
+        end
+
+        ex = -grad_vx
+        ey = -grad_vy        
+        # tutaj koniec, ale wyniki są różne od wersji PYTHON!
 
         # calculate drift velocity
         vdx = Array{Float64}(undef, grid_size, grid_size)
         vdy = Array{Float64}(undef, grid_size, grid_size)
         for i in 1:grid_size
             for j in 1:grid_size
-                B = Field.bd(gr[1][i], gr[1][j], psr)
+                B = Field.bd(gr[1][i], gr[1][j], psr) * 5 # to have longer arrows!
                 E = [ex[i, j], ey[i, j], 0]
                 #println(B)
                 #println(E)

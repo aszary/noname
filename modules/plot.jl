@@ -70,8 +70,6 @@ module Plot
         end
 
 
-
-
         # calculate electric potential
         gr = psr.grid
         grid_size = size(gr[1])[1]
@@ -97,7 +95,7 @@ module Plot
             end
         end
 
-
+        # TODO plot potential
 
         #mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)

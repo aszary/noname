@@ -65,8 +65,8 @@ module NoName
 
         
         #Plot.pulsar(psr)
-        #Plot.potential2D(psr)
-        Plot.potential2Dv2(psr)
+        Plot.potential2D(psr)
+        #Plot.potential2Dv2(psr)
         println("Bye")
     end
 
