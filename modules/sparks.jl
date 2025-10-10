@@ -45,7 +45,7 @@ module Sparks
 
     # try this https://stackoverflow.com/questions/40338386/calculating-a-3d-gradient-with-unevenly-spaced-points next time?
     """
-    function create_grid!(psr; size=100)
+    function create_grid!(psr; size=50)
         r = psr.r # stellar radius in meters
 
         pc = psr.polar_caps[1]
@@ -168,7 +168,7 @@ module Sparks
         for i in 1:grid_size
             for j in 1:grid_size
                 if vs[i, j] == 0
-                    vs[i, j] = NaN
+                    vs[i, j] = NaN # kind of works, set to 0 for checks
                 end
             end
         end
@@ -177,8 +177,15 @@ module Sparks
         ex = Array{Float64}(undef, grid_size, grid_size)
         ey = Array{Float64}(undef, grid_size, grid_size)
 
+        # julia solution
+        grad_v2 = Functions.numpy_gradient_2d(vs)
+        grad_vx = grad_v2[1]
+        grad_vy = grad_v2[2]
+        ex = - grad_vx
+        ey =  - grad_vy
+
         # python gradient calculation
-        # TODO find julia solution (done?)
+        # find julia solution (done?)
         #=
         np = pyimport("numpy")
         grad_v2 = np.gradient(vs)
@@ -186,40 +193,28 @@ module Sparks
         grad_vy = grad_v2[2]
         ex0 = - grad_vx
         ey0 =  - grad_vy
+
+        # Sprawdzenie czy wyniki są identyczne
+        # change vs[i, j] = NaN to vs[i, j] = 0 above
+
+        println("ex0 == ex: ", ex0 == ex)
+        println("ey0 == ey: ", ey0 == ey)
+
+        # Sprawdzenie z tolerancją (bardziej praktyczne dla float)
+        println("ex0 ≈ ex: ", isapprox(ex0, ex))
+        println("ey0 ≈ ey: ", isapprox(ey0, ey))
+
+        # Maksymalna różnica
+        println("Max różnica ex: ", maximum(abs.(ex0 .- ex)))
+        println("Max różnica ey: ", maximum(abs.(ey0 .- ey)))
         =#
-
-        # julia solution (Claude)!
-        # Obliczanie gradientu (jak numpy.gradient)
-        dx = gr[1][2] - gr[1][1]
-        dy = gr[2][2] - gr[2][1]
-
-        grad_vx = similar(vs)
-        grad_vy = similar(vs)
-
-        # Gradient w kierunku x (pierwszy wymiar - wiersze)
-        grad_vx[1, :] .= (vs[2, :] .- vs[1, :]) ./ dx
-        grad_vx[end, :] .= (vs[end, :] .- vs[end-1, :]) ./ dx
-        for i in 2:grid_size-1
-            grad_vx[i, :] .= (vs[i+1, :] .- vs[i-1, :]) ./ (2*dx)
-        end
-
-        # Gradient w kierunku y (drugi wymiar - kolumny)
-        grad_vy[:, 1] .= (vs[:, 2] .- vs[:, 1]) ./ dy
-        grad_vy[:, end] .= (vs[:, end] .- vs[:, end-1]) ./ dy
-        for j in 2:grid_size-1
-            grad_vy[:, j] .= (vs[:, j+1] .- vs[:, j-1]) ./ (2*dy)
-        end
-
-        ex = -grad_vx
-        ey = -grad_vy        
-        # tutaj koniec, ale wyniki są różne od wersji PYTHON!
 
         # calculate drift velocity
         vdx = Array{Float64}(undef, grid_size, grid_size)
         vdy = Array{Float64}(undef, grid_size, grid_size)
         for i in 1:grid_size
             for j in 1:grid_size
-                B = Field.bd(gr[1][i], gr[1][j], psr) * 5 # to have longer arrows!
+                B = Field.bd(gr[1][i], gr[1][j], psr) #* 10 # * X to have longer arrows!
                 E = [ex[i, j], ey[i, j], 0]
                 #println(B)
                 #println(E)
@@ -235,6 +230,8 @@ module Sparks
         psr.drift_velocity = [vdx, vdy]
     end
 
+
+    
 
     """
     Electric potential [Filaments]

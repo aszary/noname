@@ -115,6 +115,53 @@ module Functions
     end
 
 
+    """
+    numpy_gradient_2d(A::AbstractMatrix) -> (grad_y, grad_x)
+
+    Computes the gradient of a 2D array using finite differences, consistent with `numpy.gradient` implementation.
+
+    # Arguments
+    - `A::AbstractMatrix`: Input 2D array (matrix)
+
+    # Returns
+    - A tuple `(grad_y, grad_x)` containing:
+    - `grad_y`: Gradient along the first dimension (rows, Y-axis)
+    - `grad_x`: Gradient along the second dimension (columns, X-axis)
+
+    # Algorithm Description
+    The function computes gradients using:
+    - **One-sided differences** at array boundaries:
+    - First row/column: `grad[1] = A[2] - A[1]`
+    - Last row/column: `grad[end] = A[end] - A[end-1]`
+    - **Central differences** for interior points:
+    - `grad[i] = (A[i+1] - A[i-1]) / 2`
+
+    This behavior is identical to `numpy.gradient` for 2D arrays.    
+    
+    """
+    function numpy_gradient_2d(A)
+        grad_y = similar(A, Float64)
+        grad_x = similar(A, Float64)
+        
+        ny, nx = size(A)
+        
+        # Gradient w kierunku Y (dim=1, wiersze)
+        grad_y[1, :] = A[2, :] - A[1, :]
+        grad_y[end, :] = A[end, :] - A[end-1, :]
+        for i in 2:ny-1
+            grad_y[i, :] = (A[i+1, :] - A[i-1, :]) / 2
+        end
+        
+        # Gradient w kierunku X (dim=2, kolumny)
+        grad_x[:, 1] = A[:, 2] - A[:, 1]
+        grad_x[:, end] = A[:, end] - A[:, end-1]
+        for j in 2:nx-1
+            grad_x[:, j] = (A[:, j+1] - A[:, j-1]) / 2
+        end
+        
+        return (grad_y, grad_x)
+    end
+
 
 end # module end
 
