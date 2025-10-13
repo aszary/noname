@@ -153,7 +153,7 @@ function generate_lines!(psr; step=10, stepsnum=20000, phi=nothing)
         end
     end
 end
-function pc(psr; phi_num=10)
+function pc(psr; phi_num=100)
         theta =Functions.theta_max(1, psr)
         phis = range(0, 2*pi, length=phi_num)
         x=Array{Float64}(undef, phi_num)
@@ -179,7 +179,7 @@ function calculate_polarcap!(psr; phi_num=100)
     phis = range(0, 2*pi, length=phi_num)
 
     # store spherical coordinates of the polar cap rim
-    psr.pc = [[psr.r, theta, ph] for ph in phis]
+    psr.polar_cap = [[psr.r, theta, ph] for ph in phis]
 end
 
 
