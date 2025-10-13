@@ -4,7 +4,7 @@ module Lines
     include("field.jl")
     include("functions.jl")
 
-    function calculate_polarcaps!(psr; phi_num=10)
+    function calculate_polarcaps!(psr; phi_num=50)
         theta = Functions.theta_max(1, psr)
         phis = range(0, 2*pi, length=phi_num)
         x = Array{Float64}(undef, phi_num)

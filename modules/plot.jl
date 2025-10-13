@@ -23,8 +23,8 @@ module Plot
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
         #draw test points
-        r = 1.2e4
-        theta = 30 # w stopniach
+        r = 1.4e4
+        theta = 30 # rad2deg(Functions.theta_max(1, psr)) # w stopniach
         phi = 0
         p_sp = [r, deg2rad(theta), phi]
         p_car = Functions.spherical2cartesian(p_sp)
@@ -68,7 +68,6 @@ module Plot
                 scatter!(ax, gr[1][i], gr[2][j], gr[3][i, j], marker=:xcross, color=:red)
             end
         end
-
 
         # calculate electric potential
         gr = psr.grid
@@ -126,6 +125,93 @@ module Plot
         display(fig)
 
 
+
+    end
+
+
+    function pulsar2(psr)
+        #fig = Figure()
+        #ax = Axis3(f[1, 1], aspect = :equal)
+
+        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
+        # Draw a sphere centered at (0,0,0) with radius r
+        #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
+        #draw test points
+        r = 1.4e4
+        theta = 30 #rad2deg(Functions.theta_max(1, psr)) # w stopniach
+        phi = 0
+        p_sp = [r, deg2rad(theta), phi]
+        p_car = Functions.spherical2cartesian(p_sp)
+        scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
+
+        magnetic_field!(ax, psr)
+
+        magnetic_lines!(ax, psr)
+
+        # draw polar caps
+        for pc in psr.polar_caps
+            lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
+        end
+
+        # draw open lines
+        for i in eachindex(psr.open_lines)
+            for j in eachindex(psr.open_lines[i])
+                lines!(ax, psr.open_lines[i][j][1], psr.open_lines[i][j][2], psr.open_lines[i][j][3], color=:green)         
+            end
+        end
+
+
+        # plot sparks for random_sparks! function, not very useful
+        if psr.sparks !== nothing
+            for sp in psr.sparks
+                scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+            end
+        end
+
+        # plot grids
+        if psr.grid !== nothing
+            for gr in psr.grid
+                scatter!(ax, gr[1], gr[2], gr[3], marker=:diamond, color=:black)
+            #scatter!(ax, psr.grid[1], psr.grid[2], psr.grid[3], marker=:diamond, color=:black)
+            end
+        end
+
+
+        #mx = 2e4
+        #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
+
+        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
+
+        # Try accessing the scene's camera directly
+        println("Scene camera type: ", typeof(cam))
+        println("Scene camera fields: ", fieldnames(typeof(cam)))
+        println("Scene camera properties: ", propertynames(cam))
+
+        # Add a button to print camera state
+        #button = Button(f[7, 1], label = "Print Camera State")
+        button = Button(fig[1, 1], label = "Print", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+
+        on(button.clicks) do n
+            println("\n--- Camera State (Click $n) ---")
+            println("Camera type: ", typeof(cam))
+            println("Eye position: ", cam.eyeposition[])
+            println("View direction: ", cam.lookat[])
+            println("Up vector: ", cam.upvector[])
+        end
+        
+        display(fig)
 
     end
 

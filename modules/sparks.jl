@@ -85,7 +85,7 @@ module Sparks
     - min_dist: minimum distant in meters
 
     """
-    function random_sparks_grid!(psr; min_dist=30, trials=1000)
+    function random_sparks_grid!(psr; min_dist=40, trials=1000)
         gr = psr.grid
         grid_size = size(gr[1])[1]
         sp = []
@@ -243,6 +243,249 @@ module Sparks
     function v(r; a=1)
         return a * log(r)
     end
+
+
+    """
+
+    Initiate sparks at the polar cap (grids will be generated later!)
+    Same distance between sparks at the tracks
+
+    # Arguments
+
+    - rs: list of tracks radius
+    - num: number of sparks at the inner track
+
+    """
+    function init_sparks1!(psr; rfs=[0.295, 0.5], num=3, center=true)
+        sp = []
+
+        # at the center
+        if center == true
+            car = Functions.spherical2cartesian([psr.r, 0, 0])
+            push!(sp, [car[1], car[2], car[3]])
+        end
+
+        c1 = nothing
+        for (i, rf) in enumerate(rfs)
+            r = psr.r_pc * rf
+            thm = asin(r / psr.r)
+            if i == 1
+                c1 = 2 * pi * r
+                for phi in range(0, 2pi, length=num+1)[1:num] # really?
+                    car = Functions.spherical2cartesian([psr.r, thm, phi])
+                    push!(sp, [car[1], car[2], car[3]])
+                    #println(phi)
+                end
+            else
+                # calculate track cicumference to adjust track radius
+                ci = 2 * pi * r
+                num_new = convert(Int, ceil(ci / c1) * num)
+                ci_new = ceil(ci / c1) * c1
+                r_new = ci_new / (2 * pi)
+                println("Radius of track no. $i adjusted to $(r_new/psr.r_pc)")
+                thm = asin(r_new / psr.r)
+                for phi in range(0, 2pi, length=num_new+1)[1:num_new] # really?
+                    car = Functions.spherical2cartesian([psr.r, thm, phi])
+                    push!(sp, [car[1], car[2], car[3]])
+                    #println(phi)
+                end
+            end
+            #println("$r $c1")
+        end
+        psr.sparks = sp
+        println("Number of sparks added: ", size(sp)[1])
+    end
+
+
+    """
+
+    Initiate sparks at the polar cap (grids will be generated later!)
+    Same number of sparks at all tracks
+
+    # Arguments
+
+    - rs: list of tracks radius
+    - num: number of sparks at the inner track and all the rest
+
+    """
+    function init_sparks2!(psr; rfs=[0.235, 0.71], num=3, offset=true, center=true)
+        sp = []
+        # at the center
+        if center == true
+            car = Functions.spherical2cartesian([psr.r, 0, 0])
+            push!(sp, [car[1], car[2], car[3]])
+        end
+
+        dphi = 2pi / num
+        for (i, rf) in enumerate(rfs)
+            r = psr.r_pc * rf
+            thm = asin(r / psr.r)
+            for phi in range(0, 2pi, length=num+1)[1:num] # really?
+                if offset == true
+                    phi += (i % 2) * dphi / 2
+                end
+                car = Functions.spherical2cartesian([psr.r, thm, phi])
+                push!(sp, [car[1], car[2], car[3]])
+                #println(phi)
+            end
+            #println("$r $c1")
+        end
+        psr.sparks = sp
+        println("Number of sparks added: ", size(sp)[1])
+    end
+
+
+    """
+    Initiate sparks at the polar cap (grids will be generated later!)
+    "Fibonacci" distribution
+
+    # Arguments
+
+    - num: number of sparks at the whole polar cap
+    - rfmax: fraction of the polar cap radius covered by sparks
+
+    """
+    function init_sparks3!(psr; num=10, rfmax=0.7)
+        sp = []
+        # TODO start here
+        r = psr.r
+        theta_max = rfmax * Functions.theta_max(1, psr)
+        rp = r * cos(theta_max) # calculation only at the polar cap
+        phi = pi * (3. - sqrt(5.))  # golden angle in radians
+        for i in 1:num
+            zz = r - ((i-1) / (num-1)) * (r-rp) #  # 2 * r  # z goes from r to -r
+            #println(zz)
+            radius = sqrt(r^2 - zz * zz)  # radius at z
+            theta = phi * i  # golden angle increment
+            xx = cos(theta) * radius
+            yy = sin(theta) * radius
+            push!(sp, [xx, yy, zz])
+        end
+        psr.sparks = sp
+        println("Number of sparks added: ", size(sp)[1])
+    end
+
+
+    """
+    Creates grids around sparks to calculate gradient (for simulation)...
+
+    # Arguments
+    - prec: grid precision in meters
+    - grid_size: odd number for proper spark calculation, even number for proper region calculation
+    """
+    function create_grids!(psr, prec=0.3, grid_size=5)
+
+        if psr.sparks === nothing
+            println("Run init_sparks! frirst..")
+            return
+        end
+
+        sp = psr.sparks
+        gr = []
+
+        for s in sp
+            gr_x = range(s[1] - prec*2, s[1]+prec*2, length=grid_size)
+            gr_y = range(s[2] - prec*2, s[2]+prec*2, length=grid_size)
+            gr_z = zeros((grid_size, grid_size))
+            for (i, x) in enumerate(gr_x)
+                for (j, y) in enumerate(gr_y)
+                    z = sqrt(psr.r^2 - x^2 - y^2)
+                    gr_z[i, j] = z
+                end
+            end
+            push!(gr, [gr_x, gr_y, gr_z])
+        end
+        psr.grid = gr
+    end
+
+
+    """
+    Calculates electric potential, electric field and drift velocity for grids around sparks
+    """
+    function calculate_potentials!(psr)
+        grids = psr.grid
+        grids_num = size(grids)[1]
+        sp = psr.sparks
+        spark_num = size(sp)[1]
+
+        potentials = []
+        electric_fields = []
+        drift_velocities = []
+        sparks_velocities = []
+
+        psr.pot_minmax = [1e50, -1e50]
+
+        for ii in 1:grids_num
+            gr = grids[ii]
+            grid_size = size(gr[1])[1]
+
+            vs = Array{Float64}(undef, grid_size, grid_size)
+
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    vv = 0
+                    for k in 1:spark_num
+                        sx = sp[k][1]
+                        sy = sp[k][2]
+                        sz = sp[k][3]
+                        dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
+                        #vv += v(dist) # nice looking dots (Inf) in the plot, but no
+                        if dist != 0
+                            vv += v(dist)
+                        end
+                    end
+                    if vv < psr.pot_minmax[1]
+                        psr.pot_minmax[1] = vv
+                    end
+                    if vv > psr.pot_minmax[2]
+                        psr.pot_minmax[2] = vv
+                    end
+                    vs[i, j] = vv
+                    #println(ii, " ", i, " ", j, " ", vs[i, j])
+                end
+            end
+            push!(potentials, vs)
+
+            # calculate electric field
+            ex = Array{Float64}(undef, grid_size, grid_size)
+            ey = Array{Float64}(undef, grid_size, grid_size)
+
+            # julia gradient calculation
+            grad_v = Functions.numpy_gradient_2d(vs)
+            grad_vx = grad_v[1]
+            grad_vy = grad_v[2]
+            ex = - grad_vx
+            ey = - grad_vy
+
+            # calculate drift velocity
+            vdx = Array{Float64}(undef, grid_size, grid_size)
+            vdy = Array{Float64}(undef, grid_size, grid_size)
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    B = Field.bd(gr[1][i], gr[1][j], psr)
+                    E = [ex[i, j], ey[i, j], 0]
+                    #println(B)
+                    #println(E)
+                    v = cross(E, B)
+                    vdx[i, j] = v[1]
+                    vdy[i, j] = v[2]
+                end
+            end
+            ind = convert(Int, ceil(grid_size / 2)) # works for odd grid sizes
+            push!(sparks_velocities, [vdx[ind, ind], vdy[ind, ind]])
+            push!(electric_fields, [ex, ey])
+            push!(drift_velocities, [vdx, vdy])
+        end
+        #println(typeof(grad_v2))
+        psr.potential = potentials
+        psr.electric_field = electric_fields
+        psr.drift_velocity = drift_velocities
+        push!(psr.locations, deepcopy(psr.sparks))
+        psr.sparks_velocity = sparks_velocities
+        push!(psr.sparks_velocities, deepcopy(sparks_velocities))
+    end
+
+
 
 
 end # module end
