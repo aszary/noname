@@ -21,11 +21,13 @@ module NoName
         pc # single polar cap
         open_lines # magnetic lines at polar cap boundries
         sparks # sparks locations
-        grid # grid at the polar cap to calculate potential
+        grid # grid at the polar cap to calculate potential # multiple grids for simulation
         potential
         electric_field
         drift_velocity
-        pot_minmax # what is it? do we need it here?
+        pot_minmax # what is this? do we need it here?
+        sparks_locations # locations in simulation # locations in drift2
+        sparks_velocity # step in simulation)
         function Pulsar()
             r = 10000 # 10 km in merters
             p = 1 # period in seconds
@@ -45,7 +47,8 @@ module NoName
             electric_field = nothing
             drift_velocity = nothing
             pot_minmax = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax)
+            sparks_locations = []
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations)
         end
     end
 
@@ -75,14 +78,15 @@ module NoName
         Lines.calculate_polarcaps!(psr)
         Lines.generate_open!(psr)
 
-        #Sparks.init_sparks1!(psr ;num=5)
+        Sparks.init_sparks1!(psr ;num=5)
         #Sparks.init_sparks2!(psr ;num=5)
-        Sparks.init_sparks3!(psr ;num=50, rfmax=0.7)
+        #Sparks.init_sparks3!(psr ;num=50, rfmax=0.7)
         Sparks.create_grids!(psr)
-        Sparks.calculate_potentials!(psr)
+        Sparks.calculate_potentials!(psr) # calculates step in sparks_velocity
         
         
-        Plot.pulsar2(psr)
+        #Plot.pulsar2(psr)
+        Plot.steps(psr)
         
     end
 

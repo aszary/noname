@@ -3,6 +3,7 @@ module Plot
     using GeometryBasics
     using Glob
     include("functions.jl")
+    include("sparks.jl")
 
 
 
@@ -343,6 +344,78 @@ module Plot
         num = maximum(nums) + 1
         return "$dir/$filestart$num.$ext"
     end
+
+
+    function steps(psr)
+        #fig = Figure()
+        #ax = Axis3(f[1, 1], aspect = :equal)
+
+        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
+        # Draw a sphere centered at (0,0,0) with radius r
+        #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
+        #magnetic_field!(ax, psr)
+
+        #magnetic_lines!(ax, psr)
+
+        # draw polar caps
+        for pc in psr.polar_caps
+            lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
+        end
+
+        spark_plots = []
+        # plot sparks 
+        for sp in psr.sparks
+            sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+            push!(spark_plots, sp_plot)
+        end
+
+        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
+
+        # Try accessing the scene's camera directly
+        # Add a button to print camera state
+        #button = Button(f[7, 1], label = "Print Camera State")
+        button = Button(fig[1, 1], label = "Print", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+
+        on(button.clicks) do n
+            println("\n--- (Click in $n) ---")
+            for i in 1:200
+                Sparks.step(psr; speedup=1)
+                Sparks.create_grids!(psr)
+                Sparks.calculate_potentials!(psr)
+            end
+            # Usuń stare ploty
+            for sp_plot in spark_plots
+                delete!(ax, sp_plot)
+            end
+            empty!(spark_plots)
+
+            # Narysuj sparki w nowych pozycjach
+            for sp in psr.sparks
+                sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+                push!(spark_plots, sp_plot)
+            end            
+            
+            println("\n--- (Click out $n) ---")
+
+        end
+        
+        display(fig)
+
+    end
+
+
 
 
 end # module end
