@@ -362,10 +362,6 @@ module Plot
 
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
-        #magnetic_field!(ax, psr)
-
-        #magnetic_lines!(ax, psr)
-
         # draw polar caps
         for pc in psr.polar_caps
             lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
@@ -380,9 +376,6 @@ module Plot
 
         cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
 
-        # Try accessing the scene's camera directly
-        # Add a button to print camera state
-        #button = Button(f[7, 1], label = "Print Camera State")
         button = Button(fig[1, 1], label = "Print", 
                width = 80, height = 25,
                halign = :right, valign = :top,
@@ -395,6 +388,7 @@ module Plot
                 Sparks.create_grids!(psr)
                 Sparks.calculate_potentials!(psr)
             end
+            #=
             # Usuń stare ploty
             for sp_plot in spark_plots
                 delete!(ax, sp_plot)
@@ -405,7 +399,15 @@ module Plot
             for sp in psr.sparks
                 sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
                 push!(spark_plots, sp_plot)
+            end
+            =#
+
+            for (i, sp) in enumerate(psr.sparks)
+                spark_plots[i][1] = sp[1]  # aktualizuj współrzędne x
+                spark_plots[i][2] = sp[2]  # aktualizuj współrzędne y
+                spark_plots[i][3] = sp[3]  # aktualizuj współrzędne z
             end            
+            
             
             println("\n--- (Click out $n) ---")
 
@@ -415,6 +417,55 @@ module Plot
 
     end
 
+
+    function steps2(psr; n_steps=200, skip_steps=10, speedup=10, delay=0.1)
+        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+        
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+        arrows3d!(ax, [0, 0], [0, 0], [0, 0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
+        
+        # draw polar caps
+        for pc in psr.polar_caps
+            lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
+        end
+        
+        spark_plots = []
+        # plot sparks
+        for sp in psr.sparks
+            sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+            push!(spark_plots, sp_plot)
+        end
+        
+        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat=[0, 0, 10000], upvector=[0, 0, 1], center = false)
+        
+        display(fig)
+        
+        # Automatyczna animacja
+        for iteration in 1:n_steps
+            println("\n--- Step $iteration/$n_steps ---")
+            
+            for i in 1:skip_steps
+                Sparks.step(psr; speedup=speedup)
+                Sparks.create_grids!(psr)
+                Sparks.calculate_potentials!(psr)
+            end
+            
+            # Aktualizuj pozycje sparków
+            for (i, sp) in enumerate(psr.sparks)
+                spark_plots[i][1] = sp[1]
+                spark_plots[i][2] = sp[2]
+                spark_plots[i][3] = sp[3]
+            end
+            
+            sleep(delay)  # Opóźnienie między krokami (w sekundach)
+        end
+        
+        println("\n--- Animation complete ---")
+        return fig
+    end    
 
 
 

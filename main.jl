@@ -80,13 +80,14 @@ module NoName
 
         Sparks.init_sparks1!(psr ;num=5)
         #Sparks.init_sparks2!(psr ;num=5)
-        #Sparks.init_sparks3!(psr ;num=50, rfmax=0.7)
+        #Sparks.init_sparks3!(psr ;num=10, rfmax=0.7)
         Sparks.create_grids!(psr)
         Sparks.calculate_potentials!(psr) # calculates step in sparks_velocity
         
         
         #Plot.pulsar2(psr)
-        Plot.steps(psr)
+        #Plot.steps(psr)
+        Plot.steps2(psr)
         
     end
 
