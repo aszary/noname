@@ -326,7 +326,7 @@ module Sparks
         psr.sparks = sp
         println("Number of sparks added: ", size(sp)[1])
     end
-    function create_grids!(psr, prec=0.3, grid_size=5)
+    function create_grids!(psr, prec=0.3, grid_size=10)
 
         if psr.sparks == nothing
             println("Run init_sparks! frirst..")
@@ -349,6 +349,93 @@ module Sparks
             push!(gr, [gr_x, gr_y, gr_z])
         end
         psr.grid = gr
+    end
+"""
+    Calculates electric potential, electric field and drift velocity for grids around sparks
+    """
+    function calculate_potentials!(psr)
+        grids = psr.grid
+        grids_num = size(grids)[1]
+        sp = psr.sparks
+        spark_num = size(sp)[1]
+
+        potentials = []
+        electric_fields = []
+        drift_velocities = []
+        sparks_velocities = []
+
+        psr.pot_minmax = [1e50, -1e50]
+
+        for ii in 1:grids_num
+            gr = grids[ii]
+            grid_size = size(gr[1])[1]
+
+            vs = Array{Float64}(undef, grid_size, grid_size)
+
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    vv = 0
+                    for k in 1:spark_num
+                        sx = sp[k][1]
+                        sy = sp[k][2]
+                        sz = sp[k][3]
+                        dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
+                        #vv += v(dist) # nice looking dots (Inf) in the plot, but no
+                        if dist != 0
+                            vv += v(dist)
+                        end
+                    end
+                    if vv < psr.pot_minmax[1]
+                        psr.pot_minmax[1] = vv
+                    end
+                    if vv > psr.pot_minmax[2]
+                        psr.pot_minmax[2] = vv
+                    end
+                    vs[i, j] = vv
+                    #println(ii, " ", i, " ", j, " ", vs[i, j])
+                end
+            end
+            push!(potentials, vs)
+
+            # calculate electric field
+            ex = Array{Float64}(undef, grid_size, grid_size)
+            ey = Array{Float64}(undef, grid_size, grid_size)
+
+            # python gradient calculation
+            # TODO find julia solution
+            np = pyimport("numpy")
+            grad_v = np.gradient(vs)
+            grad_vx = grad_v[1]
+            grad_vy = grad_v[2]
+            ex = - grad_vx
+            ey = - grad_vy
+
+            # calculate drift velocity
+            vdx = Array{Float64}(undef, grid_size, grid_size)
+            vdy = Array{Float64}(undef, grid_size, grid_size)
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    B = Field.bd(gr[1][i], gr[1][j], psr)
+                    E = [ex[i, j], ey[i, j], 0]
+                    #println(B)
+                    #println(E)
+                    v = cross(E, B)
+                    vdx[i, j] = v[1]
+                    vdy[i, j] = v[2]
+                end
+            end
+            ind = convert(Int, ceil(grid_size / 2)) # works for odd grid sizes
+            push!(sparks_velocities, [vdx[ind, ind], vdy[ind, ind]])
+            push!(electric_fields, [ex, ey])
+            push!(drift_velocities, [vdx, vdy])
+        end
+        #println(typeof(grad_v2))
+        psr.potential = potentials
+        psr.electric_field = electric_fields
+        psr.drift_velocity = drift_velocities
+        push!(psr.locations, deepcopy(psr.sparks))
+        psr.sparks_velocity = sparks_velocities
+        push!(psr.sparks_velocities, deepcopy(sparks_velocities))
     end
 
 

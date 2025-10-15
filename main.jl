@@ -19,7 +19,11 @@ module NoName
         fields  # magnetic and electric fields
         grid #idk od oli
         sparks # sparks positions in cartesian coordinates
+        locations # for the simulation
+        sparks_velocity # single spark valocity
+        sparks_velocities # for the simulation
         potential
+        pot_minmax
         electric_field
         drift_velocity 
 
@@ -38,10 +42,14 @@ module NoName
             fields = Field.Test() # usingt testt class for now
             grid = nothing
             sparks = nothing
+            locations = []
+            sparks_velocity = nothing
+            sparks_velocities = [] 
             potential = nothing
+            pot_minmax = nothing
             electric_field = nothing
             drift_velocity = nothing
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, polar_cap, r_pc, fields, grid, sparks, potential, electric_field, drift_velocity)
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, polar_cap, r_pc, fields, grid, sparks, locations, sparks_velocity, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity)
         end
     end
     function full_grid()
@@ -64,17 +72,20 @@ module NoName
     function small_grid()
         psr = Pulsar()
         Field.calculate_dipole!(psr)
-        Field.generate_lines!(psr)
+        #Field.generate_lines!(psr)
         Field.calculate_polarcap!(psr)
         Field.pc(psr; phi_num=10)
-        Field.generate_polarcap_lines!(psr)
+        #Field.generate_polarcap_lines!(psr)
         #Sparks.create_grid!(psr; size=100)
         #Sparks.random_sparks_grid!(psr; min_dist=20, trials=20)
         #Sparks.calculate_potential!(psr)
         #println(fieldnames(Pulsar))
         #println(psr.r_lc / 1e3, " km")
-        Sparks.init_sparks1!(psr)
+        #Sparks.init_sparks1!(psr)
+        #Sparks.init_sparks2!(psr)
+        Sparks.init_sparks3!(psr)
         Sparks.create_grids!(psr)
+        Sparks.calculate_potentials!(psr)
         #Plot.potential2D(psr)
         #Plot.potential2Dv2(psr)
         Plot.pulsar2(psr)

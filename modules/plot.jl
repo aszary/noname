@@ -54,7 +54,7 @@ module Plot
     
         display(fig)
     end
-    function pulsar2(psr)
+    function pulsar2(psr) #pulsar function for smallgrids
         fig, ax, p = mesh(Sphere(Point3f(0,0,0), psr.r), color = (:teal, 0.7), transparency = true, shading = false)
         #f = Figure()
         #ax = Axis3(f[1, 1], aspect = :equal)
@@ -196,7 +196,7 @@ function plot_grids(psr, ax)
     function plot_sparks2(psr, ax) 
         if psr.sparks !== nothing
             for s in psr.sparks
-                scatter!(ax, s[1], s[2], s[3], marker=:xcross, color=:red)
+                scatter!(ax, s[1], s[2], s[3], marker=:xcross, color=:red, markersize = 20)
             end
         end
     end
