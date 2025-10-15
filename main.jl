@@ -86,8 +86,7 @@ module NoName
         
         
         #Plot.pulsar2(psr)
-        #Plot.steps(psr)
-        Plot.steps2(psr)
+        Plot.steps(psr)
         
     end
 

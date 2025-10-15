@@ -346,80 +346,10 @@ module Plot
     end
 
 
-    function steps(psr)
-        #fig = Figure()
-        #ax = Axis3(f[1, 1], aspect = :equal)
 
-        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
-
-        # Draw a sphere centered at (0,0,0) with radius r
-        #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
-        
-        # rotation axis
-        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
-        # magnetic axis
-        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
-
-        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
-
-        # draw polar caps
-        for pc in psr.polar_caps
-            lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
-        end
-
-        spark_plots = []
-        # plot sparks 
-        for sp in psr.sparks
-            sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
-            push!(spark_plots, sp_plot)
-        end
-
-        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
-
-        button = Button(fig[1, 1], label = "Print", 
-               width = 80, height = 25,
-               halign = :right, valign = :top,
-               tellwidth = false, tellheight = false)
-
-        on(button.clicks) do n
-            println("\n--- (Click in $n) ---")
-            for i in 1:200
-                Sparks.step(psr; speedup=1)
-                Sparks.create_grids!(psr)
-                Sparks.calculate_potentials!(psr)
-            end
-            #=
-            # Usuń stare ploty
-            for sp_plot in spark_plots
-                delete!(ax, sp_plot)
-            end
-            empty!(spark_plots)
-
-            # Narysuj sparki w nowych pozycjach
-            for sp in psr.sparks
-                sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
-                push!(spark_plots, sp_plot)
-            end
-            =#
-
-            for (i, sp) in enumerate(psr.sparks)
-                spark_plots[i][1] = sp[1]  # aktualizuj współrzędne x
-                spark_plots[i][2] = sp[2]  # aktualizuj współrzędne y
-                spark_plots[i][3] = sp[3]  # aktualizuj współrzędne z
-            end            
-            
-            
-            println("\n--- (Click out $n) ---")
-
-        end
-        
-        display(fig)
-
-    end
-
-
-    function steps2(psr; n_steps=200, skip_steps=10, speedup=10, delay=0.1)
-        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
+    function steps(psr; n_steps=500, skip_steps=10, speedup=10, delay=0.01)
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
         
         # rotation axis
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
@@ -439,7 +369,7 @@ module Plot
             push!(spark_plots, sp_plot)
         end
         
-        cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat=[0, 0, 10000], upvector=[0, 0, 1], center = false)
+        cam = cam3d!(ax.scene, eyeposition=[629.1865281011553, 799.8239786011065, 10488.971033158241], lookat=[16.260756148965456, 120.13202591109358, 9893.546008743007], upvector=[0.02591359646710347, 0.028736371988157157, 0.9992510727755556], center = false)
         
         display(fig)
         
