@@ -78,22 +78,42 @@ module NoName
         Lines.calculate_polarcaps!(psr)
         Lines.generate_open!(psr)
 
+        #Sparks.random_sparks!(psr) 
         Sparks.init_sparks1!(psr ;num=5)
         #Sparks.init_sparks2!(psr ;num=5)
         #Sparks.init_sparks3!(psr ;num=10, rfmax=0.7)
+        
+        # 3D simulation starts here 
         Sparks.create_grids!(psr)
         Sparks.calculate_potentials!(psr) # calculates step in sparks_velocity
         
-        
-        #Plot.pulsar2(psr)
-        Plot.steps(psr)
-        
+        #Plot.small_grids(psr) # plots small grids
+        Plot.steps(psr) # moving sparks
+
+       
+    end
+
+    function full_plus_smallgrids()
+        psr = Pulsar()
+        Field.calculate_dipole!(psr)
+        Field.generate_lines!(psr)
+        Lines.calculate_polarcaps!(psr)
+        Lines.generate_open!(psr)
+
+        #Sparks.random_sparks!(psr) 
+        Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.init_sparks2!(psr ;num=5)
+        #Sparks.init_sparks3!(psr ;num=10, rfmax=0.7)
+
+        Sparks.create_grid!(psr)
+        Plot.steps2D(psr)
     end
 
     function main()
 
         #full_grid()
-        small_grids()
+        #small_grids()
+        full_plus_smallgrids()
 
         println("Bye")
     end

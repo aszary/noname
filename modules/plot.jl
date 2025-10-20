@@ -1,4 +1,5 @@
 module Plot
+    #using CairoMakie
     using GLMakie
     using GeometryBasics
     using Glob
@@ -130,7 +131,7 @@ module Plot
     end
 
 
-    function pulsar2(psr)
+    function small_grids(psr)
         #fig = Figure()
         #ax = Axis3(f[1, 1], aspect = :equal)
 
@@ -397,6 +398,59 @@ module Plot
         return fig
     end    
 
+
+    function steps2D(psr)
+
+        # calculate electric potential
+        gr = psr.grid
+        grid_size = size(gr[1])[1]
+
+        # data for potential plotting
+        x = Array{Float64}(undef, grid_size * grid_size)
+        y = Array{Float64}(undef, grid_size * grid_size)
+        z = Array{Float64}(undef, grid_size * grid_size)
+        #v = Array{Float64}(undef, grid_size * grid_size)
+        #ex = Array{Float64}(undef, grid_size * grid_size)
+        #ey = Array{Float64}(undef, grid_size * grid_size)
+
+        ind = 0
+        for i in 1:grid_size
+            for j in 1:grid_size
+                ind += 1
+                x[ind] = gr[1][i]
+                y[ind] = gr[2][j]
+                z[ind] = gr[3][i,j]
+                #v[ind] = psr.potential[i, j]
+                #ex[ind] = psr.electric_field[1][i, j]
+                #ey[ind] = psr.electric_field[2][i, j]
+            end
+        end
+
+        # PLOTTING
+        GLMakie.activate!()
+        #CairoMakie.activate!()
+
+        # Figure size
+        size_inches = (17/2.54, 11/2.54) # 17cm x 11cm
+        size_pt = 72 .* size_inches
+        #println(size_pt)
+        fig = Figure(size=size_pt, fontsize=8, figure_padding=(1, 2, 3, 3)) # left, right, bottom, top
+        ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="x (m)", ylabel="y (m)", xminorticksvisible=true, yminorticksvisible=true, xaxisposition=:bottom)
+
+        # plot polar cap
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # save to file # use CairoMakie
+        #=
+        filename = "output/steps_2D.pdf"
+        println(filename)
+        save(filename, fig, pt_per_unit = 1)
+        =#
+
+        display(fig)
+
+
+    end
 
 
 end # module end
