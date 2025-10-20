@@ -134,8 +134,8 @@ module Plot
     function small_grids(psr)
         #fig = Figure()
         #ax = Axis3(f[1, 1], aspect = :equal)
-
-        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
 
         # Draw a sphere centered at (0,0,0) with radius r
         #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
@@ -384,7 +384,7 @@ module Plot
                 Sparks.calculate_potentials!(psr)
             end
             
-            # Aktualizuj pozycje sparków
+            # Aktualizuj pozycje sparków na wykresie
             for (i, sp) in enumerate(psr.sparks)
                 spark_plots[i][1] = sp[1]
                 spark_plots[i][2] = sp[2]
@@ -409,9 +409,9 @@ module Plot
         x = Array{Float64}(undef, grid_size * grid_size)
         y = Array{Float64}(undef, grid_size * grid_size)
         z = Array{Float64}(undef, grid_size * grid_size)
-        #v = Array{Float64}(undef, grid_size * grid_size)
-        #ex = Array{Float64}(undef, grid_size * grid_size)
-        #ey = Array{Float64}(undef, grid_size * grid_size)
+        v = Array{Float64}(undef, grid_size * grid_size)
+        ex = Array{Float64}(undef, grid_size * grid_size)
+        ey = Array{Float64}(undef, grid_size * grid_size)
 
         ind = 0
         for i in 1:grid_size
@@ -420,9 +420,9 @@ module Plot
                 x[ind] = gr[1][i]
                 y[ind] = gr[2][j]
                 z[ind] = gr[3][i,j]
-                #v[ind] = psr.potential[i, j]
-                #ex[ind] = psr.electric_field[1][i, j]
-                #ey[ind] = psr.electric_field[2][i, j]
+                v[ind] = psr.potential[i, j]
+                ex[ind] = psr.electric_field[1][i, j]
+                ey[ind] = psr.electric_field[2][i, j]
             end
         end
 
@@ -439,6 +439,36 @@ module Plot
 
         # plot polar cap
         lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+
+        heatmap!(ax, x, y, v, interpolate=false)
+
+        spark_plots = []
+        # plot sparks
+        if psr.sparks !== nothing
+            for sp in psr.sparks
+                sp_plot = scatter!(ax, sp[1], sp[2], marker=:xcross, color=:red)
+                push!(spark_plots, sp_plot)
+            end
+        end
+
+        # plot grid
+        #scatter!(ax, x, y, marker=:diamond, color=:blue) # simple, works
+        #= # use simple scatter..
+        grid_size = size(gr[1])[1]
+        if psr.grid !== nothing
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    scatter!(ax, psr.grid[1][i], psr.grid[2][j], marker=:diamond, color=:blue)
+                end
+            end
+        end
+        =#       
+
+
+
+
+
 
         # save to file # use CairoMakie
         #=

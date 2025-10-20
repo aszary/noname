@@ -106,6 +106,7 @@ module NoName
         #Sparks.init_sparks3!(psr ;num=10, rfmax=0.7)
 
         Sparks.create_grid!(psr)
+        Sparks.calculate_potential_sparks!(psr)
         Plot.steps2D(psr)
     end
 

@@ -125,6 +125,91 @@ module Sparks
     end
 
 
+    """
+    Calculates electric potential, electric field and drift velocity for sparks locations in psr.sparls ..
+    """
+    function calculate_potential_sparks!(psr)
+        
+        
+        gr = psr.grid
+        grid_size = size(gr[1])[1]
+        sp = psr.sparks
+        spark_num = size(sp)[1]
+
+
+        vs = Array{Float64}(undef, grid_size, grid_size)
+
+        v_min =  1e50
+        v_max =  -1e50
+
+        for i in 1:grid_size
+            for j in 1:grid_size
+                vv = 0
+                for k in 1:spark_num
+                    (ii, jj) = sp[k]
+                    if (gr[3][i, j]!=0) # (ii != i) && (jj !=j) && (gr[3][i, j]!=0) # why? 0 magic number
+                        sx = sp[k][1]
+                        sy = sp[k][2]
+                        sz = sp[k][3]
+                        dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
+                        #vv += v(dist) # nice looking dots (Inf) in the plot, but no
+                        if dist != 0
+                            vv += v(dist)
+                        end
+                    end
+                end
+                if gr[3][i, j] != 0
+                    vs[i, j] = vv
+                else
+                    vs[i, j] = 0
+                end
+            end
+        end
+
+        # set 0 potential (beyound the polar cap) to NaN
+        for i in 1:grid_size
+            for j in 1:grid_size
+                if vs[i, j] == 0
+                    vs[i, j] = NaN # kind of works, set to 0 for checks
+                end
+            end
+        end
+
+        # calculate electric field
+        ex = Array{Float64}(undef, grid_size, grid_size)
+        ey = Array{Float64}(undef, grid_size, grid_size)
+
+        # julia solution
+        grad_v2 = Functions.numpy_gradient_2d(vs)
+        grad_vx = grad_v2[1]
+        grad_vy = grad_v2[2]
+        ex = - grad_vx
+        ey =  - grad_vy
+
+        # calculate drift velocity
+        vdx = Array{Float64}(undef, grid_size, grid_size)
+        vdy = Array{Float64}(undef, grid_size, grid_size)
+        for i in 1:grid_size
+            for j in 1:grid_size
+                B = Field.bd(gr[1][i], gr[1][j], psr) #* 10 # * X to have longer arrows!
+                E = [ex[i, j], ey[i, j], 0]
+                #println(B)
+                #println(E)
+                v = cross(E, B)
+                vdx[i, j] = v[1]
+                vdy[i, j] = v[2]
+            end
+        end
+
+        #println(typeof(grad_v2))
+        psr.potential = vs
+        psr.electric_field = [ex, ey]
+        psr.drift_velocity = [vdx, vdy]
+    end
+
+
+
+
     
     """
     Calculates electric potential, electric field and drift velocity for sparks defined by grid indexes...
