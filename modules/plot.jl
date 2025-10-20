@@ -399,7 +399,7 @@ module Plot
     end    
 
 
-    function steps2D(psr)
+    function steps2D(psr; n_steps=500, skip_steps=10, speedup=10, delay=0.01)
 
         # calculate electric potential
         gr = psr.grid
@@ -443,14 +443,12 @@ module Plot
 
         heatmap!(ax, x, y, v, interpolate=false)
 
-        spark_plots = []
-        # plot sparks
-        if psr.sparks !== nothing
-            for sp in psr.sparks
-                sp_plot = scatter!(ax, sp[1], sp[2], marker=:xcross, color=:red)
-                push!(spark_plots, sp_plot)
-            end
-        end
+        # Utwórz Observable dla pozycji sparków
+        spark_positions = Observable([Point2f(sp[1], sp[2]) for sp in psr.sparks])
+
+        # plot sparks - JEDEN scatter z wieloma punktami
+        scatter!(ax, spark_positions, marker=:xcross, color=:red, markersize=15)
+
 
         # plot grid
         #scatter!(ax, x, y, marker=:diamond, color=:blue) # simple, works
@@ -466,9 +464,24 @@ module Plot
         =#       
 
 
+        display(fig)
 
-
-
+        # Automatyczna animacja
+        for iteration in 1:n_steps
+            println("\n--- Step $iteration/$n_steps ---")
+            
+            for i in 1:skip_steps
+                Sparks.create_grids!(psr)
+                Sparks.calculate_potentials!(psr)
+                Sparks.step(psr; speedup=speedup)
+            end
+            
+            # Aktualizuj Observable - to wywoła automatyczną aktualizację wykresu
+            spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks]
+           
+            sleep(delay)  # Opóźnienie między krokami (w sekundach)
+            #yield()
+        end
 
         # save to file # use CairoMakie
         #=
