@@ -42,8 +42,8 @@ module Plot
         #magnetic_field!(ax, psr)
         #magnetic_lines!(ax, psr)
         #plot_grids(psr, ax)
-        plot_sparks(psr, ax)
-        #plot_sparks2(psr, ax)
+        #plot_sparks(psr, ax)
+        plot_sparks2(psr, ax)
         polarcap!(ax, psr)
         mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
@@ -54,8 +54,9 @@ module Plot
     
         display(fig)
     end
-    function pulsar2(psr) #pulsar function for smallgrids
-        fig, ax, p = mesh(Sphere(Point3f(0,0,0), psr.r), color = (:teal, 0.7), transparency = true, shading = false)
+    function small_grid(psr) #pulsar function for smallgrids
+        sphere_mesh= GeometryBasics.mesh(Tessellation(Sphere(Point3f(0,0,0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true, shading = false)
         #f = Figure()
         #ax = Axis3(f[1, 1], aspect = :equal)
 
@@ -160,24 +161,43 @@ function magnetic_lines!(ax, psr)
     end
 end
 function polarcap!(ax, psr; color=:orange, linewidth=2)
+    if psr.pc === nothing
+        @warn "psr.pc is nothing — polar cap not drawn"
+        return
+    end
 
-    #calculates northern polar cap (circle)
-    cart_points = [Functions.spherical2cartesian(sp) for sp in psr.polar_cap]
+    # Rozpoznaj format: albo [pts...] gdzie pts = [x,y,z], albo [xs, ys, zs]
+    pc = psr.pc
+    if length(pc) == 3 && isa(pc[1], AbstractVector) && isa(pc[2], AbstractVector) && isa(pc[3], AbstractVector)
+        # format Field.pc = [xs, ys, zs]
+        xs = pc[1]
+        ys = pc[2]
+        zs = pc[3]
+    else
+        # oczekujemy listy punktów [[x,y,z], ...]
+        xs = [p[1] for p in pc]
+        ys = [p[2] for p in pc]
+        zs = [p[3] for p in pc]
+    end
 
-    xs = [p[1] for p in cart_points]
-    ys = [p[2] for p in cart_points]
-    zs = [p[3] for p in cart_points]
+    # ensure closed loop
+    xs_closed = [xs; xs[1]]
+    ys_closed = [ys; ys[1]]
+    zs_closed = [zs; zs[1]]
 
-    lines!(ax, [xs; xs[1]], [ys; ys[1]], [zs; zs[1]], color=color, linewidth=linewidth)
-    #calculates southern polar cap (circle)
-    pc_south = [[psr.r, pi - sp[2], sp[3]] for sp in psr.polar_cap]
-    cart_points_south = [Functions.spherical2cartesian(sp) for sp in pc_south]
+    lines!(ax, xs_closed, ys_closed, zs_closed, color=color, linewidth=linewidth)
 
-    xs = [p[1] for p in cart_points_south]
-    ys = [p[2] for p in cart_points_south]
-    zs = [p[3] for p in cart_points_south]
+    # draw southern cap by z -> -z
+    zs_s = -zs
+    zs_s_closed = [zs_s; zs_s[1]]
+    lines!(ax, xs_closed, ys_closed, zs_s_closed, color=color, linewidth=linewidth)
 
-    lines!(ax, [xs; xs[1]], [ys; ys[1]], [zs; zs[1]], color=color, linewidth=2)
+    # optionally expand limits so cap is visible
+    try
+        autolimits!(ax)
+    catch
+        # autolimits! may not be available in some contexts; ignore if fails
+    end
 end
 function plot_grids(psr, ax)
         if psr.grid !== nothing
@@ -292,13 +312,118 @@ function plot_grids(psr, ax)
                 vy[ind] = psr.drift_velocity[2][i, j]
             end
         end
-
+        
         fig, ax1, p = heatmap(x, y, v, interpolate=false) #, colorrange=[-155, -135])
         #hm = meshscatter!(ax1, x, y, ze; markersize=1.25, color=v, transparency=false)
         #arrows!(x, y, ex, ey, color=:white)
         arrows!(x, y, vx, vy, color=:white)
 
         display(fig)
+    end
+    function steps(psr; n_steps=500, skip_steps=10, speedup=1, delay=0.01)
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
+        
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+        arrows3d!(ax, [0, 0], [0, 0], [0, 0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
+        
+        # draw polar caps
+        """
+        for pc in psr.pc
+            lines!(ax, pc[1], pc[2], pc[3], color=:red, linewidth=1)
+        end
+        """
+        polarcap!(ax, psr)
+        spark_plots = []
+        # plot sparks
+        for sp in psr.sparks
+            sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+            push!(spark_plots, sp_plot)
+        end
+        
+        cam = cam3d!(ax.scene, eyeposition=[629.1865281011553, 799.8239786011065, 10488.971033158241], lookat=[16.260756148965456, 120.13202591109358, 9893.546008743007], upvector=[0.02591359646710347, 0.028736371988157157, 0.9992510727755556], center = false)
+        
+        display(fig)
+        
+        # Automatyczna animacja
+        for iteration in 1:n_steps
+            println("\n--- Step $iteration/$n_steps ---")
+            
+            for i in 1:skip_steps
+                Sparks.step(psr; speedup=speedup)
+                Sparks.create_grids!(psr)
+                Sparks.calculate_potentials!(psr)
+            end
+            
+            # Aktualizuj pozycje sparków
+            for (i, sp) in enumerate(psr.sparks)
+                spark_plots[i][1] = sp[1]
+                spark_plots[i][2] = sp[2]
+                spark_plots[i][3] = sp[3]
+            end
+            
+            sleep(delay)  # Opóźnienie między krokami (w sekundach)
+        end
+        
+        println("\n--- Animation complete ---")
+        return fig
+    end    
+
+
+    function steps2D(psr)
+
+        # calculate electric potential
+        gr = psr.grid
+        grid_size = size(gr[1])[1]
+
+        # data for potential plotting
+        x = Array{Float64}(undef, grid_size * grid_size)
+        y = Array{Float64}(undef, grid_size * grid_size)
+        z = Array{Float64}(undef, grid_size * grid_size)
+        #v = Array{Float64}(undef, grid_size * grid_size)
+        #ex = Array{Float64}(undef, grid_size * grid_size)
+        #ey = Array{Float64}(undef, grid_size * grid_size)
+
+        ind = 0
+        for i in 1:grid_size
+            for j in 1:grid_size
+                ind += 1
+                x[ind] = gr[1][i]
+                y[ind] = gr[2][j]
+                z[ind] = gr[3][i,j]
+                #v[ind] = psr.potential[i, j]
+                #ex[ind] = psr.electric_field[1][i, j]
+                #ey[ind] = psr.electric_field[2][i, j]
+            end
+        end
+
+        # PLOTTING
+        GLMakie.activate!()
+        #CairoMakie.activate!()
+
+        # Figure size
+        size_inches = (17/2.54, 11/2.54) # 17cm x 11cm
+        size_pt = 72 .* size_inches
+        #println(size_pt)
+        fig = Figure(size=size_pt, fontsize=8, figure_padding=(1, 2, 3, 3)) # left, right, bottom, top
+        ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="x (m)", ylabel="y (m)", xminorticksvisible=true, yminorticksvisible=true, xaxisposition=:bottom)
+
+        # plot polar cap
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # save to file # use CairoMakie
+        #=
+        filename = "output/steps_2D.pdf"
+        println(filename)
+        save(filename, fig, pt_per_unit = 1)
+        =#
+
+        display(fig)
+
+
     end
 
 end # module end

@@ -326,7 +326,7 @@ module Sparks
         psr.sparks = sp
         println("Number of sparks added: ", size(sp)[1])
     end
-    function create_grids!(psr, prec=0.3, grid_size=10)
+    function create_grids!(psr, prec=0.3, grid_size=5)
 
         if psr.sparks == nothing
             println("Run init_sparks! frirst..")
@@ -432,10 +432,23 @@ module Sparks
         #println(typeof(grad_v2))
         psr.potential = potentials
         psr.electric_field = electric_fields
-        psr.drift_velocity = drift_velocities
+        psr.drift_velocity = drift_velocities # for full grids
+        psr.sparks_velocity = sparks_velocities # center velocity in grids
         push!(psr.locations, deepcopy(psr.sparks))
         psr.sparks_velocity = sparks_velocities
         push!(psr.sparks_velocities, deepcopy(sparks_velocities))
+    end
+    function step(psr; speedup=1)
+
+        sv = psr.sparks_velocity
+        for (i,s) in enumerate(psr.sparks)
+            s[1] = s[1] + sv[i][1] * speedup
+            s[2] = s[2] + sv[i][2] * speedup
+            # at the setellar surface
+            s[3] = sqrt(psr.r^2 - s[1]^2 - s[2]^2)
+        end
+
+
     end
 
 

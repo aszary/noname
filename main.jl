@@ -14,7 +14,6 @@ module NoName
         magnetic_axis # in spherical coordinates
         rotation_axis # in spherical coordinates
         pc #polar cap in spherical coordinates
-        polar_cap
         r_pc # polar cap radius [in m]
         fields  # magnetic and electric fields
         grid #idk od oli
@@ -36,8 +35,8 @@ module NoName
         
             magnetic_axis = (r, 0, 0) # in spherical coordinates
             rotation_axis= (r, deg2rad(alpha), 0) # in spherical coordinates
-            pc= nothing
-            polar_cap = nothing
+            pc= nothing # 
+        
             r_pc = Functions.rdp(p, r)
             fields = Field.Test() # usingt testt class for now
             grid = nothing
@@ -49,7 +48,7 @@ module NoName
             pot_minmax = nothing
             electric_field = nothing
             drift_velocity = nothing
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, polar_cap, r_pc, fields, grid, sparks, locations, sparks_velocity, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity)
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocity, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity)
         end
     end
     function full_grid()
@@ -73,22 +72,24 @@ module NoName
         psr = Pulsar()
         Field.calculate_dipole!(psr)
         #Field.generate_lines!(psr)
-        Field.calculate_polarcap!(psr)
-        Field.pc(psr; phi_num=10)
+        #Field.calculate_polarcap!(psr)
+        Field.pc(psr; phi_num=100)
         #Field.generate_polarcap_lines!(psr)
         #Sparks.create_grid!(psr; size=100)
         #Sparks.random_sparks_grid!(psr; min_dist=20, trials=20)
         #Sparks.calculate_potential!(psr)
         #println(fieldnames(Pulsar))
         #println(psr.r_lc / 1e3, " km")
-        #Sparks.init_sparks1!(psr)
+        Sparks.init_sparks1!(psr, num=5)
         #Sparks.init_sparks2!(psr)
-        Sparks.init_sparks3!(psr)
+        #Sparks.init_sparks3!(psr)
         Sparks.create_grids!(psr)
         Sparks.calculate_potentials!(psr)
         #Plot.potential2D(psr)
-        #Plot.potential2Dv2(psr)
-        Plot.pulsar2(psr)
+        Plot.potential2Dv2(psr)
+        #Plot.steps(psr)
+        #Plot.small_grid(psr)
+        #Plot.pulsar(psr)
         println("Bye")
     end
 

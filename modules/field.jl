@@ -179,7 +179,7 @@ function calculate_polarcap!(psr; phi_num=100)
     phis = range(0, 2*pi, length=phi_num)
 
     # store spherical coordinates of the polar cap rim
-    psr.polar_cap = [[psr.r, theta, ph] for ph in phis]
+    psr.pc = Functions.spherical2cartesian.([[psr.r, theta, phi] for phi in phis])
 end
 
 
