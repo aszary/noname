@@ -328,8 +328,9 @@ module Sparks
     function v(r; a=1)
         #println("R ", r)
         #println("v ", a * log(r / 10))
-        return a * log(r/10)  # 2017 paper # 10 kind of spark radius?
+        return a * log(r)  # 2017 paper 
         #return a * log(r) * exp(-(r-1)/40) # wykładnicze wygaszanie dla 150
+        #return r < 150 ? - log(r) * exp(-(r-1)/40) : 0.0 # zero po 150
         #return cos(π*r/(2*150)) # some tests
         #return a * (r/150)^2 # solid-body like ?
     end
