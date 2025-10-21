@@ -329,6 +329,7 @@ module Sparks
         #println("R ", r)
         #println("v ", a * log(r / 10))
         return a * log(r)  # 2017 paper 
+        # log(x) * (1 - (x/20)^40)
         #return a * log(r) * exp(-(r-1)/40) # wykładnicze wygaszanie dla 150
         #return r < 150 ? - log(r) * exp(-(r-1)/40) : 0.0 # zero po 150
         #return cos(π*r/(2*150)) # some tests
