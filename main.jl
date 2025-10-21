@@ -106,7 +106,7 @@ module NoName
         #Sparks.random_sparks!(psr) 
         Sparks.init_sparks1!(psr ;num=5)
         #Sparks.init_sparks2!(psr ;num=5)
-        #Sparks.init_sparks3!(psr ;num=10, rfmax=0.7)
+        #Sparks.init_sparks3!(psr ;num=30, rfmax=0.7)
 
         #Sparks.generate_potentials # TODO
         Sparks.simulate_sparks(psr)

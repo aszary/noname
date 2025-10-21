@@ -470,7 +470,8 @@ module Plot
         n_steps = length(psr.sparks_locations)
 
         # Automatyczna animacja
-        for i in 1:n_steps
+        i = 1
+        while (i < n_steps)
             println("\n--- Animation step $i/$n_steps ---")
             #=
             for i in 1:skip_steps
@@ -484,6 +485,12 @@ module Plot
             spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[i]]
            
             sleep(delay)  # Opóźnienie między krokami (w sekundach)
+            
+            i = i+1
+            if i == n_steps -1 # infinite loop
+                i = 1
+            end
+
             #yield()
         end
 
