@@ -326,7 +326,11 @@ module Sparks
     -r: distance from the spark forming region
     """
     function v(r; a=1)
-        return a * log(r)
+        #println("R ", r)
+        #println("v ", a * log(r / 10))
+        return a * log(r / 10) # 2017 paper # 10 kind of spark radius?
+        #return cos(π*r/(2*150)) # some tests
+        #return a * (r/150)^2 # solid-body like ?
     end
 
 
