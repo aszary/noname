@@ -487,7 +487,7 @@ module Sparks
     """
     Calculates electric potential, electric field and drift velocity for grids around sparks
     """
-    function calculate_potentials!(psr)
+    function calculate_potentials!(psr; save=false)
         grids = psr.grid
         grids_num = size(grids)[1]
         sp = psr.sparks
@@ -566,7 +566,9 @@ module Sparks
         psr.electric_field = electric_fields
         psr.drift_velocity = drift_velocities # for full grids
         psr.sparks_velocity = sparks_velocities # center velocity in grids
-        push!(psr.sparks_locations, deepcopy(psr.sparks))
+        if save == true
+            push!(psr.sparks_locations, deepcopy(psr.sparks))
+        end
         #push!(psr.sparks_velocities, deepcopy(sparks_velocities)) # 
     end
 
@@ -586,6 +588,18 @@ module Sparks
 
     end
 
+    function simulate_sparks(psr; n_steps=1500, skip_steps=10, speedup=10)
+        for i in 1:n_steps
+            save = (i % skip_steps == 0)
+            if save == true
+                println("\n--- Simulation step $i/$n_steps ---")
+            end
+            Sparks.create_grids!(psr)
+            Sparks.calculate_potentials!(psr; save=save)
+            Sparks.step(psr; speedup=speedup)
+        end
+
+    end
 
 
 end # module end

@@ -399,7 +399,7 @@ module Plot
     end    
 
 
-    function steps2D(psr; n_steps=500, skip_steps=10, speedup=10, delay=0.01)
+    function steps2D(psr; delay=0.1)
 
         # calculate electric potential
         gr = psr.grid
@@ -439,12 +439,12 @@ module Plot
 
         # plot polar cap
         lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+        v_observable = Observable(v)
 
-
-        heatmap!(ax, x, y, v, interpolate=false)
+        heatmap!(ax, x, y, v_observable, interpolate=false)
 
         # Utwórz Observable dla pozycji sparków
-        spark_positions = Observable([Point2f(sp[1], sp[2]) for sp in psr.sparks])
+        spark_positions = Observable([Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[1]])
 
         # plot sparks - JEDEN scatter z wieloma punktami
         scatter!(ax, spark_positions, marker=:xcross, color=:red, markersize=15)
@@ -466,18 +466,22 @@ module Plot
 
         display(fig)
 
+        # plot all steps
+        n_steps = length(psr.sparks_locations)
+
         # Automatyczna animacja
-        for iteration in 1:n_steps
-            println("\n--- Step $iteration/$n_steps ---")
-            
+        for i in 1:n_steps
+            println("\n--- Animation step $i/$n_steps ---")
+            #=
             for i in 1:skip_steps
                 Sparks.create_grids!(psr)
                 Sparks.calculate_potentials!(psr)
                 Sparks.step(psr; speedup=speedup)
             end
-            
+            =#
+            v_observable[] = copy(v)
             # Aktualizuj Observable - to wywoła automatyczną aktualizację wykresu
-            spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks]
+            spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[i]]
            
             sleep(delay)  # Opóźnienie między krokami (w sekundach)
             #yield()
