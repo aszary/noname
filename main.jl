@@ -22,6 +22,10 @@ module NoName
         potential
         electric_field
         drift_velocity
+        pot_minmax # what is this? do we need it here?
+        sparks_locations # locations in simulation # locations in drift2
+        sparks_velocity # step in simulation)
+        potential_simulation
         
         
 
@@ -42,12 +46,17 @@ module NoName
             potential = nothing
             electric_field = nothing
             drift_velocity = nothing
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, fields, r_pc, pc, polar_cap, grid, sparks, potential, electric_field, drift_velocity)
+            pot_minmax = nothing
+            sparks_locations = []
+            sparks_velocity = nothing
+            potential_simulation = []
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, fields, r_pc, pc, polar_cap, grid, sparks, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation)
         end
     end
 
 
-    function main()
+
+    function full_grid()
 
         psr = Pulsar()
         Field.calculate_dipole!(psr)
@@ -55,20 +64,94 @@ module NoName
         Field.pc(psr; phi_num=10)
         Field.generate_polar_cap!(psr)
         Field.generate_magnetic_lines_from_polar_cap!(psr; num_lines_from_cap=50, step=100, stepsnum=20000)
-        #Sparks.random_sparks!(psr; min_dist=20, trials=10000)
         Sparks.create_grid!(psr; size=50)
         Sparks.random_sparks_grid!(psr; min_dist=20, trials=10000)
+
         Sparks.calculate_potential!(psr)
 
-        println(fieldnames(Pulsar))
-        println(psr.r_lc / 1e3, " km")
-        println("Polar cap radius: ", psr.r_pc / 1e3, " km")
+        Plot.pulsar(psr)
+        #Plot.potential2D(psr)
+        #Plot.potential2Dv2(psr) #nie działa
+    end
+
+    function small_gridS()
+
+        psr = Pulsar()
+        #Field.calculate_dipole!(psr)
+        #Field.generate_vacuum!(psr, step=100, stepsnum=20000)
+        Field.pc(psr; phi_num=10)
+        Field.generate_polar_cap!(psr)
+        #Field.generate_magnetic_lines_from_polar_cap!(psr; num_lines_from_cap=50, step=100, stepsnum=20000)
+
+        #Sparks.create_grid!(psr; size=50)
+
+        #Sparks.random_sparks_grid!(psr; min_dist=20, trials=10000)
+        #Sparks.random_sparks!(psr; num=10, min_dist=20, trials=1000)
+
+        Sparks.init_sparks1!(psr; rfs=[0.295, 0.5], num=3)
+        #Sparks.init_sparks2!(psr; rfs=[0.7, 0.9], num=3)
+        #Sparks.init_sparks3!(psr; num=10, rfmax=0.7)
+
+
+        #simulation
+        Sparks.create_grids!(psr)
+        Sparks.calculate_potentials!(psr)
+        
+        
+        Plot.steps(psr)
+        #Plot.potential2D(psr)
+        #Plot.potential2Dv2(psr) 
+    end
+
+    function full_plus_smallgrids()
+        psr = Pulsar()
+        Field.calculate_dipole!(psr)
+        Field.generate_vacuum!(psr, step=100, stepsnum=20000)
+        Field.pc(psr; phi_num=10)
+        Field.generate_polar_cap!(psr)
+        Field.generate_magnetic_lines_from_polar_cap!(psr; num_lines_from_cap=50, step=100, stepsnum=20000)
+
+        #Sparks.random_sparks!(psr) 
+        Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.init_sparks2!(psr ;num=5)
+        #Sparks.init_sparks3!(psr ;num=10, rfmax=0.7)
+
+        Sparks.simulate_sparks(psr)
+        #Sparks.calculate_potential_custom!(psr)
+
+        Plot.steps2DD(psr)
+        #Plot.steps(psr)
+    end
+
+    function test()
+
+        psr = Pulsar()
+        Field.calculate_dipole!(psr)
+        Field.generate_vacuum!(psr, step=100, stepsnum=20000)
+        Field.pc(psr; phi_num=10)
+        Field.generate_polar_cap!(psr)
+        Field.generate_magnetic_lines_from_polar_cap!(psr; num_lines_from_cap=50, step=100, stepsnum=20000)
+        Sparks.create_grid!(psr; size=50)
+        Sparks.random_sparks_grid!(psr; min_dist=20, trials=10000)
+
+        #Sparks.calculate_potential!(psr)
 
         Plot.pulsar(psr)
-        println("Bye")
+        #Plot.potential2D(psr)
+        #Plot.potential2Dv2(psr) #nie działa
+    end
+
+
+    function main()
+        #test()
+        #small_gridS()
+        #full_grid()
+        full_plus_smallgrids()
+
     end
 
 
 end # module end
+
 
 NoName.main()
