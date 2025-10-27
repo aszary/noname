@@ -603,14 +603,14 @@ module Sparks
     function simulate_sparks(psr; n_steps=2500, skip_steps=10, speedup=10)
         for i in 1:n_steps
             save = (i % skip_steps == 0)
-            Sparks.create_grids!(psr)
-            Sparks.calculate_potentials!(psr; save=save)
-            Sparks.step(psr; speedup=speedup)
+            Sparks.create_grids!(psr) # small grids around sparks
+            Sparks.calculate_potentials!(psr; save=save) # potentials around sparks (drift direction, etc.)
+            Sparks.step(psr; speedup=speedup) # one step based on sparks_velocity
             if save == true
                 println("\n--- Simulation step $i/$n_steps ---")
                 # full grid calculation here
-                Sparks.create_grid!(psr)
-                Sparks.calculate_potential_sparks!(psr)
+                Sparks.create_grid!(psr) # full grid for potential calculation
+                Sparks.calculate_potential_sparks!(psr) # potential at the polar cap
             end
         end
 
