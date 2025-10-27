@@ -574,7 +574,7 @@ module Sparks
     """
     Runs sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
     """
-    function simulate_sparks(psr; n_steps=2500, skip_steps=10, speedup=10)
+    function simulate_sparks(psr; n_steps=1500, skip_steps=10, speedup=10)
         for i in 1:n_steps
             save = (i % skip_steps == 0)
             # small grids around sparks
