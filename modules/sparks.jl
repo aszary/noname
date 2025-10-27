@@ -126,10 +126,9 @@ module Sparks
 
 
     """
-    Calculates electric potential, electric field and drift velocity for sparks locations in psr.sparls ..
+    Calculates electric potential, electric field and drift velocity for sparks locations in psr.sparks ..
     """
     function calculate_potential_sparks!(psr)
-        
         
         gr = psr.grid
         grid_size = size(gr[1])[1]
@@ -208,12 +207,9 @@ module Sparks
         psr.drift_velocity = [vdx, vdy]
     end
 
-
-
-
     
     """
-    Calculates electric potential, electric field and drift velocity for sparks defined by grid indexes...
+    Calculates electric potential, electric field and drift velocity for sparks defined by the full grid indexes...
     """
     function calculate_potential!(psr)
         gr = psr.grid
@@ -310,31 +306,9 @@ module Sparks
             end
         end
 
-        #println(typeof(grad_v2))
         psr.potential = vs
         psr.electric_field = [ex, ey]
         psr.drift_velocity = [vdx, vdy]
-    end
-
-
-    
-
-    """
-    Electric potential [Filaments]
-
-    # Arguments
-
-    -r: distance from the spark forming region
-    """
-    function v(r; a=1)
-        #println("R ", r)
-        #println("v ", a * log(r / 10))
-        return a * log(r)  # 2017 paper 
-        # log(x) * (1 - (x/20)^40)
-        #return a * log(r) * exp(-(r-1)/40) # wykładnicze wygaszanie dla 150
-        #return r < 150 ? - log(r) * exp(-(r-1)/40) : 0.0 # zero po 150
-        #return cos(π*r/(2*150)) # some tests
-        #return a * (r/150)^2 # solid-body like ?
     end
 
 
@@ -460,7 +434,7 @@ module Sparks
 
 
     """
-    Creates grids around sparks to calculate gradient (for simulation)...
+    Creates small grids around sparks to calculate gradient (for simulation)...
 
     # Arguments
     - prec: grid precision in meters
@@ -493,7 +467,7 @@ module Sparks
 
 
     """
-    Calculates electric potential, electric field and drift velocity for grids around sparks
+    Calculates electric potential, electric field and drift velocity for small grids around sparks
     """
     function calculate_potentials!(psr; save=false)
         grids = psr.grid
@@ -603,18 +577,43 @@ module Sparks
     function simulate_sparks(psr; n_steps=2500, skip_steps=10, speedup=10)
         for i in 1:n_steps
             save = (i % skip_steps == 0)
-            Sparks.create_grids!(psr) # small grids around sparks
-            Sparks.calculate_potentials!(psr; save=save) # potentials around sparks (drift direction, etc.)
-            Sparks.step(psr; speedup=speedup) # one step based on sparks_velocity
+            # small grids around sparks
+            Sparks.create_grids!(psr) 
+            # potentials around sparks (drift direction, etc.)
+            Sparks.calculate_potentials!(psr; save=save) 
+            # one step based on sparks_velocity
+            Sparks.step(psr; speedup=speedup) 
             if save == true
                 println("\n--- Simulation step $i/$n_steps ---")
-                # full grid calculation here
-                Sparks.create_grid!(psr) # full grid for potential calculation
-                Sparks.calculate_potential_sparks!(psr) # potential at the polar cap
+                # full grid for potential calculation
+                Sparks.create_grid!(psr) 
+                # potential at the polar cap
+                Sparks.calculate_potential_sparks!(psr) 
             end
         end
 
     end
+
+
+    """
+    Electric potential [Filaments]
+
+    # Arguments
+
+    -r: distance from the spark forming region
+    """
+    function v(r; a=1)
+        #println("R ", r)
+        #println("v ", a * log(r / 10))
+        return a * log(r)  # 2017 paper 
+        # log(x) * (1 - (x/20)^40)
+        #return a * log(r) * exp(-(r-1)/40) # wykładnicze wygaszanie dla 150
+        #return r < 150 ? - log(r) * exp(-(r-1)/40) : 0.0 # zero po 150
+        #return cos(π*r/(2*150)) # some tests
+        #return a * (r/150)^2 # solid-body like ?
+    end
+
+
 
 
 end # module end
