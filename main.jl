@@ -110,8 +110,8 @@ module NoName
 
         #Sparks.generate_potentials # TODO
         Sparks.simulate_sparks(psr)
-        Sparks.create_grid!(psr)
-        Sparks.calculate_potential_sparks!(psr)
+        #Sparks.create_grid!(psr)
+        #Sparks.calculate_potential_sparks!(psr)
         Plot.steps2D(psr)
     end
 

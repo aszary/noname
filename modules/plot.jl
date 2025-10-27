@@ -413,18 +413,27 @@ module Plot
         ex = Array{Float64}(undef, grid_size * grid_size)
         ey = Array{Float64}(undef, grid_size * grid_size)
 
-        ind = 0
-        for i in 1:grid_size
-            for j in 1:grid_size
-                ind += 1
-                x[ind] = gr[1][i]
-                y[ind] = gr[2][j]
-                z[ind] = gr[3][i,j]
-                v[ind] = psr.potential[i, j]
-                ex[ind] = psr.electric_field[1][i, j]
-                ey[ind] = psr.electric_field[2][i, j]
+        vs = []
+
+        for ii in 1:length(psr.potential_simulation)
+            ind = 0
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    ind += 1
+                    x[ind] = gr[1][i]
+                    y[ind] = gr[2][j]
+                    z[ind] = gr[3][i,j]
+                    #v[ind] = psr.potential[i, j]
+                    v[ind] = psr.potential_simulation[ii][i, j]
+                    ex[ind] = psr.electric_field[1][i, j]
+                    ey[ind] = psr.electric_field[2][i, j]
+                end
             end
+            push!(vs, deepcopy(v))
         end
+
+
+
 
         # PLOTTING
         GLMakie.activate!()
@@ -439,8 +448,8 @@ module Plot
 
         # plot polar cap
         lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
-        v_observable = Observable(v)
 
+        v_observable = Observable(vs[1])
         heatmap!(ax, x, y, v_observable, interpolate=false)
 
         # Utwórz Observable dla pozycji sparków
@@ -464,6 +473,26 @@ module Plot
         =#       
 
 
+        button1 = Button(fig[1, 1], label = "Speed up", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+        on(button1.clicks) do n
+            delay = delay / 2
+            println("delay: $delay")
+        end
+
+
+        button2 = Button(fig[1, 1], label = "Speed down", 
+               width = 80, height = 25,
+               halign = :right, valign = :bottom,
+               tellwidth = false, tellheight = false)
+        on(button2.clicks) do n
+            delay = delay * 2
+            println("delay: $delay")
+        end
+
+
         display(fig)
 
         # plot all steps
@@ -473,16 +502,10 @@ module Plot
         i = 1
         while (i < n_steps)
             println("\n--- Animation step $i/$n_steps ---")
-            #=
-            for i in 1:skip_steps
-                Sparks.create_grids!(psr)
-                Sparks.calculate_potentials!(psr)
-                Sparks.step(psr; speedup=speedup)
-            end
-            =#
-            v_observable[] = copy(v)
-            # Aktualizuj Observable - to wywoła automatyczną aktualizację wykresu
-            spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[i]]
+            # changing potential
+            v_observable[] = vs[i]
+            # update spark positions # disable to see changing potential
+            #spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[i]]
            
             sleep(delay)  # Opóźnienie między krokami (w sekundach)
             
@@ -490,8 +513,6 @@ module Plot
             if i == n_steps -1 # infinite loop
                 i = 1
             end
-
-            #yield()
         end
 
         # save to file # use CairoMakie
@@ -501,7 +522,7 @@ module Plot
         save(filename, fig, pt_per_unit = 1)
         =#
 
-        display(fig)
+        #display(fig)
 
 
     end

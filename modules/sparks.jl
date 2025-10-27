@@ -203,6 +203,7 @@ module Sparks
 
         #println(typeof(grad_v2))
         psr.potential = vs
+        push!(psr.potential_simulation, deepcopy(vs))
         psr.electric_field = [ex, ey]
         psr.drift_velocity = [vdx, vdy]
     end
@@ -595,15 +596,18 @@ module Sparks
 
     end
 
-    function simulate_sparks(psr; n_steps=1500, skip_steps=10, speedup=10)
+    function simulate_sparks(psr; n_steps=2500, skip_steps=10, speedup=10)
         for i in 1:n_steps
             save = (i % skip_steps == 0)
-            if save == true
-                println("\n--- Simulation step $i/$n_steps ---")
-            end
             Sparks.create_grids!(psr)
             Sparks.calculate_potentials!(psr; save=save)
             Sparks.step(psr; speedup=speedup)
+            if save == true
+                println("\n--- Simulation step $i/$n_steps ---")
+                # full grid calculation here
+                Sparks.create_grid!(psr)
+                Sparks.calculate_potential_sparks!(psr)
+            end
         end
 
     end
