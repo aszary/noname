@@ -579,8 +579,9 @@ module Sparks
         end
     end
 
-    """
 
+    """
+    advance position of sparks (in psr.sparks) according to psr.sparks_velocity
     """
     function step(psr; speedup=1)
 
@@ -595,6 +596,10 @@ module Sparks
 
     end
 
+
+    """
+    Runs sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
+    """
     function simulate_sparks(psr; n_steps=2500, skip_steps=10, speedup=10)
         for i in 1:n_steps
             save = (i % skip_steps == 0)
