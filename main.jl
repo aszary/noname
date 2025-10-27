@@ -19,13 +19,15 @@ module NoName
         grid #idk od oli
         sparks # sparks positions in cartesian coordinates
         locations # for the simulation
-        sparks_velocity # single spark valocity
         sparks_velocities # for the simulation
         potential
         pot_minmax
         electric_field
         drift_velocity 
-
+        sparks_locations # locations in simulation # locations in drift2
+        sparks_velocity # step in simulation)
+        potential_simulation # potential for simulation step
+        
         function Pulsar()
             r = 10000 # 10 km in merters
             p = 1 # period in seconds
@@ -42,13 +44,15 @@ module NoName
             grid = nothing
             sparks = nothing
             locations = []
-            sparks_velocity = nothing
             sparks_velocities = [] 
             potential = nothing
             pot_minmax = nothing
             electric_field = nothing
             drift_velocity = nothing
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocity, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity)
+            sparks_locations = []
+            sparks_velocity = nothing
+            potential_simulation = []
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation)
         end
     end
     function full_grid()
@@ -70,7 +74,7 @@ module NoName
     end
     function small_grid()
         psr = Pulsar()
-        Field.calculate_dipole!(psr)
+        #Field.calculate_dipole!(psr)
         #Field.generate_lines!(psr)
         #Field.calculate_polarcap!(psr)
         Field.pc(psr; phi_num=100)
@@ -85,9 +89,40 @@ module NoName
         #Sparks.init_sparks3!(psr)
         Sparks.create_grids!(psr)
         Sparks.calculate_potentials!(psr)
+        #Sparks.calculate_potential_sparks!(psr)
         #Plot.potential2D(psr)
-        Plot.potential2Dv2(psr)
+        #Plot.potential2Dv2(psr)
+        Plot.steps(psr)
+        #Plot.steps2D(psr)
+        #Plot.small_grid(psr)
+        #Plot.pulsar(psr)
+        println("Bye")
+    end
+    function full_plus_small_grid()
+        psr = Pulsar()
+        Field.calculate_dipole!(psr)
+        Field.generate_lines!(psr)
+        Field.pc(psr; phi_num=100)
+        Sparks.init_sparks1!(psr, num=5)
+        #Sparks.create_grids!(psr)
+        #Sparks.calculate_potentials!(psr)
+        #Field.generate_lines!(psr)
+        #Field.calculate_polarcap!(psr)
+        Sparks.simulate_sparks!(psr)
+        #Field.generate_polarcap_lines!(psr)
+        #Sparks.create_grid!(psr; size=100)
+        #Sparks.random_sparks_grid!(psr; min_dist=20, trials=20)
+        #Sparks.calculate_potential!(psr)
+        #println(fieldnames(Pulsar))
+        #println(psr.r_lc / 1e3, " km")
+        
+        #Sparks.init_sparks2!(psr)
+        #Sparks.init_sparks3!(psr)
+        #Sparks.calculate_potential_sparks!(psr)
+        #Plot.potential2D(psr)
+        #Plot.potential2Dv2(psr)
         #Plot.steps(psr)
+        Plot.steps2D(psr)
         #Plot.small_grid(psr)
         #Plot.pulsar(psr)
         println("Bye")
@@ -95,7 +130,8 @@ module NoName
 
     function main()
         #full_grid()
-        small_grid()
+        #small_grid()
+        full_plus_small_grid()
     end
 
 

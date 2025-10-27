@@ -320,7 +320,7 @@ function plot_grids(psr, ax)
 
         display(fig)
     end
-    function steps(psr; n_steps=500, skip_steps=10, speedup=1, delay=0.01)
+    function steps(psr; n_steps=500, skip_steps=10, speedup=10, delay=0.01)
         sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
         fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
         
@@ -373,7 +373,7 @@ function plot_grids(psr, ax)
     end    
 
 
-    function steps2D(psr)
+    function steps2D(psr; delay=0.1)
 
         # calculate electric potential
         gr = psr.grid
@@ -383,22 +383,31 @@ function plot_grids(psr, ax)
         x = Array{Float64}(undef, grid_size * grid_size)
         y = Array{Float64}(undef, grid_size * grid_size)
         z = Array{Float64}(undef, grid_size * grid_size)
-        #v = Array{Float64}(undef, grid_size * grid_size)
-        #ex = Array{Float64}(undef, grid_size * grid_size)
-        #ey = Array{Float64}(undef, grid_size * grid_size)
+        v = Array{Float64}(undef, grid_size * grid_size)
+        ex = Array{Float64}(undef, grid_size * grid_size)
+        ey = Array{Float64}(undef, grid_size * grid_size)
 
-        ind = 0
-        for i in 1:grid_size
-            for j in 1:grid_size
-                ind += 1
-                x[ind] = gr[1][i]
-                y[ind] = gr[2][j]
-                z[ind] = gr[3][i,j]
-                #v[ind] = psr.potential[i, j]
-                #ex[ind] = psr.electric_field[1][i, j]
-                #ey[ind] = psr.electric_field[2][i, j]
+        vs = []
+
+        for ii in 1:length(psr.potential_simulation)
+            ind = 0
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    ind += 1
+                    x[ind] = gr[1][i]
+                    y[ind] = gr[2][j]
+                    z[ind] = gr[3][i,j]
+                    #v[ind] = psr.potential[i, j]
+                    v[ind] = psr.potential_simulation[ii][i, j]
+                    ex[ind] = psr.electric_field[1][i, j]
+                    ey[ind] = psr.electric_field[2][i, j]
+                end
             end
+            push!(vs, deepcopy(v))
         end
+
+
+
 
         # PLOTTING
         GLMakie.activate!()
@@ -414,6 +423,72 @@ function plot_grids(psr, ax)
         # plot polar cap
         lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
 
+        v_observable = Observable(vs[1])
+        heatmap!(ax, x, y, v_observable, interpolate=false)
+
+        # Utwórz Observable dla pozycji sparków
+        spark_positions = Observable([Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[1]])
+
+        # plot sparks - JEDEN scatter z wieloma punktami
+        #scatter!(ax, spark_positions, marker='○', color=:red, markersize=15)
+        scatter!(ax, spark_positions, marker=:circle, color=(:red, 0), markersize=15, strokewidth=2, strokecolor=:red)
+
+        # plot grid
+        #scatter!(ax, x, y, marker=:diamond, color=:blue) # simple, works
+        #= # use simple scatter..
+        grid_size = size(gr[1])[1]
+        if psr.grid !== nothing
+            for i in 1:grid_size
+                for j in 1:grid_size
+                    scatter!(ax, psr.grid[1][i], psr.grid[2][j], marker=:diamond, color=:blue)
+                end
+            end
+        end
+        =#       
+
+
+        button1 = Button(fig[1, 1], label = "Speed up", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+        on(button1.clicks) do n
+            delay = delay / 2
+            println("delay: $delay")
+        end
+
+
+        button2 = Button(fig[1, 1], label = "Speed down", 
+               width = 80, height = 25,
+               halign = :right, valign = :bottom,
+               tellwidth = false, tellheight = false)
+        on(button2.clicks) do n
+            delay = delay * 2
+            println("delay: $delay")
+        end
+
+
+        display(fig)
+
+        # plot all steps
+        n_steps = length(psr.sparks_locations)
+
+        # Automatyczna animacja
+        i = 1
+        while (i < n_steps)
+            println("\n--- Animation step $i/$n_steps ---")
+            # changing potential
+            v_observable[] = vs[i]
+            # update spark positions # disable to see changing potential
+            spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[i]]
+           
+            sleep(delay)  # Opóźnienie między krokami (w sekundach)
+            
+            i = i+1
+            if i == n_steps -1 # infinite loop
+                i = 1
+            end
+        end
+
         # save to file # use CairoMakie
         #=
         filename = "output/steps_2D.pdf"
@@ -421,7 +496,7 @@ function plot_grids(psr, ax)
         save(filename, fig, pt_per_unit = 1)
         =#
 
-        display(fig)
+        #display(fig)
 
 
     end
