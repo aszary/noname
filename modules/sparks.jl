@@ -577,7 +577,6 @@ module Sparks
         if save == true
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
-        #push!(psr.sparks_velocities, deepcopy(sparks_velocities)) # 
     end
 
     """
