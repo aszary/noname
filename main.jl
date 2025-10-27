@@ -98,13 +98,13 @@ module NoName
 
     function full_plus_smallgrids()
         psr = Pulsar()
-        Field.calculate_dipole!(psr)
-        Field.generate_lines!(psr)
+        #Field.calculate_dipole!(psr)
+        #Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
-        Lines.generate_open!(psr)
+        #Lines.generate_open!(psr)
 
-        #Sparks.random_sparks!(psr) 
-        Sparks.init_sparks1!(psr ;num=5)
+        Sparks.random_sparks!(psr) 
+        #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.init_sparks2!(psr ;num=5)
         #Sparks.init_sparks3!(psr ;num=30, rfmax=0.7)
 

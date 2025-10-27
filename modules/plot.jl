@@ -413,11 +413,18 @@ module Plot
         ex = Array{Float64}(undef, grid_size * grid_size)
         ey = Array{Float64}(undef, grid_size * grid_size)
 
-        vs = []
+        vs = [] # potential at the whole polar cap
+        vxs = [] # x-cut potential (bottom panel)
+        vys = [] # y-cut potential (right panel)
 
+        
+        #println(grid_size)
+        #exit()
         for ii in 1:length(psr.potential_simulation)
             ind = 0
+            vx = []
             for i in 1:grid_size
+                vy = []
                 for j in 1:grid_size
                     ind += 1
                     x[ind] = gr[1][i]
@@ -473,7 +480,7 @@ module Plot
         =#       
 
 
-        button1 = Button(fig[1, 1], label = "Speed up", 
+        button1 = Button(fig[2, 2], label = "Speed up", 
                width = 80, height = 25,
                halign = :right, valign = :top,
                tellwidth = false, tellheight = false)
@@ -483,7 +490,7 @@ module Plot
         end
 
 
-        button2 = Button(fig[1, 1], label = "Speed down", 
+        button2 = Button(fig[2, 2], label = "Speed down", 
                width = 80, height = 25,
                halign = :right, valign = :bottom,
                tellwidth = false, tellheight = false)
@@ -492,6 +499,13 @@ module Plot
             println("delay: $delay")
         end
 
+        ax_right = Axis(fig[1, 2], xlabel="Lewy panel", ylabel="Dane")
+    
+        ax_bottom = Axis(fig[2, 1], xlabel="Dolny panel", ylabel="Dane")
+
+        # setting panel sizes
+        colsize!(fig.layout, 2, Relative(0.25))  # lewy panel 25% szerokości
+        rowsize!(fig.layout, 2, Relative(0.25))  # dolny panel 25% wysokości
 
         display(fig)
 
