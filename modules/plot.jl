@@ -3,6 +3,7 @@ module Plot
     using GLMakie
     using GeometryBasics
     using Glob
+    using Statistics
     include("functions.jl")
     include("sparks.jl")
 
@@ -513,19 +514,23 @@ module Plot
         colsize!(fig.layout, 2, Relative(0.25))  # lewy panel 25% szerokości
         rowsize!(fig.layout, 2, Relative(0.25))  # dolny panel 25% wysokości
 
-# Create observables for cross-section plots
-vx_observable = Observable(vxs[1])
-vy_observable = Observable(vys[1])
+        # cross-section plots
+        # Create observables for cross-section plots
+        vx_observable = Observable(vxs[1])
+        vy_observable = Observable(vys[1])
+        # Grid coordinates for x and y axes
+        x_coords = gr[1]
+        y_coords = gr[2]
+        # Plot horizontal cross-section (bottom panel)
+        lines!(ax_bottom, x_coords, vx_observable, color=:blue, linewidth=2)
+        # Plot vertical cross-section (right panel)
+        lines!(ax_right, vy_observable, y_coords, color=:red, linewidth=2)
 
-# Grid coordinates for x and y axes
-x_coords = gr[1]
-y_coords = gr[2]
+        # adding solid-body like potential
+        # Find center of polar cap (assumed to be potential minimum)
+        x_center = mean(psr.pc[1])
+        y_center = mean(psr.pc[2])
 
-# Plot horizontal cross-section (bottom panel)
-lines!(ax_bottom, x_coords, vx_observable, color=:blue, linewidth=2)
-
-# Plot vertical cross-section (right panel)
-lines!(ax_right, vy_observable, y_coords, color=:red, linewidth=2)
 
 
         display(fig)
