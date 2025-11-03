@@ -535,16 +535,16 @@ module Plot
 
 # Calculate V₀ from your simulation or set it manually
 # V₀ should be negative for pulsar case (Ω·B < 0)
-V0 = 65.0  # Adjust this value to match your simulation scale
+V0 = 1  # Adjust this value to match your simulation scale
 
 # Solid-body potential: V(r) = V₀ * r²
 # For bottom panel (x cross-section at y = y_center)
 r_x = @. sqrt((x_coords - x_center)^2 + (0.0)^2)
-V_theory_x = @. V0 * r_x^2
+V_theory_x = @. 65 + V0 * (r_x/35)^2
 
 # For right panel (y cross-section at x = x_center)
 r_y = @. sqrt((0.0)^2 + (y_coords - y_center)^2)
-V_theory_y = @. V0 * r_y^2
+V_theory_y = @. 65 + V0 * (r_y/38)^2
 
 lines!(ax_bottom, x_coords, V_theory_x, color=:black, linewidth=2, linestyle=:dash, label="Theory (solid-body)")
 lines!(ax_right, V_theory_y, y_coords, color=:black, linewidth=2, linestyle=:dash, label="Theory (solid-body)")       
