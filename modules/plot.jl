@@ -459,12 +459,12 @@ module Plot
         v_observable = Observable(vs[1])
         heatmap!(ax, x, y, v_observable, interpolate=false)
 
-        # Utwórz Observable dla pozycji sparków
-        spark_positions = Observable([Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[1]])
-
-        # plot sparks - JEDEN scatter z wieloma punktami
-        #scatter!(ax, spark_positions, marker='○', color=:red, markersize=15)
-        scatter!(ax, spark_positions, marker=:circle, color=(:red, 0), markersize=15, strokewidth=2, strokecolor=:red)
+        # spark positions Observable
+        spark_positions_obs = Observable(psr.sparks_locations[1])
+        # circles Obs.
+        circles_obs = Observable([Circle(Point2f(p), psr.spark_radius) for p in psr.sparks_locations[1]])
+        # plotting sparks
+        poly!(ax, circles_obs, color=(:red, 0), strokewidth=2, strokecolor=:red)
 
         # plot grid
         #scatter!(ax, x, y, marker=:diamond, color=:blue) # simple, works
@@ -518,9 +518,11 @@ module Plot
             println("\n--- Animation step $i/$n_steps ---")
             # changing potential
             v_observable[] = vs[i]
-            # update spark positions # disable to see changing potential
-            spark_positions[] = [Point2f(sp[1], sp[2]) for sp in psr.sparks_locations[i]]
            
+            # update spark positions 
+            spark_positions_obs[] = psr.sparks_locations[i]
+            circles_obs[] = [Circle(Point2f(p), psr.spark_radius) for p in psr.sparks_locations[i]]
+
             sleep(delay)  # Opóźnienie między krokami (w sekundach)
             
             i = i+1

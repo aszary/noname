@@ -29,6 +29,7 @@ module NoName
         sparks_locations # locations in simulation # locations in drift2
         sparks_velocity # step in simulation)
         potential_simulation # potential for simulation step
+        spark_radius # spark radius in meters
         function Pulsar()
             r = 10000 # 10 km in merters
             p = 1 # period in seconds
@@ -51,7 +52,8 @@ module NoName
             sparks_locations = []
             sparks_velocity = nothing
             potential_simulation = []
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation)
+            spark_radius = 15
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius)
         end
     end
 
@@ -103,8 +105,8 @@ module NoName
         Lines.calculate_polarcaps!(psr)
         #Lines.generate_open!(psr)
 
-        Sparks.random_sparks!(psr) 
-        #Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.random_sparks!(psr) 
+        Sparks.init_sparks1!(psr ;num=5)
         #Sparks.init_sparks2!(psr ;num=5)
         #Sparks.init_sparks3!(psr ;num=30, rfmax=0.7)
 
