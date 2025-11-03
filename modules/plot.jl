@@ -417,14 +417,11 @@ module Plot
         vxs = [] # x-cut potential (bottom panel)
         vys = [] # y-cut potential (right panel)
 
+        mid_index = div(grid_size, 2)
         
-        #println(grid_size)
-        #exit()
         for ii in 1:length(psr.potential_simulation)
             ind = 0
-            vx = []
             for i in 1:grid_size
-                vy = []
                 for j in 1:grid_size
                     ind += 1
                     x[ind] = gr[1][i]
@@ -436,9 +433,18 @@ module Plot
                     ey[ind] = psr.electric_field[2][i, j]
                 end
             end
-            push!(vs, deepcopy(v))
-        end
 
+            push!(vs, deepcopy(v))
+    
+            # Horizontal cross-section (constant y, middle row)
+            vx = psr.potential_simulation[ii][:, mid_index]
+            push!(vxs, deepcopy(vx))
+    
+            # Vertical cross-section (constant x, middle column)
+            vy = psr.potential_simulation[ii][mid_index, :]
+            push!(vys, deepcopy(vy))
+
+        end
 
 
 
@@ -499,13 +505,28 @@ module Plot
             println("delay: $delay")
         end
 
-        ax_right = Axis(fig[1, 2], xlabel="Lewy panel", ylabel="Dane")
+        ax_right = Axis(fig[1, 2], xlabel="Potential (V)", ylabel="y (m)")
     
-        ax_bottom = Axis(fig[2, 1], xlabel="Dolny panel", ylabel="Dane")
+        ax_bottom = Axis(fig[2, 1], xlabel="x (m)", ylabel="Potential (V)")
 
         # setting panel sizes
         colsize!(fig.layout, 2, Relative(0.25))  # lewy panel 25% szerokości
         rowsize!(fig.layout, 2, Relative(0.25))  # dolny panel 25% wysokości
+
+# Create observables for cross-section plots
+vx_observable = Observable(vxs[1])
+vy_observable = Observable(vys[1])
+
+# Grid coordinates for x and y axes
+x_coords = gr[1]
+y_coords = gr[2]
+
+# Plot horizontal cross-section (bottom panel)
+lines!(ax_bottom, x_coords, vx_observable, color=:blue, linewidth=2)
+
+# Plot vertical cross-section (right panel)
+lines!(ax_right, vy_observable, y_coords, color=:red, linewidth=2)
+
 
         display(fig)
 
@@ -522,6 +543,10 @@ module Plot
             # update spark positions 
             spark_positions_obs[] = psr.sparks_locations[i]
             circles_obs[] = [Circle(Point2f(p), psr.spark_radius) for p in psr.sparks_locations[i]]
+
+            # update cross-sections
+            vx_observable[] = vxs[i]
+            vy_observable[] = vys[i]
 
             sleep(delay)  # Opóźnienie między krokami (w sekundach)
             
