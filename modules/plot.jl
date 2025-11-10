@@ -1,5 +1,6 @@
 module Plot
     #using CairoMakie
+    using LsqFit
     using GLMakie
     using GeometryBasics
     using Glob
@@ -531,23 +532,55 @@ module Plot
         x_center = mean(psr.pc[1])
         y_center = mean(psr.pc[2])
 
-# TODO TODO
+        # NaN x-data cleaning
+        xx = []
+        rx = []
+        vx = []
+        for (i,v) in enumerate(vxs[1])
+            if !isnan(v)
+                push!(xx, x_coords[i])
+                push!(vx, v)
+                push!(rx, sqrt((x_coords[i] - x_center)^2))
+                #println(v)
+            end
+        end
+        # Funkcja modelu: V(r) = V_offset + V0 * (r/r_scale)^2
+        @. model(r, p) = p[1] + p[2] * (r/p[3])^2
+        # Usuń punkt centralny (r=0) aby uniknąć problemów numerycznych
+        mask_x = rx .> 0.1
+        r_x_fit = rx[mask_x]
+        vxs_fit = vx[mask_x]
+        # Początkowe wartości parametrów [V_offset, V0, r_scale]
+        p0_x = [median(vxs_fit), 1.0, 35.0]
+        # Dopasowanie dla przekroju x
+        fit_x = curve_fit(model, r_x_fit, vxs_fit, p0_x)
+        params_x = fit_x.param
+        V_theory_x = model(rx, params_x)
+        lines!(ax_bottom, xx, V_theory_x, color=:black, linewidth=2, linestyle=:dash, label="Theory (solid-body)")
 
-# Calculate V₀ from your simulation or set it manually
-# V₀ should be negative for pulsar case (Ω·B < 0)
-V0 = 1  # Adjust this value to match your simulation scale
-
-# Solid-body potential: V(r) = V₀ * r²
-# For bottom panel (x cross-section at y = y_center)
-r_x = @. sqrt((x_coords - x_center)^2 + (0.0)^2)
-V_theory_x = @. 65 + V0 * (r_x/35)^2
-
-# For right panel (y cross-section at x = x_center)
-r_y = @. sqrt((0.0)^2 + (y_coords - y_center)^2)
-V_theory_y = @. 65 + V0 * (r_y/38)^2
-
-lines!(ax_bottom, x_coords, V_theory_x, color=:black, linewidth=2, linestyle=:dash, label="Theory (solid-body)")
-lines!(ax_right, V_theory_y, y_coords, color=:black, linewidth=2, linestyle=:dash, label="Theory (solid-body)")       
+        # NaN y-data cleaning
+        yy = []
+        ry = []
+        vy = []
+        for (i,v) in enumerate(vys[1])
+            if !isnan(v)
+                push!(yy, y_coords[i])
+                push!(vy, v)
+                push!(ry, sqrt((y_coords[i] - y_center)^2))
+                #println(v)
+            end
+        end
+        # Przygotuj dane dla przekroju y (at x = x_center)
+        mask_y = ry .> 0.1
+        r_y_fit = ry[mask_y]
+        vys_fit = vy[mask_y]
+        # Początkowe wartości parametrów
+        p0_y = [median(vys_fit), 1.0, 38.0]
+        # Dopasowanie dla przekroju y
+        fit_y = curve_fit(model, r_y_fit, vys_fit, p0_y)
+        params_y = fit_y.param
+        V_theory_y = model(ry, params_y)
+        lines!(ax_right, V_theory_y, yy, color=:black, linewidth=2, linestyle=:dash, label="Theory (solid-body)")       
 
         display(fig)
 
