@@ -34,6 +34,12 @@ module Plot
         p_car = Functions.spherical2cartesian(p_sp)
         scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
 
+        # line of sight
+        println(psr.line_of_sight)
+        for l in psr.line_of_sight
+            scatter!(ax, l[1], l[2], l[3], markersize=10, color=:red)
+        end
+
         magnetic_field!(ax, psr)
 
         magnetic_lines!(ax, psr)
