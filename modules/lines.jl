@@ -77,7 +77,7 @@ module Lines
         r = psr.r
         #psr.line_of_sight = observer_line_in_beam(omega, mu, beta, rho, r, n_points=50)
         
-        psr.line_of_sight = footpoints_in_beam(omega, mu, beta, rho, r, 500_00 ,n_points=50)
+        psr.line_of_sight = footpoints_in_beam(omega, mu, beta, theta, r, 500_00 ,n_points=50)
 
     end
     
