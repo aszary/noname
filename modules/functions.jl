@@ -163,5 +163,13 @@ module Functions
     end
 
 
+    """
+    Opening angle => Equation 3.28 in the Handbook
+    """
+    function rho(theta)
+        return atan(3* tan(theta) / (2 - tan(theta)^2))
+    end
+
+
 end # module end
 

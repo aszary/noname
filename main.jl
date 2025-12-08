@@ -57,8 +57,8 @@ module NoName
             potential_simulation = []
             spark_radius = 15
             line_of_sight = nothing
-            r_em = 500_000
-            beta = deg2rad(1) 
+            r_em = 20_000 # TODO 20 km for tests change it to 500km
+            beta = -0.3 # deg by default
             return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta)
         end
     end

@@ -3,6 +3,7 @@ module Lines
 
     include("field.jl")
     include("functions.jl")
+    include("transformations.jl")
 
     function calculate_polarcaps!(psr; phi_num=100)
         theta = Functions.theta_max(1, psr)
@@ -66,49 +67,88 @@ module Lines
     function init_line_of_sight(psr)
         omega = Functions.spherical2cartesian(psr.rotation_axis)
         mu = Functions.spherical2cartesian(psr.magnetic_axis)
-        beta = deg2rad(0.4)           # impact parameter
-        
-        theta = Functions.theta_max(1, psr) # TODO TODO 
-        rho = 3 / 2 * theta           # beam half-opening angle
-        println("beta $beta")
-        println("theta $theta")
+
+        theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # TODO TODO 
+        rho_approx = 3 / 2 * theta_max           # beam half-opening angle
+        rho = Functions.rho(theta_max)
+
+        println("beta $(psr.beta)")
+        println("theta_max $theta_max")
+        println("rho_approx $rho_approx")
         println("rho $rho")
+
+        println()
+        psr.line_of_sight = []
+        phis = range(0, 2π, length=1000)
+
+        for phi in phis
+            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
+            push!(psr.line_of_sight, Functions.spherical2cartesian(vec))
+        end
+
         #rho = deg2rad(2.0)
         #println(rho)
         r = psr.r
         #psr.line_of_sight = observer_line_in_beam(omega, mu, beta, rho, r, n_points=50)
         
-        psr.line_of_sight = footpoints_in_beam(omega, mu, beta, theta, r, 500_00 ,n_points=50)
-
+        #psr.line_of_sight = footpoints_in_beam(omega, mu, beta, theta, r, 500_00 ,n_points=50)
+        #res = line_of_sight_coords(psr.alpha, psr.beta, rad2deg(rho))
+        #println(res)
     end
-    
 
-function footpoints_in_beam(Ω::Vector{T}, μ::Vector{T}, β::Real, ρ::Real,
-                            R_NS::Real, h::Real; n_points::Int=100) where T<:Real
-    Ω_hat, μ_hat = Ω / norm(Ω), μ / norm(μ)
-    
-    cos_α = dot(Ω_hat, μ_hat)
-    α = acos(clamp(cos_α, -1, 1))
-    ζ = α + β
-    
-    abs(β) > ρ && return Vector{T}[]
-    
-    cos_ϕ_max = clamp((cos(ρ) - cos(α) * cos(ζ)) / (sin(α) * sin(ζ)), -1, 1)
-    ϕ_range = range(-acos(cos_ϕ_max), acos(cos_ϕ_max), length=n_points)
-    
-    e1 = normalize(μ_hat - cos_α * Ω_hat)
-    e2 = cross(Ω_hat, e1)
-    
-    r_em = R_NS + h
-    
-    map(ϕ_range) do ϕ
-        n_hat = Ω_hat * cos(ζ) + sin(ζ) * (e1 * cos(ϕ) + e2 * sin(ϕ))
-        cos_θ = clamp(dot(n_hat, μ_hat), -1, 1)
-        θ_surf = asin(clamp(sqrt(R_NS * sin(acos(cos_θ))^2 / r_em), 0, 1))
-        n_perp = normalize(n_hat - cos_θ * μ_hat)
-        R_NS * (μ_hat * cos(θ_surf) + n_perp * sin(θ_surf))
+function line_of_sight_coords(alpha_deg, beta_deg, rho_deg)
+    # konwersja na radiany
+    α   = deg2rad(alpha_deg)
+    β   = deg2rad(beta_deg)
+    ρ   = deg2rad(rho_deg)
+    ζ   = α + β
+
+    sinα = sin(α)
+    sinζ = sin(ζ)
+
+    denom = sinα * sinζ
+    num   = cos(ρ) - cos(α)*cos(ζ)
+
+    if abs(denom) < 1e-12
+        error("Przypadek osobliwy: sin(alpha)*sin(zeta) ≈ 0 (osiowa geometria).")
     end
+
+    arg = num / denom
+
+    if arg < -1 || arg > 1
+        return (
+            visible = false,
+            reason  = "No real intersection: |arg| > 1",
+            arg     = arg
+        )
+    end
+
+    φ0 = acos(arg)
+
+    # wektory kierunku obserwatora dla faz ±φ0
+    s_plus  = (
+        sin(ζ)*cos(φ0),
+        sin(ζ)*sin(φ0),
+        cos(ζ)
+    )
+    s_minus = (
+        sin(ζ)*cos(φ0),
+       -sin(ζ)*sin(φ0),
+        cos(ζ)
+    )
+
+    return (
+        visible          = true,
+        phi0_rad         = φ0,
+        phi0_deg         = rad2deg(φ0),
+        pulse_width_deg  = 2*rad2deg(φ0),
+        s_plus           = s_plus,
+        s_minus          = s_minus,
+        arg              = arg
+    )
 end
+
+
 
 
 
