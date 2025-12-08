@@ -67,6 +67,7 @@ module Lines
         omega = Functions.spherical2cartesian(psr.rotation_axis)
         mu = Functions.spherical2cartesian(psr.magnetic_axis)
         beta = deg2rad(0.4)           # impact parameter
+        
         theta = Functions.theta_max(1, psr) # TODO TODO 
         rho = 3 / 2 * theta           # beam half-opening angle
         println("beta $beta")

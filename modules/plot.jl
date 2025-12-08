@@ -37,7 +37,7 @@ module Plot
         # line of sight
         #println(psr.line_of_sight)
         for l in psr.line_of_sight
-            scatter!(ax, l[1], l[2], l[3], markersize=10, color=:red)
+            scatter!(ax, l[1], l[2], l[3], markersize=10, color=:green)
         end
 
         magnetic_field!(ax, psr)

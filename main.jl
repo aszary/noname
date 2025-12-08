@@ -31,8 +31,10 @@ module NoName
         potential_simulation # potential for simulation step
         spark_radius # spark radius in meters
         line_of_sight # line of sight points
+        r_em # emission height
+        beta # impact parameter
         function Pulsar()
-            r = 10000 # 10 km in merters
+            r = 10_000 # 10 km in merters
             p = 1 # period in seconds
             pdot = 1e-15 # period derivative in s/s
             r_pc = Functions.rdp(p, r)            
@@ -55,7 +57,9 @@ module NoName
             potential_simulation = []
             spark_radius = 15
             line_of_sight = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight)
+            r_em = 500_000
+            beta = deg2rad(1) 
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta)
         end
     end
 
