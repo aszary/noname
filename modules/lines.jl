@@ -82,50 +82,6 @@ module Lines
     end
     
 
-function observer_line_in_beam(Ω::Vector{T}, μ::Vector{T}, β::Real, ρ::Real, r::Real; 
-                                n_points::Int=100) where T<:Real
-    # Normalize input vectors
-    Ω_hat = Ω / norm(Ω)
-    μ_hat = μ / norm(μ)
-
-    # Magnetic inclination angle (angle between rotation and magnetic axes)
-    cos_α = dot(Ω_hat, μ_hat)
-    α = acos(clamp(cos_α, -1, 1))
-    
-    # Observer angle (angle between rotation axis and line of sight)
-    ζ = α + β
-    
-    # Check if observer intersects the beam at all
-    # Minimum angle between observer and magnetic axis is |beta|
-    if abs(β) > ρ
-        return Vector{T}[]  # observer does not see the beam
-    end
-    
-    # Calculate phase range where observer is inside the beam
-    # From: cos(rho) = cos(alpha)*cos(zeta) + sin(alpha)*sin(zeta)*cos(phi)
-    cos_phi_max = (cos(ρ) - cos(α) * cos(ζ)) / (sin(α) * sin(ζ))
-    cos_phi_max = clamp(cos_phi_max, -1, 1)
-    phi_max = acos(cos_phi_max)
-    
-    # First perpendicular vector: in the (Omega, mu) plane, orthogonal to Omega
-    e1 = μ_hat - cos_α * Ω_hat
-    e1 = e1 / norm(e1)
-    
-    # Second perpendicular vector: completes the right-handed system
-    e2 = cross(Ω_hat, e1)
-    
-    # Generate points along the arc inside the beam
-    phi_range = range(-phi_max, phi_max, length=n_points)
-    
-    # Points at distance r from the center
-    points = [r * (Ω_hat * cos(ζ) + sin(ζ) * (e1 * cos(φ) + e2 * sin(φ))) 
-              for φ in phi_range]
-    
-    return points
-end
-
-    
-
 function footpoints_in_beam(Ω::Vector{T}, μ::Vector{T}, β::Real, ρ::Real,
                             R_NS::Real, h::Real; n_points::Int=100) where T<:Real
     Ω_hat, μ_hat = Ω / norm(Ω), μ / norm(μ)
