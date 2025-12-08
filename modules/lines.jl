@@ -68,7 +68,8 @@ module Lines
         omega = Functions.spherical2cartesian(psr.rotation_axis)
         mu = Functions.spherical2cartesian(psr.magnetic_axis)
 
-        theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # TODO TODO 
+        #theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # TODO TODO 
+        theta_max = Functions.theta_max(1, psr) # TODO TODO 
         rho_approx = 3 / 2 * theta_max           # beam half-opening angle
         rho = Functions.rho(theta_max)
 
@@ -83,7 +84,9 @@ module Lines
 
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
-            push!(psr.line_of_sight, Functions.spherical2cartesian(vec))
+            #if vec[2] <= theta_max
+                push!(psr.line_of_sight, Functions.spherical2cartesian(vec))
+            #end
         end
 
         #rho = deg2rad(2.0)
