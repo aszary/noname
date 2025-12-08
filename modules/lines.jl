@@ -85,7 +85,7 @@ module Lines
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
             #if vec[2] <= theta_max
-                push!(psr.line_of_sight, Functions.spherical2cartesian(vec)* psr.r_em)
+                push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
             #end
         end
 
