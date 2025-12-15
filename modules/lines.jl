@@ -80,7 +80,7 @@ module Lines
             end
         end
         if points_num == 0
-            println("No points in open field line region! Change beta!")
+            println("No points in open field line region! Change beta?")
             return
         end
 
@@ -91,11 +91,12 @@ module Lines
 
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
-            #if vec[2] <= theta_max
+            if vec[2] <= theta_max
                 push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
-            #end
+            end
         end
 
+        # TODO add rho in obs. phase
         #rho = Functions.rho(theta_max)
         #println(rho)
     end
@@ -107,27 +108,30 @@ module Lines
             return
         end
 
+        fv = psr.fields
+
         for point in psr.line_of_sight
-
-
-                """
-                    pos_sph = Functions.cartesian2spherical(pos)
-                    b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
-                    b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
-                    st = b / norm(b) * step
-                    pos += st # new position for magnetic line
-                    push!(ml[1], pos[1])
-                    push!(ml[2], pos[2])
-                    push!(ml[3], pos[3])
-                """
-
-
+            pos = copy(point)
+            pos_sph = Functions.cartesian2spherical(pos)
+            # new line with 
+            push!(psr.los_lines, [Float64[], Float64[], Float64[]]) # push!(los[end][1], x) etc.
+            push!(psr.los_lines[end][1], pos[1]) # x coordinate
+            push!(psr.los_lines[end][2], pos[2]) # y coordinate
+            push!(psr.los_lines[end][3], pos[3]) # z coordinate
+            while (pos_sph[1] >= psr.r) # TODO ends below the surface
+                pos_sph = Functions.cartesian2spherical(pos)
+                b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+                b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                st = - b / norm(b) * step # negative step towards the surface
+                pos += st # new position for magnetic line
+                push!(psr.los_lines[end][1], pos[1])
+                push!(psr.los_lines[end][2], pos[2])
+                push!(psr.los_lines[end][3], pos[3])
+            end
         end
 
+        #println(size(psr.los_lines[end]))
 
-
-
-        
     end
 
 
