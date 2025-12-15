@@ -40,11 +40,37 @@ module Plot
         #draw points
         #scatter!(ax, [0, p_car[1]], [0, p_car[2]], [1.2e4, p_car[3]], markersize=10, color=:red)
         #magnetic_field!(ax, psr)
-        #magnetic_lines!(ax, psr)
+        magnetic_lines!(ax, psr)
         #plot_grids(psr, ax)
         #plot_sparks(psr, ax)
         plot_sparks2(psr, ax)
         polarcap!(ax, psr)
+
+        # Calculate the beam circle points at height = 500,000 meters
+        # This uses the new Field.bc function which handles rotation automatically
+        bx, by, bz = Field.bc(psr, 500000.0) 
+        
+        # Plot the ring
+        lines!(ax, bx, by, bz, color=:cyan, linewidth=3, label="500km Beam")
+        
+        # Optional: Draw lines connecting the surface polar cap to the 500km ring
+        # to visualize the cone shape. (Assumes psr.pc is defined)
+        if psr.pc !== nothing
+             # Connect every 5th point to keep the plot clean
+             for i in 1:5:length(bx)
+                 # Note: This assumes psr.pc points and bx points correspond to the same phi indices.
+                 # If psr.pc was generated with a different phi_num, this might look twisted.
+                 # Ideally, ensure phi_num in Field.bc matches the one used for psr.pc.
+                 
+                 # Accessing psr.pc points (handling the Vector of Vectors structure)
+                 p_surf_x = psr.pc[1][i]
+                 p_surf_y = psr.pc[2][i]
+                 p_surf_z = psr.pc[3][i]
+                 
+                 lines!(ax, [p_surf_x, bx[i]], [p_surf_y, by[i]], [p_surf_z, bz[i]], 
+                        color=(:cyan, 0.3), linewidth=1)
+             end
+        end
         mx = 2e4
         #limits!(ax, -mx, mx, -mx, mx, -mx, mx)
 
@@ -214,12 +240,27 @@ function plot_grids(psr, ax)
         end
     end
     function plot_sparks2(psr, ax) 
-        if psr.sparks !== nothing
-            for s in psr.sparks
-                scatter!(ax, s[1], s[2], s[3], marker=:xcross, color=:red, markersize = 20)
-            end
-        end
-    end
+        if psr.sparks !== nothing
+            gr = psr.grid # Retrieve grid in case we are using indices
+            
+            for s in psr.sparks
+                # Case 1: Spark is stored as Grid Indices [i, j]
+                if length(s) == 2
+                    i = Int(s[1])
+                    j = Int(s[2])
+                    # Look up coordinates from the grid
+                    x = gr[1][i]
+                    y = gr[2][j]
+                    z = gr[3][i, j]
+                    scatter!(ax, x, y, z, marker=:xcross, color=:red, markersize = 20)
+                
+                # Case 2: Spark is stored as Cartesian Coordinates [x, y, z]
+                elseif length(s) == 3
+                    scatter!(ax, s[1], s[2], s[3], marker=:xcross, color=:red, markersize = 20)
+                end
+            end
+        end
+    end
     function potential2Dv2(psr)
         gr = psr.grid
         grid_size = size(gr[1])[1]

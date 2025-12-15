@@ -254,5 +254,62 @@ end
         return bd
     end
 
+function bc(psr, height_m; phi_num=100)
+        # 1. Calculate the opening angle (theta) for this height
+        # Function expects ratio of radius to stellar radius
+        theta = Functions.theta_max(height_m / psr.r, psr)
+        
+        # 2. Prepare the Rotation
+        # We need to rotate from the Standard Z-axis to the Pulsar's Magnetic Axis
+        z_axis = [0.0, 0.0, 1.0]
+        
+        # Get magnetic axis direction (normalized)
+        mag_axis = Functions.spherical2cartesian(psr.magnetic_axis)
+        mag_axis = mag_axis / norm(mag_axis)
+        
+        # Calculate rotation axis (k) and angle (alpha) to get from Z to Magnetic Axis
+        # Axis k is perpendicular to both Z and Magnetic Axis
+        k = cross(z_axis, mag_axis)
+        sin_alpha = norm(k)
+        cos_alpha = dot(z_axis, mag_axis)
+        
+        # Safety check: if magnetic axis is already Z, k is zero length
+        rotation_needed = sin_alpha > 1e-6
+        if rotation_needed
+            k = k / sin_alpha # Normalize the rotation axis
+        end
+
+        # 3. Generate and Rotate Points
+        phis = range(0, 2*pi, length=phi_num)
+        xs = Float64[]
+        ys = Float64[]
+        zs = Float64[]
+        
+        for phi in phis
+            # A. Generate point in standard Z-aligned spherical coordinates
+            # This is the "fashion" you asked for: using standard spherical definitions
+            p_standard = Functions.spherical2cartesian([height_m, theta, phi])
+            
+            # B. Rotate the point if necessary
+            if rotation_needed
+                # Rodrigues' Rotation Formula
+                # v_rot = v*cos(a) + (k x v)*sin(a) + k*(k.v)*(1-cos(a))
+                
+                term1 = p_standard * cos_alpha
+                term2 = cross(k, p_standard) * sin_alpha
+                term3 = k * dot(k, p_standard) * (1 - cos_alpha)
+                
+                p_final = term1 + term2 + term3
+            else
+                p_final = p_standard
+            end
+            
+            push!(xs, p_final[1])
+            push!(ys, p_final[2])
+            push!(zs, p_final[3])
+        end
+        
+        return [xs, ys, zs]
+    end
 
 end # module end

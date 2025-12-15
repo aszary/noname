@@ -27,7 +27,9 @@ module NoName
         sparks_locations # locations in simulation # locations in drift2
         sparks_velocity # step in simulation)
         potential_simulation # potential for simulation step
-        
+        line_of_sight #line of sight points
+        r_em #emission height
+        beta #impact parameter
         function Pulsar()
             r = 10000 # 10 km in merters
             p = 1 # period in seconds
@@ -52,15 +54,18 @@ module NoName
             sparks_locations = []
             sparks_velocity = nothing
             potential_simulation = []
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation)
+            line_of_sight = nothing
+            r_em = 500000
+            beta = deg2rad(1)
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, r_em, beta)
         end
     end
     function full_grid()
         psr = Pulsar()
         Field.calculate_dipole!(psr)
-        Field.generate_lines!(psr)
+        #Field.generate_lines!(psr)
         #Field.calculate_polarcap!(psr)
-        Field.pc(psr; phi_num=10)
+        Field.pc(psr; phi_num=100)
         Field.generate_polarcap_lines!(psr)
         Sparks.create_grid!(psr; size=500)
         Sparks.random_sparks_grid!(psr; min_dist=20, trials=10)
@@ -68,8 +73,8 @@ module NoName
         #println(fieldnames(Pulsar))
         #println(psr.r_lc / 1e3, " km")
         #Plot.potential2D(psr)
-        Plot.potential2Dv2(psr)
-        #Plot.pulsar(psr)
+        #Plot.potential2Dv2(psr)
+        Plot.pulsar(psr)
         println("Bye")
     end
     function small_grid()
@@ -129,9 +134,9 @@ module NoName
     end
 
     function main()
-        #full_grid()
+        full_grid()
         #small_grid()
-        full_plus_small_grid()
+        #full_plus_small_grid()
     end
 
 
