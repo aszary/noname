@@ -12,7 +12,7 @@ module Field
         magnetic_lines # magnetic field lines
         magnetic_fields # magnetic field vectors 
         function Test()
-            rmax = 50000 # 50 km 
+            rmax = 50_000 # 50 km 
             size = 10
             new(rmax, size, nothing, [], [], [])
         end

@@ -29,8 +29,9 @@ module Lines
         psr.pc = [x, y, z]
     end
 
-    function generate_open!(psr, step=10, stepsnum=2000)
+    function generate_open!(psr, step=10)
         fv = psr.fields
+        stepsnum = div(fv.rmax, step)
 
         # two polar caps
         for (i,pc) in enumerate(psr.polar_caps)
@@ -64,23 +65,29 @@ module Lines
         end
     end
 
-    function init_line_of_sight(psr)
-        omega = Functions.spherical2cartesian(psr.rotation_axis)
-        mu = Functions.spherical2cartesian(psr.magnetic_axis)
+    function init_line_of_sight(psr, num=10)
 
-        theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # TODO TODO 
-        #theta_max = Functions.theta_max(1, psr) # TODO TODO 
-        rho_approx = 3 / 2 * theta_max           # beam half-opening angle
-        rho = Functions.rho(theta_max)
+        theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
 
-        println("beta $(psr.beta)")
-        println("theta_max $theta_max")
-        println("rho_approx $rho_approx")
-        println("rho $rho")
+        # determine length to have ~num points
+        init_length = 1000
+        phis = range(0, 2π, length=init_length)
+        points_num = 0
+        for phi in phis
+            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
+            if vec[2] <= theta_max
+                points_num += 1
+            end
+        end
+        if points_num == 0
+            println("No points in open field line region! Change beta!")
+            return
+        end
 
-        println()
+        length = floor(Int, num / points_num * init_length)
+        # calculates line of sight
         psr.line_of_sight = []
-        phis = range(0, 2π, length=1000)
+        phis = range(0, 2π, length=length)
 
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
@@ -89,70 +96,39 @@ module Lines
             #end
         end
 
-        #rho = deg2rad(2.0)
+        #rho = Functions.rho(theta_max)
         #println(rho)
-        r = psr.r
-        #psr.line_of_sight = observer_line_in_beam(omega, mu, beta, rho, r, n_points=50)
+    end
+
+    function calculate_line_of_sight(psr, step=10)
+
+        if isnothing(psr.line_of_sight)
+            println("Init line of sight first!")
+            return
+        end
+
+        for point in psr.line_of_sight
+
+
+                """
+                    pos_sph = Functions.cartesian2spherical(pos)
+                    b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+                    b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                    st = b / norm(b) * step
+                    pos += st # new position for magnetic line
+                    push!(ml[1], pos[1])
+                    push!(ml[2], pos[2])
+                    push!(ml[3], pos[3])
+                """
+
+
+        end
+
+
+
+
         
-        #psr.line_of_sight = footpoints_in_beam(omega, mu, beta, theta, r, 500_00 ,n_points=50)
-        #res = line_of_sight_coords(psr.alpha, psr.beta, rad2deg(rho))
-        #println(res)
     end
-
-function line_of_sight_coords(alpha_deg, beta_deg, rho_deg)
-    # konwersja na radiany
-    α   = deg2rad(alpha_deg)
-    β   = deg2rad(beta_deg)
-    ρ   = deg2rad(rho_deg)
-    ζ   = α + β
-
-    sinα = sin(α)
-    sinζ = sin(ζ)
-
-    denom = sinα * sinζ
-    num   = cos(ρ) - cos(α)*cos(ζ)
-
-    if abs(denom) < 1e-12
-        error("Przypadek osobliwy: sin(alpha)*sin(zeta) ≈ 0 (osiowa geometria).")
-    end
-
-    arg = num / denom
-
-    if arg < -1 || arg > 1
-        return (
-            visible = false,
-            reason  = "No real intersection: |arg| > 1",
-            arg     = arg
-        )
-    end
-
-    φ0 = acos(arg)
-
-    # wektory kierunku obserwatora dla faz ±φ0
-    s_plus  = (
-        sin(ζ)*cos(φ0),
-        sin(ζ)*sin(φ0),
-        cos(ζ)
-    )
-    s_minus = (
-        sin(ζ)*cos(φ0),
-       -sin(ζ)*sin(φ0),
-        cos(ζ)
-    )
-
-    return (
-        visible          = true,
-        phi0_rad         = φ0,
-        phi0_deg         = rad2deg(φ0),
-        pulse_width_deg  = 2*rad2deg(φ0),
-        s_plus           = s_plus,
-        s_minus          = s_minus,
-        arg              = arg
-    )
-end
-
-
-
 
 
 end # module end
