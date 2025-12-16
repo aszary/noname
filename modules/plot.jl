@@ -6,6 +6,7 @@ module Plot
     include("functions.jl")
     include("field.jl")
     include("sparks.jl")
+    include("transformations.jl")
 
 
     function pulsar(psr)
@@ -45,13 +46,17 @@ module Plot
         #plot_sparks(psr, ax)
         plot_sparks2(psr, ax)
         polarcap!(ax, psr)
+        bx, by, bz = Field.bc(psr, 500000.0) 
+        lines!(ax, bx, by, bz, color=:cyan, linewidth=3, label="Beam")
 
+        # 2. Plot LOS (centered on Rotation Axis)
+        # This green circle should now CROSS the cyan circle
+        plot_los!(ax, psr, height=500000.0)
         # Calculate the beam circle points at height = 500,000 meters
         # This uses the new Field.bc function which handles rotation automatically
         bx, by, bz = Field.bc(psr, 500000.0) 
         
         # Plot the ring
-        lines!(ax, bx, by, bz, color=:cyan, linewidth=3, label="500km Beam")
         
         # Optional: Draw lines connecting the surface polar cap to the 500km ring
         # to visualize the cone shape. (Assumes psr.pc is defined)
@@ -535,5 +540,64 @@ function plot_grids(psr, ax)
 
 
     end
+"""
+    Plots the Line of Sight (LOS) trajectory around the Rotation Axis.
+    
+    To see the LOS 'cross' the beam, we must plot it correctly:
+    - Beam: Circle around Magnetic Axis (Cyan)
+    - LOS: Circle around Rotation Axis (Green)
+    The intersection of these two non-parallel circles is the pulse.
+    """
+    function plot_los!(ax, psr; height=500000.0)
+        # 1. Calculate Viewing Angle (Zeta)
+        # Convert to radians if they are in degrees!
+        # Assuming psr.alpha and psr.beta are already in radians based on previous context.
+        # If they are in degrees, use: deg2rad(psr.alpha + psr.beta)
+        zeta = psr.alpha + psr.beta
+        
+        # 2. Define the Rotation Axis (The center of the LOS cone)
+        k = Functions.spherical2cartesian(psr.rotation_axis)
+        k = k / norm(k) # Normalize rotation axis
 
+        # 3. Construct a basis (u, v) perpendicular to Rotation Axis
+        # Arbitrary helper vector (Z-axis)
+        aux = [0.0, 0.0, 1.0]
+        if abs(dot(k, aux)) > 0.99; aux = [1.0, 0.0, 0.0]; end
+        
+        u = cross(k, aux)
+        u = u / norm(u)
+        v = cross(k, u)
+        
+        # 4. Generate the Circle
+        # The LOS vector rotates around k at angle zeta.
+        # L(phi) = k*cos(zeta) + (u*cos(phi) + v*sin(phi))*sin(zeta)
+        
+        phis = range(0, 2pi, length=200)
+        xs = Float64[]
+        ys = Float64[]
+        zs = Float64[]
+        
+        # Total radius: Star Radius + Altitude
+        # MAKE SURE height IS IN METERS (e.g., 500000.0 for 500km)
+        total_r = psr.r + height
+        
+        # Calculate sine and cosine once
+        cz = cos(zeta)
+        sz = sin(zeta)
+        
+        for phi in phis
+            # Construct unit vector
+            dir = k * cz + (u * cos(phi) + v * sin(phi)) * sz
+            
+            # Scale by radius
+            p = dir * total_r
+            
+            push!(xs, p[1])
+            push!(ys, p[2])
+            push!(zs, p[3])
+        end
+        
+        # 5. Plot
+        lines!(ax, xs, ys, zs, color=:green, linestyle=:dash, linewidth=3, label="LOS Path")
+    end
 end # module end

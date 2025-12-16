@@ -4,6 +4,7 @@ module NoName
     include("modules/plot.jl")
     include("modules/field.jl")
     include("modules/sparks.jl")
+    include("modules/transformations.jl")
 
     mutable struct Pulsar
         r # pulsar radiuis in [m]
