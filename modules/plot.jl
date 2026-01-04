@@ -54,7 +54,7 @@ module Plot
         plot_los!(ax, psr, height=500000.0)
         # Calculate the beam circle points at height = 500,000 meters
         # This uses the new Field.bc function which handles rotation automatically
-        bx, by, bz = Field.bc(psr, 500000.0) 
+        #bx, by, bz = Field.bc(psr, 500000.0) 
         
         # Plot the ring
         
@@ -553,7 +553,7 @@ function plot_grids(psr, ax)
         # Convert to radians if they are in degrees!
         # Assuming psr.alpha and psr.beta are already in radians based on previous context.
         # If they are in degrees, use: deg2rad(psr.alpha + psr.beta)
-        zeta = psr.alpha + psr.beta
+        zeta = deg2rad(psr.alpha) + psr.beta
         
         # 2. Define the Rotation Axis (The center of the LOS cone)
         k = Functions.spherical2cartesian(psr.rotation_axis)
