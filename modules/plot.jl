@@ -7,10 +7,13 @@ module Plot
     include("field.jl")
     include("sparks.jl")
     include("transformations.jl")
+    include("lines.jl")
 
 
     function pulsar(psr)
-        fig, ax, p = mesh(Sphere(Point3f(0,0,0), psr.r), color = (:teal, 0.7), transparency = true, shading = false)
+        # 64 or 128 are good values for resolution
+        sphere_mesh = GeometryBasics.mesh(Tessellation(Sphere(Point3f(0,0,0), psr.r), 64))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true, shading = false)
         #f = Figure()
         #ax = Axis3(f[1, 1], aspect = :equal)
 
@@ -51,7 +54,8 @@ module Plot
 
         # 2. Plot LOS (centered on Rotation Axis)
         # This green circle should now CROSS the cyan circle
-        plot_los!(ax, psr, height=500000.0)
+        #plot_los!(ax, psr, height=500000.0)
+        generate_los!(ax, psr, height=500000.0)
         # Calculate the beam circle points at height = 500,000 meters
         # This uses the new Field.bc function which handles rotation automatically
         #bx, by, bz = Field.bc(psr, 500000.0) 
@@ -553,7 +557,7 @@ function plot_grids(psr, ax)
         # Convert to radians if they are in degrees!
         # Assuming psr.alpha and psr.beta are already in radians based on previous context.
         # If they are in degrees, use: deg2rad(psr.alpha + psr.beta)
-        zeta = deg2rad(psr.alpha) + psr.beta
+        zeta = deg2rad(psr.alpha) + deg2rad(psr.beta)
         
         # 2. Define the Rotation Axis (The center of the LOS cone)
         k = Functions.spherical2cartesian(psr.rotation_axis)
@@ -599,5 +603,23 @@ function plot_grids(psr, ax)
         
         # 5. Plot
         lines!(ax, xs, ys, zs, color=:green, linestyle=:dash, linewidth=3, label="LOS Path")
+    end
+    function generate_los!(ax, psr; height=500000.0, points=500)
+        # 1. Pobierz dane geometryczne z Functions
+        los = Lines.calculate_los(psr; height=height, points=points)
+        
+        # 2. Przygotuj tablice do rysowania (używając NaN do przerywania linii)
+        xs, ys, zs = Float64[], Float64[], Float64[]
+
+        for (phi, p_surf, p_end) in los
+            push!(xs, p_surf[1], p_end[1], NaN)
+            push!(ys, p_surf[2], p_end[2], NaN)
+            push!(zs, p_surf[3], p_end[3], NaN)
+        end
+        
+        # 3. Rysuj
+        if !isempty(xs)
+            lines!(ax, xs, ys, zs, color=:red, linewidth=3, label="Active Pulse")
+        end
     end
 end # module end

@@ -5,6 +5,9 @@ module NoName
     include("modules/field.jl")
     include("modules/sparks.jl")
     include("modules/transformations.jl")
+    include("modules/lines.jl")
+    include("modules/signal.jl")
+    
 
     mutable struct Pulsar
         r # pulsar radiuis in [m]
@@ -57,7 +60,7 @@ module NoName
             potential_simulation = []
             line_of_sight = nothing
             r_em = 500000
-            beta = deg2rad(1)
+            beta = 1
             return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, r_em, beta)
         end
     end
@@ -133,9 +136,27 @@ module NoName
         #Plot.pulsar(psr)
         println("Bye")
     end
-
+    function generate_signal()
+        psr = Pulsar()
+        Field.calculate_dipole!(psr)
+        #Field.generate_lines!(psr)
+        #Field.calculate_polarcap!(psr)
+        Field.pc(psr; phi_num=100)
+        Field.generate_polarcap_lines!(psr)
+        Sparks.create_grid!(psr; size=500)
+        Sparks.random_sparks_grid!(psr; min_dist=20, trials=10)
+        Sparks.calculate_potential!(psr)
+        Signal.calculate_spark_distances(psr; height=500000.0, points=1000)
+        #println(fieldnames(Pulsar))
+        #println(psr.r_lc / 1e3, " km")
+        #Plot.potential2D(psr)
+        #Plot.potential2Dv2(psr)
+        Plot.pulsar(psr)
+        println("Bye")
+    end
     function main()
-        full_grid()
+        generate_signal()
+        #full_grid()
         #small_grid()
         #full_plus_small_grid()
     end

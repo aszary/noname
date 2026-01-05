@@ -311,5 +311,73 @@ function bc(psr, height_m; phi_num=100)
         
         return [xs, ys, zs]
     end
+function generate_los!(ax, psr; height=500000.0, points=500)
+    # 1. Przygotowanie geometrii rotacji (tak jak w plot_los!)
+    # Upewniamy się, że kąty są w radianach
+    zeta = deg2rad(psr.alpha) + deg2rad(psr.beta)
+    
+    k = Functions.spherical2cartesian(psr.rotation_axis)
+    k = k / norm(k)
 
+    # Baza prostopadła do osi rotacji
+    aux = [0.0, 0.0, 1.0]
+    if abs(dot(k, aux)) > 0.99; aux = [1.0, 0.0, 0.0]; end
+    u = cross(k, aux); u = u/norm(u)
+    v = cross(k, u)
+
+    # 2. Definicja Osi Magnetycznej
+    # W Twoim kodzie (generate_polarcap_lines) linie pola są generowane sferycznie od theta,
+    # co implikuje, że oś magnetyczna to oś Z [0, 0, 1].
+    m_axis = [0.0, 0.0, 1.0] 
+
+    # 3. Limit Pola Magnetycznego (Szerokość wiązki)
+    # Kąt czapy polarnej na powierzchni
+    theta_pc = Functions.theta_max(1, psr)
+    
+    # Fizyka: Linie pola otwierają się proporcjonalnie do pierwiastka z promienia.
+    # Na wysokości 'height' stożek pola jest szerszy.
+    # width(r) ~ theta_pc * sqrt(r / R_star)
+    beam_width_at_height = theta_pc * sqrt((psr.r + height) / psr.r)
+
+    # 4. Generowanie Linii
+    # Używamy NaN, aby oddzielić od siebie poszczególne linie w jednej tablicy (szybkie rysowanie)
+    xs, ys, zs = Float64[], Float64[], Float64[]
+
+    cz, sz = cos(zeta), sin(zeta)
+    phis = range(0, 2pi, length=points)
+
+    for phi in phis
+        # Wektor jednostkowy Linii Wzroku (LOS) w danej fazie
+        dir = k * cz + (u * cos(phi) + v * sin(phi)) * sz
+        
+        # Oblicz kąt między LOS a Osią Magnetyczną
+        # clamp służy do uniknięcia błędów numerycznych (gdyby dot wyszedł 1.0000000002)
+        angle_to_mag = acos(clamp(dot(dir, m_axis), -1, 1))
+        
+        # Sprawdzamy czy LOS wpada w "lejek" otwartych linii pola (Północ lub Południe)
+        # Używamy szerszego kąta (na wysokości), aby pokazać całą aktywną objętość
+        is_active_north = angle_to_mag < beam_width_at_height
+        is_active_south = (pi - angle_to_mag) < beam_width_at_height
+
+        if is_active_north || is_active_south
+            # Punkt startowy (na powierzchni gwiazdy)
+            p_start = dir * psr.r
+            # Punkt końcowy (na zadanej wysokości)
+            p_end = dir * (psr.r + height)
+            
+            # Dodajemy punkty do tablicy, oddzielając je NaN (tworzy przerwę)
+            push!(xs, p_start[1], p_end[1], NaN)
+            push!(ys, p_start[2], p_end[2], NaN)
+            push!(zs, p_start[3], p_end[3], NaN)
+        end
+    end
+    
+    # 5. Rysowanie
+    # color=:red - aby odróżnić od zielonego okręgu LOS i niebieskich linii pola
+    if !isempty(xs)
+        lines!(ax, xs, ys, zs, color=:red, linewidth=2, label="Active Beam")
+    else
+        println("Warning: LOS does not intersect the open field lines (Pulse not visible).")
+    end
+end
 end # module end
