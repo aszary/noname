@@ -11,14 +11,13 @@ module Plot
 
 
     function pulsar(psr)
-        #fig = Figure()
-        #ax = Axis3(f[1, 1], aspect = :equal)
 
-        fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+        #fig, ax, p = mesh(Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
 
-        # Draw a sphere centered at (0,0,0) with radius r
-        #mesh!(ax, Sphere(Point3f(0, 0, 0), psr.r), color = (:teal, 0.7), transparency = true)
-        
+        # better accuracy for the sphere 
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
         # rotation axis
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
         # magnetic axis
