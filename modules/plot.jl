@@ -633,5 +633,96 @@ module Plot
 
     end
 
+    function signal(psr; delay=0.1)
+
+        # better accuracy for the sphere 
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
+        # plot polar cap
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # line of sight end points
+        for line in psr.los_lines
+            scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        # spark positions Observable
+        spark_positions_obs = Observable(Point3f.(psr.sparks_locations[1]))
+        # plotting sparks as spheres
+        meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+
+
+        #=
+        spark_plots = []
+        # plot sparks
+        for sp in psr.sparks
+            sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+            push!(spark_plots, sp_plot)
+        end
+        =#
+
+
+ 
+        cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
+
+        # Try accessing the scene's camera directly
+        println("Scene camera type: ", typeof(cam))
+        println("Scene camera fields: ", fieldnames(typeof(cam)))
+        println("Scene camera properties: ", propertynames(cam))
+
+        # Add a button to print camera state
+        #button = Button(f[7, 1], label = "Print Camera State")
+        button = Button(fig[1, 1], label = "Print", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+
+
+        on(button.clicks) do n
+            println("\n--- Camera State (Click $n) ---")
+            println("Camera type: ", typeof(cam))
+            println("Eye position: ", cam.eyeposition[])
+            println("View direction: ", cam.lookat[])
+            println("Up vector: ", cam.upvector[])
+        end
+       
+       
+        # PULSAR SIGNAL BELOW
+        ax_bottom = Axis(fig[2, 1], xlabel="longitude [deg.]", ylabel="Intensity")
+
+        # setting panel sizes
+        rowsize!(fig.layout, 2, Relative(0.25))  # dolny panel 25% wysokości
+
+        lines!(ax_bottom, psr.signal, color=:black, linewidth=2)
+
+
+
+        display(fig)
+
+        # plot all steps
+        n_steps = length(psr.sparks_locations)
+
+        # Automatyczna animacja
+        i = 1
+        while (i < n_steps)
+            println("\n--- Animation step $i/$n_steps ---")
+           
+            # update spark positions 
+            spark_positions_obs[] = psr.sparks_locations[i]
+
+            sleep(delay)  # Opóźnienie między krokami (w sekundach)
+            
+            i = i+1
+            if i == n_steps -1 # infinite loop
+                i = 1
+            end
+        end
+
+
+
+
+    end
+
 
 end # module end

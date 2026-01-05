@@ -119,11 +119,11 @@ module Lines
             push!(psr.los_lines[end][2], pos[2]) # y coordinate
             push!(psr.los_lines[end][3], pos[3]) # z coordinate
             while (pos_sph[1] >= psr.r) 
-                pos_sph = Functions.cartesian2spherical(pos)
                 b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
                 b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
                 st = - b / norm(b) * step # negative step towards the surface
                 pos += st # new position for magnetic line
+                pos_sph = Functions.cartesian2spherical(pos)
                 push!(psr.los_lines[end][1], pos[1])
                 push!(psr.los_lines[end][2], pos[2])
                 push!(psr.los_lines[end][3], pos[3])
