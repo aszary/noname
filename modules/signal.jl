@@ -16,9 +16,7 @@
         for (i, p) in enumerate(los_points)
             for (j, sparks) in enumerate(psr.sparks_locations)
                 for s in sparks
-                    # TODO somthing wrong in animation, check this
                     dist = norm(p - s)
-                    # dist = norm(p[1:2] - s[1:2]) # 2D does not help
                     psr.signal[j, i] += exp(-dist^2 / (2 * sigma^2)) 
                 end
             end
