@@ -656,7 +656,7 @@ module Plot
 
 
         # PULSAR SIGNAL BELOW
-        ax_bottom = Axis(fig[2, 1], xlabel="longitude [deg.]", ylabel="Intensity")
+        ax_bottom = Axis(fig[2, 1], xlabel="bins", ylabel="Intensity")
 
         # setting panel sizes
         #colsize!(fig.layout, 2, Relative(0.25))  # lewy panel 25% szerokości
