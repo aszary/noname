@@ -136,7 +136,7 @@ module NoName
 
         #Field.calculate_dipole!(psr)
 
-        Lines.init_line_of_sight(psr, num=100)
+        Lines.init_line_of_sight(psr, num=200)
         Lines.calculate_line_of_sight(psr)
 
         Sparks.init_sparks1!(psr ;num=5)

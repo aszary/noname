@@ -1,4 +1,4 @@
-module Signal
+ module Signal
     using LinearAlgebra
 
     function generate(psr)
@@ -17,6 +17,7 @@ module Signal
             for (j, sparks) in enumerate(psr.sparks_locations)
                 for s in sparks
                     dist = norm(p - s)
+                    # dist = norm(p[1:2] - s[1:2]) # 2D does not help
                     # TODO somthing wrong in animation, check this
                     psr.signal[j, i] += exp(-dist^2 / (2 * sigma^2)) 
                 end

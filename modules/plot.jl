@@ -650,8 +650,8 @@ module Plot
         # spark positions Observable
         spark_positions_obs = Observable(Point3f.(psr.sparks_locations[1]))
         # plotting sparks as spheres
-        #meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
-        scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        #scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
 
 
 
