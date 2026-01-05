@@ -653,14 +653,21 @@ module Plot
         meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
 
 
-        #=
-        spark_plots = []
-        # plot sparks
-        for sp in psr.sparks
-            sp_plot = scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
-            push!(spark_plots, sp_plot)
-        end
-        =#
+
+        # PULSAR SIGNAL BELOW
+        ax_bottom = Axis(fig[2, 1], xlabel="longitude [deg.]", ylabel="Intensity")
+
+        # setting panel sizes
+        rowsize!(fig.layout, 2, Relative(0.25))  # dolny panel 25% wysokości
+        
+        # set y range based on maximum signal
+        signal_max = maximum(psr.signal)
+        ylims!(ax_bottom, -0.1*signal_max, signal_max * 1.1) 
+
+        signal_obs = Observable(psr.signal[1, :])
+        lines!(ax_bottom, signal_obs , color=:black, linewidth=2)
+
+
 
 
  
@@ -688,14 +695,6 @@ module Plot
         end
        
        
-        # PULSAR SIGNAL BELOW
-        ax_bottom = Axis(fig[2, 1], xlabel="longitude [deg.]", ylabel="Intensity")
-
-        # setting panel sizes
-        rowsize!(fig.layout, 2, Relative(0.25))  # dolny panel 25% wysokości
-
-        lines!(ax_bottom, psr.signal, color=:black, linewidth=2)
-
 
 
         display(fig)
@@ -710,6 +709,8 @@ module Plot
            
             # update spark positions 
             spark_positions_obs[] = psr.sparks_locations[i]
+
+            signal_obs[] = psr.signal[i, :]
 
             sleep(delay)  # Opóźnienie między krokami (w sekundach)
             

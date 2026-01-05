@@ -65,7 +65,7 @@ module Lines
         end
     end
 
-    function init_line_of_sight(psr, num=10)
+    function init_line_of_sight(psr; num=10)
 
         theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
 
