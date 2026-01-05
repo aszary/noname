@@ -650,7 +650,8 @@ module Plot
         # spark positions Observable
         spark_positions_obs = Observable(Point3f.(psr.sparks_locations[1]))
         # plotting sparks as spheres
-        meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        #meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
 
 
 
@@ -658,6 +659,7 @@ module Plot
         ax_bottom = Axis(fig[2, 1], xlabel="longitude [deg.]", ylabel="Intensity")
 
         # setting panel sizes
+        #colsize!(fig.layout, 2, Relative(0.25))  # lewy panel 25% szerokości
         rowsize!(fig.layout, 2, Relative(0.25))  # dolny panel 25% wysokości
         
         # set y range based on maximum signal
@@ -694,6 +696,25 @@ module Plot
             println("Up vector: ", cam.upvector[])
         end
        
+        # more buttons
+        button1 = Button(fig[1, 1], label = "Speed up", 
+               width = 80, height = 25,
+               halign = :right, valign = :center,
+               tellwidth = false, tellheight = false)
+        on(button1.clicks) do n
+            delay = delay / 2
+            println("delay: $delay")
+        end
+
+        button2 = Button(fig[1, 1], label = "Speed down", 
+               width = 80, height = 25,
+               halign = :right, valign = :bottom,
+               tellwidth = false, tellheight = false)
+        on(button2.clicks) do n
+            delay = delay * 2
+            println("delay: $delay")
+        end
+
        
 
 
