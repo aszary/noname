@@ -26,6 +26,27 @@
 
     function generate_pulses(psr)
 
+        signal_number, bin_number = size(psr.signal)
+
+        pulse_number = 100
+
+        psr.pulses = zeros(pulse_number, bin_number)
+
+        step_skip = 1 # TODO work here
+        pulse_idx = 1
+
+        for i in 1:signal_number
+            if i % step_skip == 0
+                psr.pulses[pulse_idx, :] = psr.signal[i, :]
+                pulse_idx += 1
+            end
+            if pulse_idx > pulse_number
+                break
+            end
+        end
+
+        #println("sig. $signal_number  bin $bin_number puls. $pulse_number")
+
 
         
     end

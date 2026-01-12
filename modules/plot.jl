@@ -7,6 +7,7 @@ module Plot
     using Statistics
     include("functions.jl")
     include("sparks.jl")
+    include("tools.jl")
 
 
 
@@ -737,8 +738,144 @@ module Plot
 
     end
 
-    function pulses(psr)
+    function pulses(psr; start=1, number=100, times=1, cmap="viridis", bin_st=nothing, bin_end=nothing, darkness=0.5, name_mod="PSR_NAME", show_=false)
+
+        data = psr.pulses
+
+        # PREPARE DATA
+        num, bins = size(data)
+        if number === nothing
+            number = num - start  # missing one?
+        end
+        if bin_st === nothing
+            bin_st = 1
+        end
+        if bin_end === nothing
+            bin_end = bins
+        end
+        da = data[start:start+number-1, bin_st:bin_end]
+        da = repeat(da, times) # repeat data X times
+        average = Tools.average_profile(da)
+        intensity, pulses = Tools.pulses_intensity(da)
+        intensity .-= minimum(intensity)
+        intensity ./= maximum(intensity)
+
+        pulses .+= start - 1  # julia
+
+        # Pulse longitude
+        db = (bin_end + 1) - bin_st  # yes +1
+        dl = 360.0 * db / bins
+        longitude = collect(range(-dl / 2.0, dl / 2.0, length=db))
+
+        # CREATE FIGURE
+        fig, p = triple_panels()
+        p.left.ylabel = L"Pulse number $$"
+        p.left.xlabel = L"intensity $$"
+        p.bottom.xlabel = L"longitude ($^\circ$)"
+
+        # PLOTTING DATA
+        lines!(p.left, intensity, pulses, color=:grey, linewidth=0.5)
+        #xlims!(left, [0.01, 1.01])
+        ylims!(p.left, [pulses[1] - 0.5, pulses[end] + 0.5])
+
+        heatmap!(p.center, transpose(da))
+
+        lines!(p.bottom, longitude, average, color=:grey, linewidth=0.5)
+        xlims!(p.bottom, [longitude[1], longitude[end]])
+
+        screen = display(fig)
+        #resize!(screen, 500, 800)
         
+        
+        #filename = "$outdir/$(name_mod)_single.pdf"
+        #println(filename)
+        #save(filename, fig, pt_per_unit=1)        
+
+        
+        
+    end
+
+
+
+    function pulses0(psr; start=1, number=100, bin_st=nothing, bin_end=nothing, norm=2.0, name_mod="PSR_NAME")
+
+        data = psr.pulses
+
+        num, bins = size(data)
+        if number == nothing
+            number = num - start  # missing one?
+        end
+        if bin_st == nothing
+            bin_st = 1
+        end
+        if bin_end == nothing
+            bin_end = bins
+        end
+
+        bin_numbers = bin_st:1:bin_end
+
+        # Figure size
+        size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
+        dpi = 72
+        size_pt = dpi .* size_inches
+
+        fig = Figure(size=size_pt, fontsize=8)
+        ax = Axis(fig[1, 1], xlabel=L"bin number $$", ylabel=L"Pulse number $$", xminorticksvisible=true, yminorticksvisible=true)
+        hidexdecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
+        hideydecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
+
+        for i in start:1:start+number-1
+            da = data[i, :] .* norm .+ i
+            da = da[bin_st:bin_end]
+            lines!(ax, bin_numbers, da, color=:grey, linewidth=0.7)
+            #band!(ax, bin_numbers,  ones(length(da)) * i,  da, color=:white) # work on this one day
+        end
+
+        display(fig)
+
+        #filename = "$outdir/$(name_mod)_single0.pdf"
+        #println(filename)
+        #save(filename, fig, pt_per_unit=1)
+
+    end
+
+
+
+    struct Panels
+        left
+        right
+        top
+        bottom
+        center
+    end
+
+
+    function triple_panels()
+
+        # Figure size
+        size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
+        dpi = 72
+        size_pt = dpi .* size_inches
+        #println(size_pt)
+
+        fig = Figure(size=size_pt, fontsize=8)
+
+        left = Axis(fig[1:6, 1], xminorticksvisible=true, yminorticksvisible=true, xticks=[0.5]) # 2:6, 1
+        #top = Axis(fig[1, 2:3], xaxisposition=:top, yaxisposition = :right)
+        center = Axis(fig[1:6, 2:3]) # 2:6, 2:3
+        bottom = Axis(fig[7, 2:3], yaxisposition=:left, xminorticksvisible=true, yminorticksvisible=true, yticklabelsvisible=false)
+
+        left.xreversed = true
+
+        hidedecorations!.(center)
+        hidedecorations!.(left, grid=true, ticks=false, ticklabels=false, label=false, minorticks=false)
+        hidedecorations!.(bottom, grid=true, ticks=false, ticklabels=false, label=false, minorticks=false)
+
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+
+        return fig, Panels(left, nothing, nothing, bottom, center)
+
     end
 
 

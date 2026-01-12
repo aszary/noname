@@ -35,7 +35,8 @@ module NoName
         r_em # emission height
         beta # impact parameter
         los_lines # magnetic lines defined by the line of sight points
-        signal # radio intensity
+        signal # radio intensity for continous signal
+        pulses # single pulses generated from signal
         function Pulsar()
             r = 10_000 # 10 km in merters
             p = 1 # period in seconds
@@ -63,9 +64,10 @@ module NoName
             line_of_sight = nothing
             r_em = 500_000 # TODO 20 km for tests change it to 500km
             beta = -0.3 # deg by default
-            los_lines = Vector{Vector{Vector{Float64}}}() # zamiast [], szybsze
+            los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta, los_lines, signal)
+            pulses = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta, los_lines, signal, pulses)
         end
     end
 
@@ -141,12 +143,13 @@ module NoName
 
         Sparks.init_sparks1!(psr ;num=5)
 
-        Sparks.simulate_sparks(psr; n_steps=1000)
+        Sparks.simulate_sparks(psr; n_steps=2000)
         Signal.generate_signal(psr)
         Signal.generate_pulses(psr)
         
-        Plot.signal(psr)
-        Plot.pulses(psr)
+        #Plot.signal(psr)
+        #Plot.pulses(psr)
+        Plot.pulses0(psr)
         
     end
 
