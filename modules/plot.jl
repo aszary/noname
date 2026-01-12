@@ -8,7 +8,14 @@ module Plot
     include("sparks.jl")
     include("transformations.jl")
     include("lines.jl")
-
+    
+    struct Panels
+        left
+        right
+        top
+        bottom
+        center
+    end
 
     function pulsar(psr)
         # 64 or 128 are good values for resolution
@@ -621,5 +628,239 @@ function plot_grids(psr, ax)
         if !isempty(xs)
             lines!(ax, xs, ys, zs, color=:red, linewidth=3, label="Active Pulse")
         end
+    end
+    function signal(psr; delay=0.1)
+
+        # better accuracy for the sphere 
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
+        # plot polar cap
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # line of sight end points
+        for line in psr.line_of_sight
+            scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        # spark positions Observable
+        spark_positions_obs = Observable(Point3f.(psr.sparks_locations[1]))
+        # plotting sparks as spheres
+        meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        #scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+
+
+        # PULSAR SIGNAL BELOW
+        ax_bottom = Axis(fig[2, 1], xlabel="bins", ylabel="Intensity")
+        rowsize!(fig.layout, 2, Relative(0.25))
+        
+        # --- SAFE LIMITS CALCULATION ---
+        signal_max = maximum(psr.signal)
+        
+        # If signal is zero/flat, set a default range so it doesn't crash
+        if signal_max <= 1e-9
+            ylims!(ax_bottom, -0.1, 1.0)
+        else
+            ylims!(ax_bottom, -0.1 * signal_max, signal_max * 1.1) 
+        end
+        # -------------------------------
+
+        signal_obs = Observable(psr.signal[1, :])
+        lines!(ax_bottom, signal_obs , color=:black, linewidth=2)
+
+
+        cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
+
+        # Try accessing the scene's camera directly
+        println("Scene camera type: ", typeof(cam))
+        println("Scene camera fields: ", fieldnames(typeof(cam)))
+        println("Scene camera properties: ", propertynames(cam))
+
+        # Add a button to print camera state
+        #button = Button(f[7, 1], label = "Print Camera State")
+        button = Button(fig[1, 1], label = "Print", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+
+        on(button.clicks) do n
+            println("\n--- Camera State (Click $n) ---")
+            println("Camera type: ", typeof(cam))
+            println("Eye position: ", cam.eyeposition[])
+            println("View direction: ", cam.lookat[])
+            println("Up vector: ", cam.upvector[])
+        end
+       
+        # more buttons
+        button1 = Button(fig[1, 1], label = "Speed up", 
+               width = 80, height = 25,
+               halign = :right, valign = :center,
+               tellwidth = false, tellheight = false)
+        on(button1.clicks) do n
+            delay = delay / 2
+            println("delay: $delay")
+        end
+
+        button2 = Button(fig[1, 1], label = "Speed down", 
+               width = 80, height = 25,
+               halign = :right, valign = :bottom,
+               tellwidth = false, tellheight = false)
+        on(button2.clicks) do n
+            delay = delay * 2
+            println("delay: $delay")
+        end
+
+       
+        display(fig)
+
+        # plot all steps
+        n_steps = length(psr.sparks_locations)
+
+        # Automatyczna animacja
+        i = 1
+        while (i < n_steps)
+            println("\n--- Animation step $i/$n_steps ---")
+           
+            # update spark positions 
+            spark_positions_obs[] = psr.sparks_locations[i]
+
+            signal_obs[] = psr.signal[i, :]
+
+            sleep(delay)  # Opóźnienie między krokami (w sekundach)
+            
+            i = i+1
+            if i == n_steps -1 # infinite loop
+                i = 1
+            end
+        end
+
+
+    end
+    function pulses(psr; start=1, number=100, times=1, cmap="viridis", bin_st=nothing, bin_end=nothing, darkness=0.5, name_mod="PSR_NAME", show_=false)
+
+        data = psr.pulses
+
+        # PREPARE DATA
+        num, bins = size(data)
+        if number === nothing
+            number = num - start  # missing one?
+        end
+        if bin_st === nothing
+            bin_st = 1
+        end
+        if bin_end === nothing
+            bin_end = bins
+        end
+        da = data[start:start+number-1, bin_st:bin_end]
+        da = repeat(da, times) # repeat data X times
+        average = Functions.average_profile(da)
+        intensity, pulses = Functions.pulses_intensity(da)
+        intensity .-= minimum(intensity)
+        intensity ./= maximum(intensity)
+
+        pulses .+= start - 1  # julia
+
+        # Pulse longitude
+        db = (bin_end + 1) - bin_st  # yes +1
+        dl = 360.0 * db / bins
+        longitude = collect(range(-dl / 2.0, dl / 2.0, length=db))
+
+        # CREATE FIGURE
+        fig, p = triple_panels()
+        p.left.ylabel = L"Pulse number $$"
+        p.left.xlabel = L"intensity $$"
+        p.bottom.xlabel = L"longitude ($^\circ$)"
+
+        # PLOTTING DATA
+        lines!(p.left, intensity, pulses, color=:grey, linewidth=0.5)
+        #xlims!(left, [0.01, 1.01])
+        ylims!(p.left, [pulses[1] - 0.5, pulses[end] + 0.5])
+
+        heatmap!(p.center, transpose(da))
+
+        lines!(p.bottom, longitude, average, color=:grey, linewidth=0.5)
+        xlims!(p.bottom, [longitude[1], longitude[end]])
+
+        screen = display(fig)
+        #resize!(screen, 500, 800)
+        
+        
+        #filename = "$outdir/$(name_mod)_single.pdf"
+        #println(filename)
+        #save(filename, fig, pt_per_unit=1)        
+
+        
+        
+    end
+
+
+
+    function pulses0(psr; start=1, number=100, bin_st=nothing, bin_end=nothing, norm=2.0, name_mod="PSR_NAME")
+
+        data = psr.pulses
+
+        num, bins = size(data)
+        if number == nothing
+            number = num - start  # missing one?
+        end
+        if bin_st == nothing
+            bin_st = 1
+        end
+        if bin_end == nothing
+            bin_end = bins
+        end
+
+        bin_numbers = bin_st:1:bin_end
+
+        # Figure size
+        size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
+        dpi = 72
+        size_pt = dpi .* size_inches
+
+        fig = Figure(size=size_pt, fontsize=8)
+        ax = Axis(fig[1, 1], xlabel=L"bin number $$", ylabel=L"Pulse number $$", xminorticksvisible=true, yminorticksvisible=true)
+        hidexdecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
+        hideydecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
+
+        for i in start:1:start+number-1
+            da = data[i, :] .* norm .+ i
+            da = da[bin_st:bin_end]
+            lines!(ax, bin_numbers, da, color=:grey, linewidth=0.7)
+            #band!(ax, bin_numbers,  ones(length(da)) * i,  da, color=:white) # work on this one day
+        end
+
+        display(fig)
+
+        #filename = "$outdir/$(name_mod)_single0.pdf"
+        #println(filename)
+        #save(filename, fig, pt_per_unit=1)
+
+    end
+    function triple_panels()
+
+        # Figure size
+        size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
+        dpi = 72
+        size_pt = dpi .* size_inches
+        #println(size_pt)
+
+        fig = Figure(size=size_pt, fontsize=8)
+
+        left = Axis(fig[1:6, 1], xminorticksvisible=true, yminorticksvisible=true, xticks=[0.5]) # 2:6, 1
+        #top = Axis(fig[1, 2:3], xaxisposition=:top, yaxisposition = :right)
+        center = Axis(fig[1:6, 2:3]) # 2:6, 2:3
+        bottom = Axis(fig[7, 2:3], yaxisposition=:left, xminorticksvisible=true, yminorticksvisible=true, yticklabelsvisible=false)
+
+        left.xreversed = true
+
+        hidedecorations!.(center)
+        hidedecorations!.(left, grid=true, ticks=false, ticklabels=false, label=false, minorticks=false)
+        hidedecorations!.(bottom, grid=true, ticks=false, ticklabels=false, label=false, minorticks=false)
+
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+
+        return fig, Panels(left, nothing, nothing, bottom, center)
+
     end
 end # module end

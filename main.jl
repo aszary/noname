@@ -31,9 +31,12 @@ module NoName
         sparks_locations # locations in simulation # locations in drift2
         sparks_velocity # step in simulation)
         potential_simulation # potential for simulation step
-        line_of_sight #line of sight points
+        line_of_sight #line of sight points at the polar cap
         r_em #emission height
         beta #impact parameter
+        signal # radio intensity
+        spark_radius # spark radius in meters
+        pulses
         function Pulsar()
             r = 10000 # 10 km in merters
             p = 1 # period in seconds
@@ -58,10 +61,13 @@ module NoName
             sparks_locations = []
             sparks_velocity = nothing
             potential_simulation = []
-            line_of_sight = nothing
+            line_of_sight = Vector{Vector{Vector{Float64}}}()
             r_em = 500000
             beta = 1
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, r_em, beta)
+            signal = nothing
+            spark_radius = 20
+            pulses = nothing
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, r_em, beta, signal, spark_radius, pulses)
         end
     end
     function full_grid()
@@ -139,19 +145,21 @@ module NoName
     function generate_signal()
         psr = Pulsar()
         Field.calculate_dipole!(psr)
-        #Field.generate_lines!(psr)
-        #Field.calculate_polarcap!(psr)
         Field.pc(psr; phi_num=100)
         Field.generate_polarcap_lines!(psr)
-        Sparks.create_grid!(psr; size=500)
-        Sparks.random_sparks_grid!(psr; min_dist=20, trials=10)
+        Sparks.create_grid!(psr; size=500) # Still needed for potential map calculation
+        Sparks.init_sparks1!(psr; rfs=[0.3, 0.6], num=6, center=true)
+        Sparks.simulate_sparks!(psr)
         Sparks.calculate_potential!(psr)
-        Signal.calculate_spark_distances(psr; height=500000.0, points=1000)
-        #println(fieldnames(Pulsar))
-        #println(psr.r_lc / 1e3, " km")
-        #Plot.potential2D(psr)
-        #Plot.potential2Dv2(psr)
-        Plot.pulsar(psr)
+        Sparks.create_grids!(psr)
+        Sparks.calculate_potentials!(psr; save=true) 
+        Lines.calculate_los(psr)
+        Signal.generate_signal(psr)
+        Signal.generate_pulses(psr)
+        #Plot.signal(psr)
+        #Plot.pulses(psr)
+        Plot.pulses0(psr)
+
         println("Bye")
     end
     function main()

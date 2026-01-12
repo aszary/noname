@@ -81,37 +81,42 @@ module Sparks
         gr = psr.grid
         grid_size = size(gr[1])[1]
         sp = []
+        
         for i in 1:trials
             ii = rand(1:grid_size)
             jj = rand(1:grid_size)
+            
+            # Extract coordinates immediately
             x = gr[1][ii]
             y = gr[2][jj]
             z = gr[3][ii, jj]
-            if !([ii, jj] in sp) && (z !=0) # not in sparks # remember to skip z=0
+            
+            # Skip points outside polar cap (z=0)
+            if z != 0
                 md = 2 * min_dist
-                # check distance between sparks
+                
+                # Check distance against existing sparks
                 for si in sp
-                    sx = gr[1][si[1]]
-                    sy = gr[2][si[2]]
-                    sz = gr[3][si[1], si[2]]
-                    dist = norm([sx, sy, sz] - [x, y, z])
-                    #println(dist)
+                    dist = norm(si - [x, y, z])
                     if dist < md
                         md = dist
                     end
                 end
-                for i in 1:size(psr.pc[1])[1]
-                    dist = norm([x, y, z] - [psr.pc[1][i], psr.pc[2][i], psr.pc[3][i]])
-                    if dist < md
-                        md = dist
+
+                # Check distance against Polar Cap boundary
+                if isdefined(psr, :pc) && psr.pc !== nothing
+                    for k in 1:length(psr.pc[1])
+                        pc_p = [psr.pc[1][k], psr.pc[2][k], psr.pc[3][k]]
+                        dist = norm([x, y, z] - pc_p)
+                        if dist < md; md = dist; end
                     end
                 end
+                
                 if md > min_dist
-                    push!(sp, [ii, jj])
+                    push!(sp, [x, y, z]) # Storing COORDINATES
                 end
             end
         end
-        #psr.sparks = convert(Array{Float64,1}, sp)
         psr.sparks = sp
         println("Number of sparks added: ", size(sp)[1])
     end
@@ -140,25 +145,22 @@ module Sparks
 
         vs = Array{Float64}(undef, grid_size, grid_size)
 
-        v_min =  1e50
-        v_max =  -1e50
-
         for i in 1:grid_size
             for j in 1:grid_size
                 vv = 0
                 for k in 1:spark_num
-                    (ii, jj) = sp[k]
-                    if (gr[3][i, j]!=0) # (ii != i) && (jj !=j) && (gr[3][i, j]!=0) # why?
-                        sx = gr[1][ii]
-                        sy = gr[2][jj]
-                        sz = gr[3][ii, jj]
-                        dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
-                        #vv += v(dist) # nice looking dots (Inf) in the plot, but no
-                        if dist != 0
-                            vv += v(dist)
-                        end
+                    # FIX: Read coordinates directly (no (ii, jj) unpacking)
+                    sx = sp[k][1]
+                    sy = sp[k][2]
+                    sz = sp[k][3]
+                    
+                    dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
+                    
+                    if dist != 0
+                        vv += v(dist)
                     end
                 end
+                
                 if gr[3][i, j] != 0
                     vs[i, j] = vv
                 else
@@ -167,41 +169,33 @@ module Sparks
             end
         end
 
-        # set 0 potential (beyound the polar cap) to NaN
+        # Handle potentials beyond polar cap
         for i in 1:grid_size
             for j in 1:grid_size
                 if vs[i, j] == 0
-                    vs[i, j] = NaN # kind of works, set to 0 for checks
+                    vs[i, j] = NaN 
                 end
             end
         end
 
-        # calculate electric field
-        ex = Array{Float64}(undef, grid_size, grid_size)
-        ey = Array{Float64}(undef, grid_size, grid_size)
-
-        # julia solution
+        # Calculate E-field and Drift Velocity
         grad_v2 = Functions.numpy_gradient_2d(vs)
-        grad_vx = grad_v2[1]
-        grad_vy = grad_v2[2]
-        ex = - grad_vx
-        ey =  - grad_vy
-        # calculate drift velocity
+        ex = -grad_v2[1]
+        ey = -grad_v2[2]
+
         vdx = Array{Float64}(undef, grid_size, grid_size)
         vdy = Array{Float64}(undef, grid_size, grid_size)
+        
         for i in 1:grid_size
             for j in 1:grid_size
-                B = Field.bd(gr[1][i], gr[1][j], psr) #* 10 # * X to have longer arrows!
+                B = Field.bd(gr[1][i], gr[1][j], psr)
                 E = [ex[i, j], ey[i, j], 0]
-                #println(B)
-                #println(E)
                 v = cross(E, B)
                 vdx[i, j] = v[1]
                 vdy[i, j] = v[2]
             end
         end
 
-        #println(typeof(grad_v2))
         psr.potential = vs
         psr.electric_field = [ex, ey]
         psr.drift_velocity = [vdx, vdy]
@@ -452,80 +446,53 @@ module Sparks
     Calculates electric potential, electric field and drift velocity for sparks locations in psr.sparls ..
     """
     function calculate_potential_sparks!(psr)
-        
-        
         gr = psr.grid
         grid_size = size(gr[1])[1]
         sp = psr.sparks
         spark_num = size(sp)[1]
 
-
         vs = Array{Float64}(undef, grid_size, grid_size)
-
-        v_min =  1e50
-        v_max =  -1e50
 
         for i in 1:grid_size
             for j in 1:grid_size
                 vv = 0
                 for k in 1:spark_num
-                    (ii, jj) = sp[k]
-                    if (gr[3][i, j]!=0) # (ii != i) && (jj !=j) && (gr[3][i, j]!=0) # why? 0 magic number
-                        sx = sp[k][1]
-                        sy = sp[k][2]
-                        sz = sp[k][3]
-                        
-                        dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
-                        #vv += v(dist) # nice looking dots (Inf) in the plot, but no
-                        if dist != 0
-                            vv += v(dist)
-                        end
+                    # FIX: Read coordinates directly
+                    sx = sp[k][1]
+                    sy = sp[k][2]
+                    sz = sp[k][3]
+                    
+                    dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
+                    if dist != 0
+                        vv += v(dist)
                     end
                 end
-                if gr[3][i, j] != 0
-                    vs[i, j] = vv
-                else
-                    vs[i, j] = 0
-                end
+                if gr[3][i, j] != 0; vs[i, j] = vv; else; vs[i, j] = 0; end
             end
         end
 
-        # set 0 potential (beyound the polar cap) to NaN
+        # Set 0 potential to NaN
         for i in 1:grid_size
             for j in 1:grid_size
-                if vs[i, j] == 0
-                    vs[i, j] = NaN # kind of works, set to 0 for checks
-                end
+                if vs[i, j] == 0; vs[i, j] = NaN; end
             end
         end
 
-        # calculate electric field
-        ex = Array{Float64}(undef, grid_size, grid_size)
-        ey = Array{Float64}(undef, grid_size, grid_size)
-
-        # julia solution
+        # Calculate fields (Same logic as before)
         grad_v2 = Functions.numpy_gradient_2d(vs)
-        grad_vx = grad_v2[1]
-        grad_vy = grad_v2[2]
-        ex = - grad_vx
-        ey =  - grad_vy
+        ex = -grad_v2[1]; ey = -grad_v2[2]
 
-        # calculate drift velocity
         vdx = Array{Float64}(undef, grid_size, grid_size)
         vdy = Array{Float64}(undef, grid_size, grid_size)
         for i in 1:grid_size
             for j in 1:grid_size
-                B = Field.bd(gr[1][i], gr[1][j], psr) #* 10 # * X to have longer arrows!
+                B = Field.bd(gr[1][i], gr[1][j], psr)
                 E = [ex[i, j], ey[i, j], 0]
-                #println(B)
-                #println(E)
                 v = cross(E, B)
-                vdx[i, j] = v[1]
-                vdy[i, j] = v[2]
+                vdx[i, j] = v[1]; vdy[i, j] = v[2]
             end
         end
 
-        #println(typeof(grad_v2))
         psr.potential = vs
         push!(psr.potential_simulation, deepcopy(vs))
         psr.electric_field = [ex, ey]
@@ -534,7 +501,7 @@ module Sparks
     """
     Runs sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
     """
-    function simulate_sparks!(psr; n_steps=1500, skip_steps=10, speedup=10)
+    function simulate_sparks!(psr; n_steps=2000, skip_steps=10, speedup=10)
         for i in 1:n_steps
             save = (i % skip_steps == 0)
             # small grids around sparks

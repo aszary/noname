@@ -7,33 +7,53 @@ module Signal
 
     using LinearAlgebra
 
-    function calculate_spark_distances(psr; height=500000.0, points=1000)
-        # 1. Get Sparks
-        spark_coords = Vector{Vector{Float64}}()
-        if psr.sparks !== nothing
-            gr = psr.grid
-            for s in psr.sparks
-                if length(s) == 2; push!(spark_coords, [gr[1][Int(s[1])], gr[2][Int(s[2])], gr[3][Int(s[1]), Int(s[2])]]);
-                elseif length(s) == 3; push!(spark_coords, [s[1], s[2], s[3]]); end
+    function generate_signal(psr)
+        # line of sight points at the polar cap
+        los_points = []
+
+        for line in psr.line_of_sight
+            push!(los_points, [line[1][end], line[2][end], line[3][end]])
+        end
+        # pulsar radio signal
+        signal_number = size(psr.sparks_locations)[1]
+        bin_number = size(los_points)[1]
+        psr.signal = zeros(signal_number, bin_number)
+        sigma = psr.spark_radius / 3.72 # 2.355->FWHM, 3.03->1%, 3.72->0.1%   
+        for (i, p) in enumerate(los_points)
+            for (j, sparks) in enumerate(psr.sparks_locations)
+                for s in sparks
+                    dist = norm(p - s)
+                    psr.signal[j, i] += exp(-dist^2 / (2 * sigma^2)) 
+                end
             end
         end
-        if isempty(spark_coords); return []; end
 
-        # 2. Get Geometry from shared function
-        # To wywołanie wykonuje całą ciężką matematykę z Functions.jl
-        traj_data = Lines.calculate_los(psr; height=height, points=points)
-
-        # 3. Calculate Distances
-        spark_dist = [] 
-        
-        for (phi, p_surf, p_end) in traj_data
-            dists = Float64[]
-            for sp in spark_coords
-                push!(dists, norm(p_surf - sp))
-            end
-            push!(spark_dist, (phi, dists))
-        end
-        println(spark_dist)
-        return spark_dist
     end
+    function generate_pulses(psr)
+
+        signal_number, bin_number = size(psr.signal)
+
+        pulse_number = 100
+
+        psr.pulses = zeros(pulse_number, bin_number)
+
+        step_skip = 10 # TODO work here
+        pulse_idx = 1
+
+        for i in 1:signal_number
+            if i % step_skip == 0
+                psr.pulses[pulse_idx, :] = psr.signal[i, :]
+                pulse_idx += 1
+            end
+            if pulse_idx > pulse_number
+                break
+            end
+        end
+
+        #println("sig. $signal_number  bin $bin_number puls. $pulse_number")
+
+
+        
+    end
+
 end # module end
