@@ -59,7 +59,7 @@ module NoName
             sparks_locations = []
             sparks_velocity = nothing
             potential_simulation = []
-            spark_radius = 15
+            spark_radius = 20
             line_of_sight = nothing
             r_em = 500_000 # TODO 20 km for tests change it to 500km
             beta = -0.3 # deg by default
