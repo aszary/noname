@@ -22,8 +22,6 @@
             end
         end
 
-        println(size(los_points))
-
     end
 
 

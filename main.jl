@@ -141,7 +141,7 @@ module NoName
 
         Sparks.init_sparks1!(psr ;num=5)
 
-        Sparks.simulate_sparks(psr; n_steps=200)
+        Sparks.simulate_sparks(psr; n_steps=1000)
         Signal.generate(psr)
         Plot.signal(psr)
         
