@@ -654,7 +654,6 @@ module Plot
         #scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
 
 
-
         # PULSAR SIGNAL BELOW
         ax_bottom = Axis(fig[2, 1], xlabel="bins", ylabel="Intensity")
 
@@ -670,9 +669,6 @@ module Plot
         lines!(ax_bottom, signal_obs , color=:black, linewidth=2)
 
 
-
-
- 
         cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
 
         # Try accessing the scene's camera directly
@@ -686,7 +682,6 @@ module Plot
                width = 80, height = 25,
                halign = :right, valign = :top,
                tellwidth = false, tellheight = false)
-
 
         on(button.clicks) do n
             println("\n--- Camera State (Click $n) ---")
@@ -716,8 +711,6 @@ module Plot
         end
 
        
-
-
         display(fig)
 
         # plot all steps
@@ -742,8 +735,10 @@ module Plot
         end
 
 
+    end
 
-
+    function pulses(psr)
+        
     end
 
 

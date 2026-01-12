@@ -1,7 +1,7 @@
  module Signal
     using LinearAlgebra
 
-    function generate(psr)
+    function generate_signal(psr)
         # line of sight points at the polar cap
         los_points = []
 
@@ -22,6 +22,12 @@
             end
         end
 
+    end
+
+    function generate_pulses(psr)
+
+
+        
     end
 
 
