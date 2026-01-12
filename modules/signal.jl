@@ -32,7 +32,7 @@
 
         psr.pulses = zeros(pulse_number, bin_number)
 
-        step_skip = 1 # TODO work here
+        step_skip = 10 # TODO work here
         pulse_idx = 1
 
         for i in 1:signal_number
