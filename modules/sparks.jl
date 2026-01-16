@@ -600,7 +600,7 @@ module Sparks
     """
     Saves sparks positions 
     """
-    function save_sparks(psr; num=0)
+    function save_sparks(psr; num=1)
         dir = "output/$num"
         mkpath(dir) # check if exists if not creates one
         sl = psr.sparks_locations
@@ -610,7 +610,7 @@ module Sparks
     """
     Loads sparks positions
     """
-    function load_sparks(psr; num=0) 
+    function load_sparks(psr; num=1) 
         @load "output/$num/sparks_locations.jld2" sl
         psr.sparks_locations = sl
     end
