@@ -2,6 +2,7 @@ module Sparks
     using LinearAlgebra
     using PyCall
     using JLD2
+    using FileIO
     include("functions.jl")
     include("field.jl")
 
@@ -599,20 +600,20 @@ module Sparks
     """
     Saves sparks positions 
     """
-    function save_sparks(psr)
-
-
+    function save_sparks(psr; num=0)
+        dir = "output/$num"
+        mkpath(dir) # check if exists if not creates one
+        sl = psr.sparks_locations
+        @save "$dir/sparks_locations.jld2" sl
     end
 
     """
     Loads sparks positions
     """
-    function load_sparks(psr)
-
-
+    function load_sparks(psr; num=0) 
+        @load "output/$num/sparks_locations.jld2" sl
+        psr.sparks_locations = sl
     end
-
-   
 
 
     """
