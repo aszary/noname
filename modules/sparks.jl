@@ -1,6 +1,7 @@
 module Sparks
     using LinearAlgebra
     using PyCall
+    using JLD2
     include("functions.jl")
     include("field.jl")
 
@@ -134,7 +135,6 @@ module Sparks
         grid_size = size(gr[1])[1]
         sp = psr.sparks
         spark_num = size(sp)[1]
-
 
         vs = Array{Float64}(undef, grid_size, grid_size)
 
@@ -531,9 +531,11 @@ module Sparks
                 for j in 1:grid_size
                     B = Field.bd(gr[1][i], gr[1][j], psr)
                     E = [ex[i, j], ey[i, j], 0]
-                    #println(B)
-                    #println(E)
+                    #println("B $B") ~ 2
+                    #println("E $E") < 1
+                    # TODO v ~ 0.5 needs action? 
                     v = cross(E, B)
+                    #println(norm(v))
                     vdx[i, j] = v[1]
                     vdy[i, j] = v[2]
                 end
@@ -593,6 +595,24 @@ module Sparks
         end
 
     end
+
+    """
+    Saves sparks positions 
+    """
+    function save_sparks(psr)
+
+
+    end
+
+    """
+    Loads sparks positions
+    """
+    function load_sparks(psr)
+
+
+    end
+
+   
 
 
     """

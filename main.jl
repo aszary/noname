@@ -143,13 +143,13 @@ module NoName
 
         Sparks.init_sparks1!(psr ;num=5)
 
-        Sparks.simulate_sparks(psr; n_steps=2000)
+        Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=10, speedup=10)
         Signal.generate_signal(psr)
         Signal.generate_pulses(psr)
         
-        #Plot.signal(psr)
+        Plot.signal(psr)
         #Plot.pulses(psr)
-        Plot.pulses0(psr)
+        #Plot.pulses0(psr)
         
     end
 
