@@ -56,9 +56,6 @@
         beta = deg2rad(psr.beta)
 
         # get emission points
-        rs = []
-        thetas = []
-        phis = []
         xs = []
         ys = []
         zs = []
@@ -70,36 +67,15 @@
             push!(xs, x)
             push!(ys, y)
             push!(zs, z)
-            r, theta, phi = Functions.cartesian2spherical([x, y, z])
-            #println("p x=$x y=$y z=$z")
-            #println("p r=$r theta=$theta phi=$phi")
-            push!(rs, r)
-            push!(thetas, theta)
-            push!(phis, phi)
         end
-
-        # TODO use cartesian coordinates and point_to_longitude(point, α, β; exact=true)
 
         # calculate longitude
         for (i, x) in enumerate(xs)
-            r = rs[i]
-            theta = thetas[i]
-            phi = phis[i]
-            #println("$i $r $theta")
-            
-            lm, lp = coords_to_longitude(r, theta, alpha, beta; exact=true)
-            lmdeg = rad2deg(lm)
-            lpdeg = rad2deg(lp)
             ll = point_to_longitude([xs[i], ys[i], zs[i]], alpha, beta; exact=true)
             lldeg = rad2deg(ll)
-            
-            #println("$i $r theta=$theta phi=$phi lm = $lmdeg [deg.] lp = $lpdeg [deg.]")
-            println("$i $r theta=$theta phi=$phi ll = $lldeg [deg.]")
+            println("$i long = $lldeg [deg.] $(xs[i]) $(ys[i]) $(zs[i]) ")
 
         end
-
-        #println(size(psr.los_lines[1][1]))
-        #for line in psr.los_lines
 
     end
 
