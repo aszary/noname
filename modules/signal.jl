@@ -59,11 +59,17 @@
         rs = []
         thetas = []
         phis = []
+        xs = []
+        ys = []
+        zs = []
         npoints = size(psr.los_lines)[1]
         for p in 1:npoints
             x = psr.los_lines[p][1][1]
             y = psr.los_lines[p][2][1]
             z = psr.los_lines[p][3][1]
+            push!(xs, x)
+            push!(ys, y)
+            push!(zs, z)
             r, theta, phi = Functions.cartesian2spherical([x, y, z])
             #println("p x=$x y=$y z=$z")
             #println("p r=$r theta=$theta phi=$phi")
@@ -75,7 +81,8 @@
         # TODO use cartesian coordinates and point_to_longitude(point, α, β; exact=true)
 
         # calculate longitude
-        for (i, r) in enumerate(rs)
+        for (i, x) in enumerate(xs)
+            r = rs[i]
             theta = thetas[i]
             phi = phis[i]
             #println("$i $r $theta")
@@ -83,13 +90,16 @@
             lm, lp = coords_to_longitude(r, theta, alpha, beta; exact=true)
             lmdeg = rad2deg(lm)
             lpdeg = rad2deg(lp)
-            println("$i $r theta=$theta phi=$phi lm = $lmdeg [deg.] lp = $lpdeg [deg.]")
+            ll = point_to_longitude([xs[i], ys[i], zs[i]], alpha, beta; exact=true)
+            lldeg = rad2deg(ll)
+            
+            #println("$i $r theta=$theta phi=$phi lm = $lmdeg [deg.] lp = $lpdeg [deg.]")
+            println("$i $r theta=$theta phi=$phi ll = $lldeg [deg.]")
 
         end
 
         #println(size(psr.los_lines[1][1]))
         #for line in psr.los_lines
-
 
     end
 
