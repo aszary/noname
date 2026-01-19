@@ -33,7 +33,7 @@ module NoName
         spark_radius # spark radius in meters
         line_of_sight # line of sight points
         r_em # emission height
-        beta # impact parameter
+        beta # impact parameter in [deg.]
         los_lines # magnetic lines defined by the line of sight points
         signal # radio intensity for continous signal
         pulses # single pulses generated from signal
@@ -63,7 +63,7 @@ module NoName
             spark_radius = 20
             line_of_sight = nothing
             r_em = 500_000 # TODO 20 km for tests change it to 500km
-            beta = -0.3 # deg by default
+            beta = 0.3 # deg by default
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
             pulses = nothing
@@ -141,18 +141,20 @@ module NoName
         Lines.init_line_of_sight(psr, num=200)
         Lines.calculate_line_of_sight(psr)
 
-        #Sparks.init_sparks1!(psr ;num=5)
         # TODO work on skip_steps to ensure only single pulses
-        #Sparks.simulate_sparks(psr; n_steps=20000, skip_steps=10, speedup=10)
+        #Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=20, speedup=10)
         #Sparks.save_sparks(psr; num=1)
 
         Sparks.load_sparks(psr; num=1)
-        Signal.generate_signal(psr)
+        Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
+        Signal.calculate_longitude(psr)
         
         #Plot.signal(psr)
         #Plot.pulses(psr)
-        Plot.pulses0(psr)
+        #Plot.pulses0(psr)
+        #Plot.pulses1(psr)
         
     end
 
