@@ -72,6 +72,8 @@
             push!(phis, phi)
         end
 
+        # TODO use cartesian coordinates and point_to_longitude(point, α, β; exact=true)
+
         # calculate longitude
         for (i, r) in enumerate(rs)
             theta = thetas[i]
@@ -90,7 +92,40 @@
 
 
     end
+
+"""
+    point_to_longitude(point, α, β; exact=true)
+
+Compute longitude for a 3D emission point given in magnetic frame coordinates.
+
+# Arguments
+- `point`: (x, y, z) in magnetic frame where z is along magnetic axis
+- `α`: inclination angle in radians
+- `β`: impact parameter in radians
+
+# Returns
+- `φ`: longitude in radians
+"""
+function point_to_longitude(point, α, β; exact=true)
+    x, y, z = point
+    r = sqrt(x^2 + y^2 + z^2)
+    θ = acos(z / r)  # Colatitude from magnetic axis
+    ϕ_mag = atan(y, x)  # Azimuth in magnetic frame
     
+    ρ = theta_to_rho(θ; exact=exact)
+    φ_abs = rho_to_longitude(ρ, α, β)
+    
+    isnan(φ_abs) && return NaN
+    
+    return sign(ϕ_mag) * φ_abs
+end
+
+# Vectorized version for array of points
+function points_to_longitudes(points, α, β; exact=true)
+    return [point_to_longitude(p, α, β; exact=exact) for p in points]
+end    
+
+
 """
     theta_to_rho(θ; exact=true)
 
