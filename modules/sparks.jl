@@ -1,6 +1,7 @@
 module Sparks
     using LinearAlgebra
     using PyCall
+    using JLD2
     include("functions.jl")
     include("field.jl")
      """
@@ -537,6 +538,23 @@ module Sparks
         #return r < 150 ? - log(r) * exp(-(r-1)/40) : 0.0 # zero po 150
         #return cos(π*r/(2*150)) # some tests
         #return a * (r/150)^2 # solid-body like ?
+    end
+     """
+    Saves sparks positions 
+    """
+    function save_sparks(psr; num=1)
+        dir = "output/$num"
+        mkpath(dir) # check if exists if not creates one
+        sl = psr.sparks_locations
+        @save "$dir/sparks_locations.jld2" sl
+    end
+
+    """
+    Loads sparks positions
+    """
+    function load_sparks(psr; num=1) 
+        @load "output/$num/sparks_locations.jld2" sl
+        psr.sparks_locations = sl
     end
 
 end # module

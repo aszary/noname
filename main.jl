@@ -147,18 +147,26 @@ module NoName
         Field.calculate_dipole!(psr)
         Field.pc(psr; phi_num=100)
         Field.generate_polarcap_lines!(psr)
-        Sparks.create_grid!(psr; size=500) # Still needed for potential map calculation
-        Sparks.init_sparks1!(psr; rfs=[0.3, 0.6], num=6, center=true)
-        Sparks.simulate_sparks!(psr)
-        Sparks.calculate_potential!(psr)
-        Sparks.create_grids!(psr)
-        Sparks.calculate_potentials!(psr; save=true) 
+
         Lines.calculate_los(psr)
+        
+        #Sparks.create_grid!(psr; size=500) # Still needed for potential map calculation
+        #Sparks.init_sparks1!(psr; rfs=[0.3, 0.6], num=6, center=true)
+        #Sparks.simulate_sparks!(psr)
+        #Sparks.calculate_potential!(psr)
+        #Sparks.create_grids!(psr)
+        #Sparks.calculate_potentials!(psr; save=true) 
+
+        #Sparks.save_sparks(psr; num=1)
+        Sparks.load_sparks(psr; num=1)
+        
+        
         Signal.generate_signal(psr)
         Signal.generate_pulses(psr)
+        
         #Plot.signal(psr)
-        #Plot.pulses(psr)
-        Plot.pulses0(psr)
+        #Plot.pulses(psr) #heatmap
+        Plot.pulses0(psr) #lines
 
         println("Bye")
     end
