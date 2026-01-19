@@ -739,7 +739,7 @@ module Plot
     end
 
 
-    function pulses0(psr; start=1, number=100, bin_st=nothing, bin_end=nothing, norm=3.0, name_mod="PSR_NAME")
+    function pulses0(psr; start=1, number=100, norm=3.0, name_mod="PSR_NAME")
 
         data = psr.pulses
 
@@ -747,14 +747,6 @@ module Plot
         if isnothing(number)
             number = num - start  # missing one?
         end
-        if isnothing(bin_st)
-            bin_st = 1
-        end
-        if isnothing(bin_end)
-            bin_end = bins
-        end
-
-        bin_numbers = bin_st:1:bin_end
 
         # Figure size
         size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
@@ -771,14 +763,14 @@ module Plot
 
         for i in start:1:start+number-1
             da = data[i, :] .* norm .+ i
-            da = da[bin_st:bin_end]
-            lines!(ax, bin_numbers, da, color=:grey, linewidth=0.7)
+            #da = da[bin_st:bin_end]
+            lines!(ax, psr.longitudes, da, color=:grey, linewidth=0.7)
             #band!(ax, bin_numbers,  ones(length(da)) * i,  da, color=:white) # work on this one day
         end
 
-        ax_profile = Axis(gl[2, 1], xlabel=L"bin number $$", ylabel=L"Intensity $$", xminorticksvisible=true, yminorticksvisible=true)
-        mean_profile = vec(mean(data[start:start+number-1, bin_st:bin_end], dims=1))
-        lines!(ax_profile, bin_numbers, mean_profile, color=:black, linewidth=1.0)
+        ax_profile = Axis(gl[2, 1], xlabel=L"longitude $$", ylabel=L"Intensity $$", xminorticksvisible=true, yminorticksvisible=true)
+        mean_profile = vec(mean(data[start:start+number-1, :], dims=1))
+        lines!(ax_profile, psr.longitudes, mean_profile, color=:black, linewidth=1.0)
 
         rowsize!(gl, 1, Relative(0.8))
         rowsize!(gl, 2, Relative(0.2))

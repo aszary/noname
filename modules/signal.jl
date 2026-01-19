@@ -51,7 +51,8 @@
     """
     Calculates pulse longitude based on coordinates of open field lines at the emission height 
     """
-    function calculate_longitude(psr)
+    function calculate_longitudes(psr)
+        psr.longitudes = Vector{Float64}(undef, size(psr.pulses)[2])
         alpha = deg2rad(psr.alpha)
         beta = deg2rad(psr.beta)
 
@@ -73,8 +74,8 @@
         for (i, x) in enumerate(xs)
             ll = point_to_longitude([xs[i], ys[i], zs[i]], alpha, beta; exact=true)
             lldeg = rad2deg(ll)
-            println("$i long = $lldeg [deg.] $(xs[i]) $(ys[i]) $(zs[i]) ")
-
+            psr.longitudes[i] = lldeg
+            #println("$i long = $lldeg [deg.] $(xs[i]) $(ys[i]) $(zs[i]) ")
         end
 
     end

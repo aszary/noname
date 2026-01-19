@@ -37,6 +37,7 @@ module NoName
         los_lines # magnetic lines defined by the line of sight points
         signal # radio intensity for continous signal
         pulses # single pulses generated from signal
+        longitudes # single pulse longitudes
         function Pulsar()
             r = 10_000 # 10 km in merters
             p = 1 # period in seconds
@@ -67,7 +68,8 @@ module NoName
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
             pulses = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta, los_lines, signal, pulses)
+            longitudes = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
         end
     end
 
@@ -149,11 +151,11 @@ module NoName
         Sparks.load_sparks(psr; num=1)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
-        Signal.calculate_longitude(psr)
+        Signal.calculate_longitudes(psr)
         
         #Plot.signal(psr)
         #Plot.pulses(psr)
-        #Plot.pulses0(psr)
+        Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
     end
