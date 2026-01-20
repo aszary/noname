@@ -180,7 +180,7 @@ function init_line_of_sight_uniform_longitude(psr; num=10)
     theta_max = Functions.theta_max(psr.r_em / psr.r, psr)
     
     # Gęsta siatka
-    dense_num = 1000
+    dense_num = 1000000
     phis = range(0, 2π, length=dense_num)
     
     points = []

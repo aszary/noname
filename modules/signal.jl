@@ -26,7 +26,7 @@
 
         # adding gaussian noise
         noise = noise_level * randn(size(psr.signal))
-        psr.signal .+= noise
+        #psr.signal .+= noise
 
     end
 

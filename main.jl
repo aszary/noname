@@ -140,8 +140,8 @@ module NoName
 
         #Field.calculate_dipole!(psr)
 
-        Lines.init_line_of_sight(psr, num=200)
-        #Lines.init_line_of_sight_uniform_longitude(psr, num=200) # TODO work on that; maybe calculate_longitudes_real is wrong?
+        #Lines.init_line_of_sight(psr, num=200)
+        Lines.init_line_of_sight_uniform_longitude(psr, num=200) # TODO work on that; maybe calculate_longitudes_real is wrong?
         Lines.calculate_line_of_sight(psr)
 
         # TODO work on skip_steps to ensure only single pulses
@@ -154,8 +154,8 @@ module NoName
         Signal.generate_pulses(psr)
         Signal.calculate_longitudes(psr)
         #Signal.calculate_longitudes_real(psr)
-        
-        #Plot.signal(psr)
+       
+        Plot.signal(psr)
         #Plot.pulses(psr)
         Plot.pulses0(psr)
         Plot.pulses1(psr)
