@@ -85,21 +85,35 @@ module Lines
             return
         end
 
-        length = floor(Int, num / points_num * init_length)
+        len = floor(Int, num / points_num * init_length)
         # calculates line of sight
         psr.line_of_sight = []
-        phis = range(0, 2π, length=length)
+        longs = []
+        phis = range(0, 2π, length=len)
 
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
             if vec[2] <= theta_max
                 push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
+                push!(longs, rad2deg(vec[3])) # TODO I am not sure!
             end
         end
 
-        # TODO add rho in obs. phase
-        #rho = Functions.rho(theta_max)
-        #println(rho)
+        # Odwiń żeby było ciągłe
+        for i in 2:length(longs)
+            while longs[i] - longs[i-1] > π
+                longs[i] -= 2π
+            end
+            while longs[i] - longs[i-1] < -π
+                longs[i] += 2π
+            end
+        end
+    
+        # center at zero
+        lon_center = (minimum(longs) + maximum(longs)) / 2
+        longs .-= lon_center
+        psr.longitudes = longs
+
     end
 
     function calculate_line_of_sight(psr, step=10)
@@ -154,80 +168,6 @@ module Lines
         end
         #println(size(psr.los_lines))
     end
-
-
-"""
-    longitude_to_rho(φ, α, β)
-
-Inverse of rho_to_longitude. Given longitude φ, compute cone opening angle ρ.
-
-From: cos(φ) = [cos(ρ) - cos(α)cos(α+β)] / [sin(α)sin(α+β)]
-We get: cos(ρ) = cos(α)cos(α+β) + sin(α)sin(α+β)cos(φ)
-"""
-function longitude_to_rho(φ, α, β)
-    cos_rho = cos(α) * cos(α + β) + sin(α) * sin(α + β) * cos(φ)
-    if abs(cos_rho) > 1
-        return NaN
-    end
-    return acos(cos_rho)
-end
-
-
-function init_line_of_sight_uniform_longitude(psr; num=10)
-    # Najpierw wygeneruj gęstą siatkę punktów oryginalną metodą
-    alpha = deg2rad(psr.alpha)
-    beta = deg2rad(psr.beta)
-    theta_max = Functions.theta_max(psr.r_em / psr.r, psr)
-    
-    # Gęsta siatka
-    dense_num = 1000000
-    phis = range(0, 2π, length=dense_num)
-    
-    points = []
-    longs = []
-    
-    for phi in phis
-        vec = Transformations.beaming(
-            Functions.spherical2cartesian(psr.rotation_axis), 
-            deg2rad(psr.alpha + psr.beta), 
-            phi
-        )
-        if vec[2] <= theta_max
-            point = Functions.spherical2cartesian(vec) / psr.r * psr.r_em
-            push!(points, point)
-            
-            # Oblicz longitudę dla tego punktu
-            lon = Signal.point_to_longitude(point, alpha, beta; exact=true)
-            push!(longs, lon)
-        end
-    end
-    
-    if isempty(points)
-        println("No points in open field line region! Change beta?")
-        return
-    end
-    
-    # Teraz interpoluj do równomiernej longitudy
-    longs_deg = rad2deg.(longs)
-    lon_min = minimum(longs_deg)
-    lon_max = maximum(longs_deg)
-    
-    # Równomierny rozkład longitudy
-    target_longs = range(lon_min, lon_max, length=num)
-    
-    psr.line_of_sight = []
-    
-    for target_lon in target_longs
-        # Znajdź najbliższy punkt (lub interpoluj)
-        idx = argmin(abs.(longs_deg .- target_lon))
-        push!(psr.line_of_sight, points[idx])
-    end
-    
-    psr.longitudes = collect(target_longs)
-
-end
-
-
 
 
 end # module end
