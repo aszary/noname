@@ -152,8 +152,13 @@ module NoName
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
       
-        W = Signal.pulse_width_deg(psr.alpha, psr.beta, 20)
+        W = Signal.pulse_width_deg(psr.alpha, psr.beta, 9)
         println("Szerokość profilu: $(round(W, digits=2))°")
+
+        x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1]
+        sph = Functions.cartesian2spherical([x,y,z])
+        rho = rad2deg(Signal.rho_from_fieldline(sph[1], sph[2]))
+        println("rho: $rho")
 
         #Plot.signal(psr)
         Plot.pulses(psr)

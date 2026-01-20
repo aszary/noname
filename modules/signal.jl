@@ -93,5 +93,30 @@ function pulse_width_deg(α_deg, β_deg, ρ_deg)
     return rad2deg(W_rad)
 end
 
+"""
+    rho_from_fieldline(r, θ; approx=false)
+
+Oblicza kąt otwarcia wiązki ρ dla punktu (r, θ) na linii pola magnetycznego.
+
+# Argumenty
+- `r`: odległość od środka gwiazdy [dowolne jednostki]
+- `θ`: kąt polarny (od osi magnetycznej) [radiany]
+- `approx`: czy użyć przybliżenia dla małych kątów
+
+# Zwraca
+- `ρ`: kąt otwarcia wiązki [radiany]
+"""
+function rho_from_fieldline(r, θ; approx=false)
+    if approx || θ < deg2rad(20)
+        # Przybliżenie: ρ ≈ 3θ/2
+        return 1.5 * θ
+    else
+        # Pełne rozwiązanie analityczne
+        t = tan(θ)
+        tan_rho = 3 * t / (2 * (t^2 - 1))
+        return atan(tan_rho)
+    end
+end
+
 
 end # module end
