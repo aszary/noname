@@ -4,6 +4,7 @@ module Lines
     include("field.jl")
     include("functions.jl")
     include("transformations.jl")
+    include("signal.jl")
 
     function calculate_polarcaps!(psr; phi_num=100)
         theta = Functions.theta_max(1, psr)
@@ -153,6 +154,80 @@ module Lines
         end
         #println(size(psr.los_lines))
     end
+
+
+"""
+    longitude_to_rho(φ, α, β)
+
+Inverse of rho_to_longitude. Given longitude φ, compute cone opening angle ρ.
+
+From: cos(φ) = [cos(ρ) - cos(α)cos(α+β)] / [sin(α)sin(α+β)]
+We get: cos(ρ) = cos(α)cos(α+β) + sin(α)sin(α+β)cos(φ)
+"""
+function longitude_to_rho(φ, α, β)
+    cos_rho = cos(α) * cos(α + β) + sin(α) * sin(α + β) * cos(φ)
+    if abs(cos_rho) > 1
+        return NaN
+    end
+    return acos(cos_rho)
+end
+
+
+function init_line_of_sight_uniform_longitude(psr; num=10)
+    # Najpierw wygeneruj gęstą siatkę punktów oryginalną metodą
+    alpha = deg2rad(psr.alpha)
+    beta = deg2rad(psr.beta)
+    theta_max = Functions.theta_max(psr.r_em / psr.r, psr)
+    
+    # Gęsta siatka
+    dense_num = 1000
+    phis = range(0, 2π, length=dense_num)
+    
+    points = []
+    longs = []
+    
+    for phi in phis
+        vec = Transformations.beaming(
+            Functions.spherical2cartesian(psr.rotation_axis), 
+            deg2rad(psr.alpha + psr.beta), 
+            phi
+        )
+        if vec[2] <= theta_max
+            point = Functions.spherical2cartesian(vec) / psr.r * psr.r_em
+            push!(points, point)
+            
+            # Oblicz longitudę dla tego punktu
+            lon = Signal.point_to_longitude(point, alpha, beta; exact=true)
+            push!(longs, lon)
+        end
+    end
+    
+    if isempty(points)
+        println("No points in open field line region! Change beta?")
+        return
+    end
+    
+    # Teraz interpoluj do równomiernej longitudy
+    longs_deg = rad2deg.(longs)
+    lon_min = minimum(longs_deg)
+    lon_max = maximum(longs_deg)
+    
+    # Równomierny rozkład longitudy
+    target_longs = range(lon_min, lon_max, length=num)
+    
+    psr.line_of_sight = []
+    
+    for target_lon in target_longs
+        # Znajdź najbliższy punkt (lub interpoluj)
+        idx = argmin(abs.(longs_deg .- target_lon))
+        push!(psr.line_of_sight, points[idx])
+    end
+    
+    psr.longitudes = collect(target_longs)
+
+end
+
+
 
 
 end # module end
