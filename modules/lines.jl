@@ -85,10 +85,12 @@ module Lines
             return
         end
 
-        len = floor(Int, num / points_num * init_length)
+        len = floor(Int, num / points_num * init_length) # actual len, may differe than num
+        
         # calculates line of sight
         psr.line_of_sight = []
         longs = []
+        
         phis = range(0, 2π, length=len)
 
         for phi in phis
@@ -96,24 +98,24 @@ module Lines
             if vec[2] <= theta_max
                 push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
                 push!(longs, rad2deg(vec[3])) # TODO I am not sure!
+                #push!(longs, rad2deg(phi)) # TODO I am not sure!
             end
         end
 
         # Odwiń żeby było ciągłe
         for i in 2:length(longs)
-            while longs[i] - longs[i-1] > π
-                longs[i] -= 2π
+            while longs[i] - longs[i-1] > 180
+                longs[i] -= 360
             end
-            while longs[i] - longs[i-1] < -π
-                longs[i] += 2π
+            while longs[i] - longs[i-1] < -180
+                longs[i] += 360
             end
         end
-    
+
         # center at zero
         lon_center = (minimum(longs) + maximum(longs)) / 2
         longs .-= lon_center
         psr.longitudes = longs
-
     end
 
     function calculate_line_of_sight(psr, step=10)

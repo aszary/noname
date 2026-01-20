@@ -151,11 +151,12 @@ module NoName
         Sparks.load_sparks(psr; num=1)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
-        #Signal.calculate_longitudes(psr)
-        #Signal.calculate_longitudes_real(psr)
-       
+      
+        W = Signal.pulse_width_deg(psr.alpha, psr.beta, 20)
+        println("Szerokość profilu: $(round(W, digits=2))°")
+
         #Plot.signal(psr)
-        #Plot.pulses(psr)
+        Plot.pulses(psr)
         Plot.pulses0(psr)
         Plot.pulses1(psr)
         
