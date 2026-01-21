@@ -640,6 +640,13 @@ module Plot
         sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
         fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
 
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
         # plot polar cap
         lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
 

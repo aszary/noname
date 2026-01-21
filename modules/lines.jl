@@ -66,6 +66,7 @@ module Lines
         end
     end
 
+
     function init_line_of_sight(psr; num=10)
 
         theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
@@ -89,7 +90,6 @@ module Lines
         
         # calculates line of sight
         psr.line_of_sight = []
-        longs = []
         
         phis = range(0, 2π, length=len)
 
@@ -97,25 +97,9 @@ module Lines
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
             if vec[2] <= theta_max
                 push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
-                push!(longs, rad2deg(vec[3])) # TODO I am not sure!
-                #push!(longs, rad2deg(phi)) # TODO I am not sure!
             end
         end
 
-        # Odwiń żeby było ciągłe
-        for i in 2:length(longs)
-            while longs[i] - longs[i-1] > 180
-                longs[i] -= 360
-            end
-            while longs[i] - longs[i-1] < -180
-                longs[i] += 360
-            end
-        end
-
-        # center at zero
-        lon_center = (minimum(longs) + maximum(longs)) / 2
-        longs .-= lon_center
-        psr.longitudes = longs
     end
 
     function calculate_line_of_sight(psr, step=10)

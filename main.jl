@@ -151,14 +151,18 @@ module NoName
         Sparks.load_sparks(psr; num=1)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
-      
-        W = Signal.pulse_width_deg(psr.alpha, psr.beta, 9)
-        println("Szerokość profilu: $(round(W, digits=2))°")
 
+        
+        # CHECKING
         x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1]
         sph = Functions.cartesian2spherical([x,y,z])
-        rho = rad2deg(Signal.rho_from_fieldline(sph[1], sph[2]))
+        rho = rad2deg(Signal.rho_from_theta(sph[2]))
         println("rho: $rho")
+        println("theta=", rad2deg(sph[2]))
+        W = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
+        println("alpha = $(psr.alpha) beta = $(psr.beta)")
+        println("Szerokość profilu teoretyczna: $(round(W, digits=2))°")
+        println("Szerokość profilu z symukacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
 
         #Plot.signal(psr)
         Plot.pulses(psr)

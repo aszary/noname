@@ -26,7 +26,7 @@
 
         # adding gaussian noise
         noise = noise_level * randn(size(psr.signal))
-        #psr.signal .+= noise
+        psr.signal .+= noise
 
     end
 
@@ -42,6 +42,13 @@
                 break
             end
         end
+
+        # calculate longitudes based on profile width for given pulsar geometry
+        x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1] # boundry line
+        sph = Functions.cartesian2spherical([x,y,z])
+        rho = rad2deg(rho_from_theta(sph[2]))
+        w = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
+        psr.longitudes = range(-w/2, w/2, length=bin_number) # seem hacky
 
     end
 
@@ -67,6 +74,11 @@ function pulse_width(α, β, ρ)
     if abs(β) > ρ
         return NaN
     end
+
+    # align rotator
+    if abs(α) < 1e-10
+        return 2π  # 360°
+    end
     
     numerator = sin(ρ/2)^2 - sin(β/2)^2
     denominator = sin(α) * sin(α + β)
@@ -80,7 +92,7 @@ function pulse_width(α, β, ρ)
     
     # sin² nie może przekroczyć 1
     if sin2_W4 > 1
-        return NaN
+        return 2π
     end
     
     W = 4 * asin(sqrt(sin2_W4))
@@ -93,29 +105,29 @@ function pulse_width_deg(α_deg, β_deg, ρ_deg)
     return rad2deg(W_rad)
 end
 
+
 """
-    rho_from_fieldline(r, θ; approx=false)
+    rho_from_theta(θ)
 
-Oblicza kąt otwarcia wiązki ρ dla punktu (r, θ) na linii pola magnetycznego.
-
-# Argumenty
-- `r`: odległość od środka gwiazdy [dowolne jednostki]
-- `θ`: kąt polarny (od osi magnetycznej) [radiany]
-- `approx`: czy użyć przybliżenia dla małych kątów
-
-# Zwraca
-- `ρ`: kąt otwarcia wiązki [radiany]
+Numeric solution for ρ from θ 
 """
-function rho_from_fieldline(r, θ; approx=false)
-    if approx || θ < deg2rad(20)
-        # Przybliżenie: ρ ≈ 3θ/2
-        return 1.5 * θ
-    else
-        # Pełne rozwiązanie analityczne
-        t = tan(θ)
-        tan_rho = 3 * t / (2 * (t^2 - 1))
-        return atan(tan_rho)
+function rho_from_theta(θ; tol=1e-12, max_iter=50)
+
+    ρ = 1.5 * θ
+    for _ in 1:max_iter
+        x = 3 / (2 * tan(ρ))
+        θ_calc = atan(-x + sqrt(2 + x^2))
+        Δ = θ - θ_calc
+        
+        if abs(Δ) < tol
+            return ρ
+        end
+        
+        ρ += 0.5 * Δ * 1.5
     end
+    
+    return ρ
+
 end
 
 
