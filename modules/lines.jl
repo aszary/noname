@@ -158,7 +158,8 @@ function line_of_sight_coords(alpha_deg, beta_deg, rho_deg)
     )
 end
 
-function init_line_of_sight!(psr; height=5e5, nphi=500)
+function init_line_of_sight!(psr; nphi=1000)
+    height = psr.r_em
     rot_axis = Functions.spherical2cartesian(psr.rotation_axis)
     rot_axis ./= norm(rot_axis)
 

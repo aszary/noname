@@ -64,7 +64,7 @@ module NoName
             sparks_velocity = nothing
             potential_simulation = []
             line_of_sight = nothing
-            r_em = 500000 # emission height in meters
+            r_em = 500_000 # emission height in meters
             beta = 1 # impact angle in deg.
             signal = nothing
             spark_radius = 20
