@@ -395,7 +395,7 @@ function plot_line_of_sight!(ax, psr; height=5e5, length=5e5, color=:yellow, lin
             println("\n--- Animation step $i/$n_steps ---")
            
             # update spark positions 
-            spark_positions_obs[] = psr.sparks_locations[i]
+            spark_obs[] = psr.sparks_locations[i]
 
             signal_obs[] = psr.signal[i, :]
 

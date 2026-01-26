@@ -175,9 +175,9 @@ module NoName
         Field.generate_magnetic_lines_from_polar_cap!(psr; num_lines_from_cap=40, step=100, stepsnum=20000)
         Sparks.create_grid!(psr; size=50)
         Sparks.init_sparks1!(psr; rfs=[0.3, 0.6], num=6, center=true)
-        Sparks.simulate_sparks(psr)
-        Sparks.random_sparks_grid!(psr; min_dist=20, trials=10000)
-        Sparks.calculate_potential!(psr)
+        Sparks.simulate_sparks(psr, n_steps=500, skip_steps=10, speedup=10)
+        #Sparks.random_sparks_grid!(psr; min_dist=20, trials=10000)
+        #Sparks.calculate_potential!(psr)
         Lines.init_line_of_sight!(psr)
         Field.generate_magnetic_lines_from_los!(psr)
         
