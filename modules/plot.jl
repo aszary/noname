@@ -3,6 +3,7 @@ module Plot
     using GeometryBasics
     using LinearAlgebra
     using Glob
+    using Statistics
     include("functions.jl")
     include("field.jl")
     include("sparks.jl")
@@ -736,7 +737,7 @@ function plot_grids(psr, ax)
 
 
     end
-    function pulses(psr; start=1, number=100, times=1, cmap="viridis", bin_st=nothing, bin_end=nothing, darkness=0.5, name_mod="PSR_NAME", show_=false)
+    function pulses(psr; start=1, number=100, times=1, cmap="viridis", darkness=0.5, name_mod="PSR_NAME", show_=false)
 
         data = psr.pulses
 
@@ -745,13 +746,8 @@ function plot_grids(psr, ax)
         if number === nothing
             number = num - start  # missing one?
         end
-        if bin_st === nothing
-            bin_st = 1
-        end
-        if bin_end === nothing
-            bin_end = bins
-        end
-        da = data[start:start+number-1, bin_st:bin_end]
+
+        da = data[start:start+number-1, :]
         da = repeat(da, times) # repeat data X times
         average = Functions.average_profile(da)
         intensity, pulses = Functions.pulses_intensity(da)
@@ -759,11 +755,6 @@ function plot_grids(psr, ax)
         intensity ./= maximum(intensity)
 
         pulses .+= start - 1  # julia
-
-        # Pulse longitude
-        db = (bin_end + 1) - bin_st  # yes +1
-        dl = 360.0 * db / bins
-        longitude = collect(range(-dl / 2.0, dl / 2.0, length=db))
 
         # CREATE FIGURE
         fig, p = triple_panels()
@@ -778,24 +769,22 @@ function plot_grids(psr, ax)
 
         heatmap!(p.center, transpose(da))
 
-        lines!(p.bottom, longitude, average, color=:grey, linewidth=0.5)
-        xlims!(p.bottom, [longitude[1], longitude[end]])
+        lines!(p.bottom, psr.longitudes, average, color=:grey, linewidth=0.5)
+        xlims!(p.bottom, [psr.longitudes[1], psr.longitudes[end]])
 
         screen = display(fig)
+        readline(stdin; keep=false)
         #resize!(screen, 500, 800)
-        
         
         #filename = "$outdir/$(name_mod)_single.pdf"
         #println(filename)
         #save(filename, fig, pt_per_unit=1)        
-
-        
         
     end
 
 
 
-    function pulses0(psr; start=1, number=100, bin_st=nothing, bin_end=nothing, norm=2.0, name_mod="PSR_NAME")
+    function pulses0(psr; start=1, number=100, norm=3.0, name_mod="PSR_NAME")
 
         data = psr.pulses
 
@@ -803,14 +792,6 @@ function plot_grids(psr, ax)
         if number == nothing
             number = num - start  # missing one?
         end
-        if bin_st == nothing
-            bin_st = 1
-        end
-        if bin_end == nothing
-            bin_end = bins
-        end
-
-        bin_numbers = bin_st:1:bin_end
 
         # Figure size
         size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
@@ -818,18 +799,57 @@ function plot_grids(psr, ax)
         size_pt = dpi .* size_inches
 
         fig = Figure(size=size_pt, fontsize=8)
+        gl = fig[1, 1] = GridLayout()
         ax = Axis(fig[1, 1], xlabel=L"bin number $$", ylabel=L"Pulse number $$", xminorticksvisible=true, yminorticksvisible=true)
         hidexdecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
         hideydecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
 
         for i in start:1:start+number-1
             da = data[i, :] .* norm .+ i
-            da = da[bin_st:bin_end]
-            lines!(ax, bin_numbers, da, color=:grey, linewidth=0.7)
-            #band!(ax, bin_numbers,  ones(length(da)) * i,  da, color=:white) # work on this one day
+            # Rysuje po 'psr.longitudes' (stopnie)
+            lines!(ax, psr.longitudes, da, color=:grey, linewidth=0.7)
+        end
+        display(fig)
+        readline(stdin; keep=false)
+        #filename = "$outdir/$(name_mod)_single0.pdf"
+        #println(filename)
+        #save(filename, fig, pt_per_unit=1)
+
+    end
+     function pulses1(psr; start=1, number=100, norm=3.0, name_mod="PSR_NAME")
+
+        data = psr.pulses
+
+        num, bins = size(data)
+        if isnothing(number)
+            number = num - start  # missing one?
         end
 
+        # Figure size
+        size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
+        dpi = 150 #72
+        size_pt = dpi .* size_inches
+
+        fig = Figure(size=size_pt, fontsize=8)
+
+        gl = fig[1, 1] = GridLayout()
+
+        ax = Axis(gl[1, 1], xlabel="bin number", ylabel=L"Pulse number $$", xminorticksvisible=true, yminorticksvisible=true)
+        hidexdecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
+        hideydecorations!(ax, label=false, ticklabels=false, ticks=false, grid=true, minorgrid=false, minorticks=false)
+
+        heatmap!(ax, transpose(data))
+
+        ax_profile = Axis(gl[2, 1], xlabel=L"longitude ($^\circ$)", ylabel=L"Intensity $$", xminorticksvisible=true, yminorticksvisible=true)
+        mean_profile = vec(mean(data[start:start+number-1, :], dims=1))
+        lines!(ax_profile, psr.longitudes, mean_profile, color=:black, linewidth=1.0)
+        xlims!(ax_profile, [psr.longitudes[1], psr.longitudes[end]])
+
+        rowsize!(gl, 1, Relative(0.8))
+        rowsize!(gl, 2, Relative(0.2))
+
         display(fig)
+        readline(stdin; keep=false)
 
         #filename = "$outdir/$(name_mod)_single0.pdf"
         #println(filename)
@@ -840,7 +860,7 @@ function plot_grids(psr, ax)
 
         # Figure size
         size_inches = (8 / 2.54, 11 / 2.54) # 8cm x 11cm
-        dpi = 72
+        dpi = 150
         size_pt = dpi .* size_inches
         #println(size_pt)
 

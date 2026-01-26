@@ -7,7 +7,7 @@ module Signal
 
     using LinearAlgebra
 
-    function generate_signal(psr)
+    function generate_signal(psr; noise_level=0.1)
         # line of sight points at the polar cap
         los_points = []
 
@@ -27,6 +27,9 @@ module Signal
                 end
             end
         end
+        # adding gaussian noise
+        noise = noise_level * randn(size(psr.signal))
+        psr.signal .+= noise
 
     end
     function generate_pulses(psr)
@@ -50,10 +53,91 @@ module Signal
             end
         end
 
-        #println("sig. $signal_number  bin $bin_number puls. $pulse_number")
+        # calculate longitudes based on profile width for given pulsar geometry
+        x,y,z = psr.line_of_sight[end][1][1], psr.line_of_sight[end][2][1], psr.line_of_sight[end][3][1] # boundry line
+        sph = Functions.cartesian2spherical([x,y,z])
+        rho = rad2deg(rho_from_theta(sph[2]))
+        w = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
+        psr.longitudes = range(-w/2, w/2, length=bin_number) # seem hacky
 
 
         
     end
+    """
+    pulse_width(α, β, ρ)
 
+Oblicza szerokość profilu pulsara W na podstawie geometrii wiązki.
+
+# Argumenty
+- `α`: kąt inklinacji między osią rotacji a osią magnetyczną [radiany]
+- `β`: parametr uderzenia - najbliższe przejście linii widzenia od osi magnetycznej [radiany]
+- `ρ`: kąt otwarcia wiązki emisyjnej [radiany]
+
+# Zwraca
+- `W`: szerokość profilu w radianach (lub `NaN` jeśli wiązka nie jest przecięta)
+
+# Uwagi
+Używa równania: sin²(W/4) = [sin²(ρ/2) - sin²(β/2)] / [sin(α)·sin(α+β)]
+Warunek |β| ≤ ρ musi być spełniony, aby wiązka była widoczna.
+"""
+function pulse_width(α, β, ρ)
+    # Sprawdź czy wiązka jest przecięta
+    if abs(β) > ρ
+        return NaN
+    end
+
+    # align rotator
+    if abs(α) < 1e-10
+        return 2π  # 360°
+    end
+    
+    numerator = sin(ρ/2)^2 - sin(β/2)^2
+    denominator = sin(α) * sin(α + β)
+    
+    # Sprawdź poprawność wartości
+    if denominator ≤ 0 || numerator < 0
+        return NaN
+    end
+    
+    sin2_W4 = numerator / denominator
+    
+    # sin² nie może przekroczyć 1
+    if sin2_W4 > 1
+        return 2π
+    end
+    
+    W = 4 * asin(sqrt(sin2_W4))
+    return W
+end
+
+# Wersja z kątami w stopniach
+function pulse_width_deg(α_deg, β_deg, ρ_deg)
+    W_rad = pulse_width(deg2rad(α_deg), deg2rad(β_deg), deg2rad(ρ_deg))
+    return rad2deg(W_rad)
+end
+
+
+"""
+    rho_from_theta(θ)
+
+Numeric solution for ρ from θ 
+"""
+function rho_from_theta(θ; tol=1e-12, max_iter=50)
+
+    ρ = 1.5 * θ
+    for _ in 1:max_iter
+        x = 3 / (2 * tan(ρ))
+        θ_calc = atan(-x + sqrt(2 + x^2))
+        Δ = θ - θ_calc
+        
+        if abs(Δ) < tol
+            return ρ
+        end
+        
+        ρ += 0.5 * Δ * 1.5
+    end
+    
+    return ρ
+
+end
 end # module end

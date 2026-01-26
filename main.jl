@@ -37,6 +37,7 @@ module NoName
         signal # radio intensity
         spark_radius # spark radius in meters
         pulses
+        longitudes # single pulse longitudes
         function Pulsar()
             r = 10000 # 10 km in merters
             p = 1 # period in seconds
@@ -67,7 +68,8 @@ module NoName
             signal = nothing
             spark_radius = 20
             pulses = nothing
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, r_em, beta, signal, spark_radius, pulses)
+            longitudes = nothing
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, r_em, beta, signal, spark_radius, pulses, longitudes)
         end
     end
     function full_grid()
@@ -167,7 +169,7 @@ module NoName
         #Plot.signal(psr)
         #Plot.pulses(psr) #heatmap
         Plot.pulses0(psr) #lines
-
+        #Plot.pulses1(psr)
         println("Bye")
     end
     function main()
