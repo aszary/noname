@@ -7,7 +7,8 @@ include("transformations.jl")
 include("lines.jl")
 
 
-function signal_from_sparks(psr; sigma = psr.spark_radius / 3.72)
+function signal_from_sparks(psr)
+    sigma = psr.spark_radius / 3.72
 
     # --- sanity checks ---
     if isempty(psr.sparks_locations)

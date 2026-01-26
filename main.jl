@@ -181,7 +181,7 @@ module NoName
         Lines.init_line_of_sight!(psr)
         Field.generate_magnetic_lines_from_los!(psr)
         
-        Signal.signal_from_sparks(psr; sigma=50.0)
+        Signal.signal_from_sparks(psr)
         Plot.signal(psr)
      end
         
