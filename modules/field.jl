@@ -10,16 +10,17 @@ module Field
         locations
         magnetic_lines 
         magnetic_fields
-        magnetic_lines_from_cap   
+        magnetic_lines_from_cap  
+        magnetic_lines_from_los 
         
 
          
         function Test()
            
-            rmax = 50e3
+            rmax = 500e3
             size= 12
 
-            new( rmax, size, nothing, [], [], [], [])
+            new( rmax, size, nothing, [], [], [], [], [])
         end
     end
 
@@ -102,8 +103,9 @@ module Field
     Generates magnetic and electric field lines for vacuum around neutron star
     step in meters
     """
-    function generate_vacuum!(psr; step=10, stepsnum=20000, phi=nothing)
+    function generate_vacuum!(psr; step=10, phi=nothing)
         fv = psr.fields
+        stepsnum = Int((fv.rmax - psr.r) / abs(step))
 
         # starting points
         r = psr.r
@@ -260,6 +262,90 @@ module Field
         bd = Functions.spherical2cartesian(bd_sph)
         return bd
     end
+
+    function generate_magnetic_lines_from_los!(psr; step=100, stepsnum=2000)
+        f = psr.fields
+        empty!(f.magnetic_lines_from_los)  # lista dla linii z LOS
+
+        # iterujemy po punktach wzdłuż linii obserwatora
+        for p in psr.line_of_sight
+            pos = copy(p)  # startujemy od punktu wzdłuż LOS
+            line_x, line_y, line_z = [pos[1]], [pos[2]], [pos[3]]
+
+            for k in 1:stepsnum
+                pos_sph = Functions.cartesian2spherical(pos)
+
+                # jeśli dotrzemy do powierzchni gwiazdy, przerywamy
+                if pos_sph[1] <= psr.r
+                    break
+                end
+
+                # obliczamy pole magnetyczne w tym punkcie
+                b_sph = Field.bvac(pos_sph, psr.r, f.beq)
+                b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+
+                # krok wzdłuż linii pola w kierunku gwiazdy
+                pos -= step * b / norm(b)  # minus, bo idziemy w stronę gwiazdy
+
+                push!(line_x, pos[1])
+                push!(line_y, pos[2])
+                push!(line_z, pos[3])
+            end
+
+            push!(f.magnetic_lines_from_los, (line_x, line_y, line_z))
+        end
+    end
+
+    function generate_magnetic_lines_from_los!(psr; step=300.0, stepsnum=5000)
+        f = psr.fields
+        empty!(f.magnetic_lines_from_los)
+
+        R = psr.r
+
+        for p in psr.line_of_sight
+            pos = copy(p)
+
+            line_x = Float64[pos[1]]
+            line_y = Float64[pos[2]]
+            line_z = Float64[pos[3]]
+
+            for k in 1:stepsnum
+                r_old = norm(pos)
+
+                # pole magnetyczne
+                pos_sph = Functions.cartesian2spherical(pos)
+                b_sph   = Field.bvac(pos_sph, psr.r, f.beq)
+                b       = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                b̂       = b / norm(b)
+
+                # nowa pozycja
+                pos_new = pos - step * b̂
+                r_new   = norm(pos_new)
+
+                # sprawdzamy przecięcie powierzchni
+                if r_new <= R
+                    # interpolacja liniowa
+                    t = (r_old - R) / (r_old - r_new)
+                    pos_surface = pos + t * (pos_new - pos)
+
+                    push!(line_x, pos_surface[1])
+                    push!(line_y, pos_surface[2])
+                    push!(line_z, pos_surface[3])
+                    break
+                end
+
+                pos = pos_new
+                push!(line_x, pos[1])
+                push!(line_y, pos[2])
+                push!(line_z, pos[3])
+            end
+
+            push!(f.magnetic_lines_from_los, (line_x, line_y, line_z))
+        end
+    end
+
+
+
     
 
 

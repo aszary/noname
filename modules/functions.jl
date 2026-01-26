@@ -1,6 +1,25 @@
 module Functions 
     using PhysicalConstants.CODATA2018 # in SI units
+    using LinearAlgebra
 
+
+    mutable struct LineOfSight
+        phase::Vector{Float64}
+        phase_deg::Vector{Float64}
+        sph::Vector{Vector{Float64}}
+        cart::Vector{Vector{Float64}}
+        open_flags::Vector{Bool}
+
+        # empty constructor
+        function LineOfSight()
+            new([], [], [], [], [])
+        end
+
+        # full constructor
+        function LineOfSight(phase, phase_deg, sph, cart, open_flags)
+            new(phase, phase_deg, sph, cart, open_flags)
+        end
+    end
 
     """
     Calculates rlc in meters
@@ -151,6 +170,75 @@ module Functions
         end
         
         return (grad_y, grad_x)
+    end
+
+    # Rodrigues rotation matrix to rotate vector a -> b (both 3-element)
+    # If a and b are parallel, returns I.
+    function rotation_matrix_from_to(a::AbstractVector{<:Real}, b::AbstractVector{<:Real})
+        a_u = a / norm(a)
+        b_u = b / norm(b)
+        # handle near-parallel / anti-parallel
+        c = dot(a_u, b_u)
+        if isapprox(c, 1.0; atol=1e-12)
+            return Matrix{Float64}(I, 3, 3)
+        elseif isapprox(c, -1.0; atol=1e-12)
+            # 180° rotation: pick an arbitrary orthogonal axis
+            # find vector orthogonal to a_u
+            v = abs(a_u[1]) < 0.9 ? [1.0,0.0,0.0] : [0.0,1.0,0.0]
+            k = cross(a_u, v)
+            k = k / norm(k)
+            K = [  0.0  -k[3]  k[2];
+                k[3]   0.0  -k[1];
+                -k[2]  k[1]   0.0 ]
+            return I - 2.0 * K * K
+        else
+            k = cross(a_u, b_u)
+            K = [  0.0   -k[3]   k[2];
+                k[3]   0.0   -k[1];
+                -k[2]  k[1]    0.0 ]
+            s = norm(k)
+            return I + K + K*K * ((1 - c)/(s^2))
+        end
+    end
+
+    # small helper: spherical (r, theta, phi) -> cartesian (x,y,z)
+    # theta = polar angle from +z, phi = azimuth from +x
+    sph_to_cartesian(r, θ, φ) = (r * sin(θ) * cos(φ), r * sin(θ) * sin(φ), r * cos(θ))
+
+    # cartesian -> spherical (r, θ, φ)
+    function cartesian_to_spherical(x::Real, y::Real, z::Real)
+        r = sqrt(x^2 + y^2 + z^2)
+        if r == 0.0
+            return (0.0, 0.0, 0.0)
+        end
+        θ = acos(clamp(z / r, -1.0, 1.0))
+        φ = atan(y, x)
+        return (r, θ, φ)
+    end
+
+    # Transformations struct: precompute rotation that maps +z -> rotation_axis
+    struct Transformations
+        R::Matrix{Float64}   # rotation matrix: maps vector in local frame -> rotated (global) frame
+    end
+
+    function Transformations(rotation_axis::AbstractVector{<:Real})
+        # We need rotation that maps z-axis (0,0,1) to rotation_axis
+        z = [0.0, 0.0, 1.0]
+        R = rotation_matrix_from_to(z, rotation_axis)
+        return Transformations(R)
+    end
+
+    """
+        beaming(t::Transformations; θ, φ)
+
+    Return the direction (r, θ_rot, φ_rot) obtained by taking the
+    unit vector with spherical angles (θ, φ) in the local frame (z-axis),
+    rotating it by t.R, and converting to spherical coordinates in the rotated/global frame.
+    """
+    function beaming(t::Transformations; θ::Real, φ::Real)
+        x, y, z = sph_to_cartesian(1.0, θ, φ)   # unit vector in local frame
+        v = t.R * [x, y, z]                    # rotated vector in global frame
+        return cartesian_to_spherical(v[1], v[2], v[3])  # (r, θ_rot, φ_rot)
     end
 
 
