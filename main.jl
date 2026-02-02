@@ -141,7 +141,7 @@ module NoName
         #Field.calculate_dipole!(psr)
 
         #Lines.init_line_of_sight(psr, num=200)
-        Lines.init_line_of_sight2(psr, num=200)
+        Lines.init_line_of_sight2(psr, num=200) # TODO work on that
         Lines.calculate_line_of_sight(psr)
 
         # TODO work on skip_steps to ensure only single pulses

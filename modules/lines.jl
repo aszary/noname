@@ -133,12 +133,38 @@ module Lines
 
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
+            psi = phase_longitude_signed(vec, psr)
+            println("long: ", rad2deg(psi))
+
             if vec[2] <= theta_max
                 push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
             end
         end
 
     end
+
+
+function phase_longitude_signed(vec, psr)
+    # jednostkowe wektory
+    Ω = normalize(Functions.spherical2cartesian(psr.rotation_axis))
+    m = normalize(Functions.spherical2cartesian(psr.magnetic_axis))
+
+    n = normalize(vec)
+
+    # rzut osi magnetycznej na płaszczyznę prostopadłą do Ω
+    mx = m - (m ⋅ Ω) * Ω
+    mx = normalize(mx)
+
+    # drugi wektor bazowy
+    my = cross(Ω, mx)
+
+    # signed longitude
+    ψ = atan(n ⋅ my, n ⋅ mx)   # atan(y, x)
+
+    return ψ
+end
+
+
 
 
     function calculate_line_of_sight(psr, step=10)
