@@ -43,14 +43,53 @@
             end
         end
 
+    end
+
+    """
+    Generates longitudes based on pulse width  
+    """
+    function generate_longitudes(psr)
+        # TODO equal spacing check if it is OK
+
+        signal_number, bin_number = size(psr.signal)
+
         # calculate longitudes based on profile width for given pulsar geometry
         x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1] # boundry line
         sph = Functions.cartesian2spherical([x,y,z])
         rho = rad2deg(rho_from_theta(sph[2]))
         w = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
         psr.longitudes = range(-w/2, w/2, length=bin_number) # seem hacky
-
     end
+
+    """
+    Generates longitudes based on pulse width for each line
+    """
+    function generate_longitudes1(psr)
+
+        signal_number, bin_number = size(psr.signal)
+        psr.longitudes = zeros(bin_number)
+        
+        println(size(psr.los_lines))
+
+        num = size(psr.los_lines)[1]
+        mid = num ÷ 2  # half
+
+        for i in 1:num
+            # calculate longitudes based on profile width for given pulsar geometry
+            x,y,z = psr.los_lines[i][1][1], psr.los_lines[i][2][1], psr.los_lines[i][3][1] # boundry line
+            sph = Functions.cartesian2spherical([x,y,z])
+            rho = rad2deg(rho_from_theta(sph[2]))
+            w = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
+            if i <= mid
+                psr.longitudes[i] = w / 2
+            else
+                psr.longitudes[i] = -w / 2
+            end
+            println(w)
+        end
+    end
+
+
 
 """
     pulse_width(α, β, ρ)

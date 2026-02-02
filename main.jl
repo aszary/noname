@@ -140,17 +140,20 @@ module NoName
 
         #Field.calculate_dipole!(psr)
 
-        Lines.init_line_of_sight(psr, num=200)
+        #Lines.init_line_of_sight(psr, num=200)
+        Lines.init_line_of_sight2(psr, num=200)
         Lines.calculate_line_of_sight(psr)
 
         # TODO work on skip_steps to ensure only single pulses
-        Sparks.init_sparks1!(psr ;num=5)
-        Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=20, speedup=10)
-        Sparks.save_sparks(psr; num=1)
+        #Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=20, speedup=10)
+        #Sparks.save_sparks(psr; num=1)
 
         Sparks.load_sparks(psr; num=1)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
+        #Signal.generate_longitudes(psr)
+        Signal.generate_longitudes1(psr) # TODO work on that
         
         # CHECKING
         x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1]
@@ -161,11 +164,11 @@ module NoName
         W = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
         println("alpha = $(psr.alpha) beta = $(psr.beta)")
         println("Szerokość profilu teoretyczna: $(round(W, digits=2))°")
-        println("Szerokość profilu z symukacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
+        println("Szerokość profilu z symulacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
 
         #Plot.signal(psr)
-        Plot.pulses(psr)
-        Plot.pulses0(psr)
+        #Plot.pulses(psr)
+        #Plot.pulses0(psr)
         Plot.pulses1(psr)
         
     end

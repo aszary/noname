@@ -71,27 +71,28 @@ module Lines
 
         theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
 
-        # determine length to have ~num points
+        # determine phi range 
         init_length = 1000
         phis = range(0, 2π, length=init_length)
-        points_num = 0
+        phis_valid = []
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
             if vec[2] <= theta_max
-                points_num += 1
+                push!(phis_valid, phi)
             end
         end
-        if points_num == 0
+        if size(phis_valid) == 0
             println("No points in open field line region! Change beta?")
             return
         end
 
-        len = floor(Int, num / points_num * init_length) # actual len, may differe than num
+        phi_min = minimum(phis_valid)
+        phi_max = maximum(phis_valid)
         
         # calculates line of sight
         psr.line_of_sight = []
         
-        phis = range(0, 2π, length=len)
+        phis = range(phi_min, phi_max, length=num)
 
         for phi in phis
             vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
@@ -101,6 +102,44 @@ module Lines
         end
 
     end
+
+
+    function init_line_of_sight2(psr; num=10)
+
+        theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
+
+        # determine phi range 
+        init_length = 1000
+        phis = range(0, 2π, length=init_length)
+        phis_valid = []
+        for phi in phis
+            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
+            if vec[2] <= theta_max
+                push!(phis_valid, phi)
+            end
+        end
+        if size(phis_valid) == 0
+            println("No points in open field line region! Change beta?")
+            return
+        end
+
+        phi_min = minimum(phis_valid)
+        phi_max = maximum(phis_valid)
+        
+        # calculates line of sight
+        psr.line_of_sight = []
+        
+        phis = range(phi_min, phi_max, length=num)
+
+        for phi in phis
+            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
+            if vec[2] <= theta_max
+                push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
+            end
+        end
+
+    end
+
 
     function calculate_line_of_sight(psr, step=10)
 

@@ -821,7 +821,7 @@ module Plot
         ax_profile = Axis(gl[2, 1], xlabel=L"longitude ($^\circ$)", ylabel=L"Intensity $$", xminorticksvisible=true, yminorticksvisible=true)
         mean_profile = vec(mean(data[start:start+number-1, :], dims=1))
         lines!(ax_profile, psr.longitudes, mean_profile, color=:black, linewidth=1.0)
-        xlims!(ax_profile, [psr.longitudes[1], psr.longitudes[end]])
+        #xlims!(ax_profile, [psr.longitudes[1], psr.longitudes[end]])
 
         rowsize!(gl, 1, Relative(0.8))
         rowsize!(gl, 2, Relative(0.2))
