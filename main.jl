@@ -166,7 +166,7 @@ module NoName
         println("Szerokość profilu teoretyczna: $(round(W, digits=2))°")
         println("Szerokość profilu z symulacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
 
-        #Plot.signal(psr)
+        Plot.signal(psr)
         #Plot.pulses(psr)
         #Plot.pulses0(psr)
         Plot.pulses1(psr)

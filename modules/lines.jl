@@ -5,6 +5,7 @@ module Lines
     include("functions.jl")
     include("transformations.jl")
     include("signal.jl")
+    include("geometry.jl")
 
     function calculate_polarcaps!(psr; phi_num=100)
         theta = Functions.theta_max(1, psr)
@@ -106,64 +107,20 @@ module Lines
 
     function init_line_of_sight2(psr; num=10)
 
-        theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
-
-        # determine phi range 
-        init_length = 1000
-        phis = range(0, 2π, length=init_length)
-        phis_valid = []
-        for phi in phis
-            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
-            if vec[2] <= theta_max
-                push!(phis_valid, phi)
-            end
-        end
-        if size(phis_valid) == 0
-            println("No points in open field line region! Change beta?")
-            return
-        end
-
-        phi_min = minimum(phis_valid)
-        phi_max = maximum(phis_valid)
-        
-        # calculates line of sight
+         # calculates line of sight
         psr.line_of_sight = []
+
+        α = deg2rad(psr.alpha)
+        β = deg2rad(psr.beta)
+
+        φ_s = Geometry.generate_uniform_phase_array(num, α ,β , psr.r_em, psr.p)
+        θ_array, ψ_array = Geometry.emission_points_from_phase(φ_s, α, β, psr.r_em, psr.p)
         
-        phis = range(phi_min, phi_max, length=num)
-
-        for phi in phis
-            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
-            psi = phase_longitude_signed(vec, psr)
-            println("long: ", rad2deg(psi))
-
-            if vec[2] <= theta_max
-                push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
-            end
+        for θ in θ_array
+            push!(psr.line_of_sight, Functions.spherical2cartesian([psr.r_em, θ, 0]))
         end
 
     end
-
-
-function phase_longitude_signed(vec, psr)
-    # jednostkowe wektory
-    Ω = normalize(Functions.spherical2cartesian(psr.rotation_axis))
-    m = normalize(Functions.spherical2cartesian(psr.magnetic_axis))
-
-    n = normalize(vec)
-
-    # rzut osi magnetycznej na płaszczyznę prostopadłą do Ω
-    mx = m - (m ⋅ Ω) * Ω
-    mx = normalize(mx)
-
-    # drugi wektor bazowy
-    my = cross(Ω, mx)
-
-    # signed longitude
-    ψ = atan(n ⋅ my, n ⋅ mx)   # atan(y, x)
-
-    return ψ
-end
-
 
 
 
