@@ -230,6 +230,37 @@ module Geometry
     end
 
     """
+        ψ_from_φ(φ, α, β)
+
+    Calculate azimuthal angle ψ around magnetic axis for a given rotational phase φ.
+
+    Uses spherical triangle relations between rotation axis, magnetic axis, 
+    and emission point.
+
+    # Arguments
+    - `φ::Real`: rotational phase [radians]
+    - `α::Real`: magnetic inclination angle [radians]
+    - `β::Real`: impact parameter [radians]
+
+    # Returns
+    - `ψ::Float64`: azimuthal angle around magnetic axis [radians]
+    """
+    function ψ_from_φ(φ, α, β)
+        ρ = ρ_from_φ(φ, α, β)
+        
+        if abs(ρ) < 1e-10
+            return 0.0
+        end
+        
+        ζ = α + β
+        sin_ψ = sin(ζ) * sin(φ) / sin(ρ)
+        cos_ψ = (cos(ζ) - cos(α) * cos(ρ)) / (sin(α) * sin(ρ))
+        
+        return atan(sin_ψ, cos_ψ)
+    end
+
+
+    """
         emission_points_from_phase(φ_array, α, β, r_em, P)
 
     Main function: Convert array of rotational phases φ to emission point
@@ -271,12 +302,13 @@ module Geometry
         θ_array = zeros(n)
         ψ_array = zeros(n)
         
+        ζ = α + β
+        
         for i in 1:n
             φ = φ_array[i]
             ρ = ρ_from_φ(φ, α, β)
             θ_array[i] = θ_from_ρ(ρ)
-            # Azimuthal angle equals rotational phase from spherical triangle geometry
-            ψ_array[i] = φ
+            ψ_array[i] = ψ_from_φ(φ, α, β) 
         end
         
         return θ_array, ψ_array

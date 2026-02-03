@@ -48,8 +48,8 @@
     """
     Generates longitudes based on pulse width  
     """
-    function generate_longitudes(psr)
-        # TODO equal spacing check if it is OK
+    function generate_longitudes_obsolete(psr)
+        # equal spacing check if it is OK.... NOT OK
 
         signal_number, bin_number = size(psr.signal)
 
@@ -64,13 +64,12 @@
     """
     Generates longitudes based on pulse width for each line
     """
-    function generate_longitudes1(psr)
+    function generate_longitudes_obsolete1(psr)
+        # not needed anymore longitudes generated in init_line_of_sight
 
         signal_number, bin_number = size(psr.signal)
         psr.longitudes = zeros(bin_number)
         
-        println(size(psr.los_lines))
-
         num = size(psr.los_lines)[1]
         mid = num ÷ 2  # half
 
@@ -85,7 +84,6 @@
             else
                 psr.longitudes[i] = -w / 2
             end
-            println(w)
         end
     end
 

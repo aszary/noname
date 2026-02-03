@@ -68,7 +68,7 @@ module Lines
     end
 
 
-    function init_line_of_sight(psr; num=10)
+    function init_line_of_sight_obsolete(psr; num=10)
 
         theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
 
@@ -105,19 +105,25 @@ module Lines
     end
 
 
-    function init_line_of_sight2(psr; num=10)
+    function init_line_of_sight(psr; num=10)
 
          # calculates line of sight
         psr.line_of_sight = []
+        psr.longitudes = zeros(num)
 
         α = deg2rad(psr.alpha)
         β = deg2rad(psr.beta)
 
         φ_s = Geometry.generate_uniform_phase_array(num, α ,β , psr.r_em, psr.p)
         θ_array, ψ_array = Geometry.emission_points_from_phase(φ_s, α, β, psr.r_em, psr.p)
-        
-        for θ in θ_array
-            push!(psr.line_of_sight, Functions.spherical2cartesian([psr.r_em, θ, 0]))
+        #println("theta: ", rad2deg.(θ_array))
+        #println("psi: ", rad2deg.(ψ_array))
+
+        for i in eachindex(θ_array)
+            ψ = ψ_array[i]
+            θ = θ_array[i]
+            push!(psr.line_of_sight, Functions.spherical2cartesian([psr.r_em, θ, ψ]))
+            psr.longitudes[i] = rad2deg(φ_s[i])
         end
 
     end

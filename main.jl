@@ -64,7 +64,7 @@ module NoName
             spark_radius = 20
             line_of_sight = nothing
             r_em = 500_000 # TODO 20 km for tests change it to 500km
-            beta = 3.0 # deg by default
+            beta = 4.0 # deg by default
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
             pulses = nothing
@@ -133,15 +133,15 @@ module NoName
         Plot.steps2D(psr)
     end
 
-    function generate_signal()
+
+   function generate_signal_obsolete()
         psr = Pulsar()
 
         Lines.calculate_polarcaps!(psr)
 
         #Field.calculate_dipole!(psr)
 
-        #Lines.init_line_of_sight(psr, num=200)
-        Lines.init_line_of_sight2(psr, num=200) # TODO work on that
+        Lines.init_line_of_sight_obsolete(psr, num=200) # TODO work on that
         Lines.calculate_line_of_sight(psr)
 
         # TODO work on skip_steps to ensure only single pulses
@@ -152,8 +152,8 @@ module NoName
         Sparks.load_sparks(psr; num=1)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
-        #Signal.generate_longitudes(psr)
-        Signal.generate_longitudes1(psr) # TODO work on that
+        Signal.generate_longitudes_obsolete(psr)
+        #Signal.generate_longitudes1(psr) # TODO work on that
         
         # CHECKING
         x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1]
@@ -167,9 +167,49 @@ module NoName
         println("Szerokość profilu z symulacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
 
         Plot.signal(psr)
-        #Plot.pulses(psr)
+        Plot.pulses(psr)
         #Plot.pulses0(psr)
-        Plot.pulses1(psr)
+        #Plot.pulses1(psr)
+        
+    end
+
+
+    function generate_signal()
+        psr = Pulsar()
+
+        Lines.calculate_polarcaps!(psr)
+
+        #Field.calculate_dipole!(psr)
+
+        Lines.init_line_of_sight(psr, num=200)
+        Lines.calculate_line_of_sight(psr)
+
+        # TODO work on skip_steps to ensure only single pulses
+        #Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=20, speedup=10)
+        #Sparks.save_sparks(psr; num=1)
+
+        Sparks.load_sparks(psr; num=1)
+        Signal.generate_signal(psr; noise_level=0.05)
+        Signal.generate_pulses(psr)
+        #Signal.generate_longitudes(psr)
+        #Signal.generate_longitudes1(psr) # TODO work on that
+        
+        # CHECKING
+        x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1]
+        sph = Functions.cartesian2spherical([x,y,z])
+        rho = rad2deg(Signal.rho_from_theta(sph[2]))
+        println("rho: $rho")
+        println("theta=", rad2deg(sph[2]))
+        W = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
+        println("alpha = $(psr.alpha) beta = $(psr.beta)")
+        println("Szerokość profilu teoretyczna: $(round(W, digits=2))°")
+        println("Szerokość profilu z symulacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
+
+        Plot.signal(psr)
+        Plot.pulses(psr)
+        #Plot.pulses0(psr)
+        #Plot.pulses1(psr)
         
     end
 
@@ -179,6 +219,7 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
+        #generate_signal_obsolete()
         generate_signal()
 
         println("Bye")
