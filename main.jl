@@ -152,8 +152,8 @@ module NoName
         Sparks.load_sparks(psr; num=1)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
-        Signal.generate_longitudes_obsolete(psr)
-        #Signal.generate_longitudes1(psr) # TODO work on that
+        Signal.generate_longitudes_obsolete(psr) # TODO work on that
+        #Signal.generate_longitudes_obsolete1(psr)
         
         # CHECKING
         x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1]
@@ -166,7 +166,7 @@ module NoName
         println("Szerokość profilu teoretyczna: $(round(W, digits=2))°")
         println("Szerokość profilu z symulacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
 
-        Plot.signal(psr)
+        #Plot.signal(psr)
         Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
@@ -192,21 +192,10 @@ module NoName
         Sparks.load_sparks(psr; num=1)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
-        #Signal.generate_longitudes(psr)
-        #Signal.generate_longitudes1(psr) # TODO work on that
         
-        # CHECKING
-        x,y,z = psr.los_lines[end][1][1], psr.los_lines[end][2][1], psr.los_lines[end][3][1]
-        sph = Functions.cartesian2spherical([x,y,z])
-        rho = rad2deg(Signal.rho_from_theta(sph[2]))
-        println("rho: $rho")
-        println("theta=", rad2deg(sph[2]))
-        W = Signal.pulse_width_deg(psr.alpha, psr.beta, rho)
-        println("alpha = $(psr.alpha) beta = $(psr.beta)")
-        println("Szerokość profilu teoretyczna: $(round(W, digits=2))°")
-        println("Szerokość profilu z symulacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
+        # CHECKING in obsolete...
 
-        Plot.signal(psr)
+        #Plot.signal(psr)
         Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)

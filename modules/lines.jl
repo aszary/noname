@@ -69,7 +69,7 @@ module Lines
 
 
     function init_line_of_sight_obsolete(psr; num=10)
-
+        # DO NOT USE IT, IT IS WRONG...
         theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
 
         # determine phi range 
