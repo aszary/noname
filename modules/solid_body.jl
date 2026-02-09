@@ -34,7 +34,7 @@ Method:
   3. Algebraic conic fit: Au² + Buv + Cv² + Du + Ev = 1
   4. Extract semi-axes, orientation, center from conic matrix
 """
-function fit_ellipse(boundary_points::Matrix{Float64}, R::Float64)
+function fit_ellipse(boundary_points::Matrix{Float64}, R::Real)
     N = size(boundary_points, 2)
     @assert N >= 5 "Need at least 5 boundary points to fit an ellipse"
 
@@ -180,6 +180,21 @@ function rotate_sparks(positions::Matrix{Float64}, boundary::Matrix{Float64},
                        R::Float64, Δφ::Float64)
     ef = fit_ellipse(boundary, R)
     return rotate_sparks(positions, ef, Δφ)
+end
+
+### added for variable conversion
+function fit_ellipse(bpts::Vector{Vector{Float64}}, R::Real)
+    mat = permutedims(hcat(bpts...))
+    return fit_ellipse(mat, R)
+end
+
+function rotate_sparks!(positions::Vector{<:AbstractVector{<:Real}}, ef::EllipseFit, Δφ::Real)
+    cosφ = cos(Δφ)
+    sinφ = sin(Δφ)
+    for i in eachindex(positions)
+        positions[i] = _rotate_single_spark(positions[i], ef, cosφ, sinφ)
+    end
+    return positions
 end
 
 end # module

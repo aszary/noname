@@ -225,11 +225,10 @@ module NoName
         # TODO work on skip_steps to ensure only single pulses
         Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=20, speedup=10)
-        Sparks.simulate_sparks_solidbody(psr)
-        return
-        #Sparks.save_sparks(psr; num=1)
+        Sparks.simulate_sparks_solidbody(psr; n_steps=100)
+        Sparks.save_sparks(psr; num=2)
 
-        Sparks.load_sparks(psr; num=1)
+        Sparks.load_sparks(psr; num=2)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
         

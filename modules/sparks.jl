@@ -91,7 +91,7 @@ module Sparks
     function random_sparks_grid!(psr; min_dist=40, trials=1000)
         gr = psr.grid
         grid_size = size(gr[1])[1]
-        sp = []
+        sp = Vector{Float64}[]
         for i in 1:trials
             ii = rand(1:grid_size)
             jj = rand(1:grid_size)
@@ -326,7 +326,7 @@ module Sparks
 
     """
     function init_sparks1!(psr; rfs=[0.295, 0.5], num=3, center=true)
-        sp = []
+        sp = Vector{Float64}[]
 
         # at the center
         if center == true
@@ -378,7 +378,7 @@ module Sparks
 
     """
     function init_sparks2!(psr; rfs=[0.235, 0.71], num=3, offset=true, center=true)
-        sp = []
+        sp = Vector{Float64}[]
         # at the center
         if center == true
             car = Functions.spherical2cartesian([psr.r, 0, 0])
@@ -415,7 +415,7 @@ module Sparks
 
     """
     function init_sparks3!(psr; num=10, rfmax=0.7)
-        sp = []
+        sp = Vector{Float64}[]
         # TODO start here
         r = psr.r
         theta_max = rfmax * Functions.theta_max(1, psr)
@@ -639,40 +639,12 @@ module Sparks
     """
     Runs sparks simulation, for simple solidbody-like rotation 
     """
-    function simulate_sparks_solidbody(psr)
-
-
-        for (i,s) in enumerate(psr.sparks)
-            r = sqrt(s[1]^2 + s[2]^2 + s[3]^2)
-            println("$i $s $r")
-
-            #s[1] = s[1] + sv[i][1] * speedup
-            #s[2] = s[2] + sv[i][2] * speedup
-            # at the setellar surface
-            #s[3] = sqrt(psr.r^2 - s[1]^2 - s[2]^2)
-        end
-
-        #ω = 2π / (n_sparks * P3)  # rad per P1
-        #Δφ = ω  # bo dt = 1 okres P1
-
-        return
-
+    function simulate_sparks_solidbody(psr; n_steps=100)
+        ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
 
         for i in 1:n_steps
-            save = (i % skip_steps == 0)
-            # small grids around sparks
-            Sparks.create_grids!(psr) 
-            # potentials around sparks (drift direction, etc.)
-            Sparks.calculate_potentials!(psr; save=save) 
-            # one step based on sparks_velocity
-            Sparks.step(psr; speedup=speedup) 
-            if save == true
-                println("\n--- Simulation step $i/$n_steps ---")
-                # full grid for potential calculation
-                Sparks.create_grid!(psr) 
-                # potential at the polar cap
-                Sparks.calculate_potential_sparks!(psr) 
-            end
+            SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(3))
+            push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
 
     end
