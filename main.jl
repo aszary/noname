@@ -1,5 +1,6 @@
 module NoName
 
+    using JSON3
     include("modules/functions.jl")
     include("modules/plot.jl") 
     include("modules/field.jl")
@@ -65,6 +66,43 @@ module NoName
             line_of_sight = nothing
             r_em = 500_000 # TODO 20 km for tests change it to 500km
             beta = 4.0 # deg by default
+            los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
+            signal = nothing
+            pulses = nothing
+            longitudes = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+        end
+        function Pulsar(json_file)
+            d = JSON3.read(json_file)
+            #open("input/test.json", "w") do io
+            #    JSON3.pretty(io, JSON3.write(d))
+            #end
+            r = d.psr.R
+            p = d.psr.P0
+            pdot = d.psr.PDOT
+            alpha = d.psr.alpha
+            beta = d.psr.beta
+            r_em = d.psr.R_em
+            spark_radius = d.psr.spark_radius
+            r_pc = Functions.rdp(p, r)            
+            r_lc = Functions.rlc(p)
+            magnetic_axis = (r, 0, 0)
+            rotation_axis = (r, deg2rad(alpha), 0)
+            fields = Field.Test() # using test class for now
+            fields.beq = Field.beq(p, pdot)
+            polar_caps = nothing
+            pc = nothing
+            open_lines = [[], []]
+            sparks = nothing
+            grid = nothing
+            potential = nothing
+            electric_field = nothing
+            drift_velocity = nothing
+            pot_minmax = nothing
+            sparks_locations = []
+            sparks_velocity = nothing
+            potential_simulation = []
+            line_of_sight = nothing
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
             pulses = nothing
@@ -175,7 +213,7 @@ module NoName
 
 
     function generate_signal()
-        psr = Pulsar()
+        psr = Pulsar("input/1.json")
 
         Lines.calculate_polarcaps!(psr)
 
@@ -185,8 +223,10 @@ module NoName
         Lines.calculate_line_of_sight(psr)
 
         # TODO work on skip_steps to ensure only single pulses
-        #Sparks.init_sparks1!(psr ;num=5)
+        Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=20, speedup=10)
+        Sparks.simulate_sparks_solidbody(psr)
+        return
         #Sparks.save_sparks(psr; num=1)
 
         Sparks.load_sparks(psr; num=1)
@@ -195,8 +235,8 @@ module NoName
         
         # CHECKING in obsolete...
 
-        Plot.signal(psr)
-        #Plot.pulses(psr)
+        #Plot.signal(psr)
+        Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         

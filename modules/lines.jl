@@ -116,9 +116,6 @@ module Lines
 
         φ_s = Geometry.generate_uniform_phase_array(num, α ,β , psr.r_em, psr.p)
         θ_array, ψ_array = Geometry.emission_points_from_phase(φ_s, α, β, psr.r_em, psr.p)
-        #θ_array, ψ_array = Geometry.emission_points_with_ar(φ_s, α, β, psr.r_em, psr.p) # TODO test that first I am not sure
-        #println("theta: ", rad2deg.(θ_array))
-        #println("psi: ", rad2deg.(ψ_array))
 
         for i in eachindex(θ_array)
             ψ = ψ_array[i]

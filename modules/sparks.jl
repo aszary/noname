@@ -5,6 +5,7 @@ module Sparks
     using FileIO
     include("functions.jl")
     include("field.jl")
+    include("solid_body.jl")
 
 
     """
@@ -632,6 +633,48 @@ module Sparks
         #return r < 150 ? - log(r) * exp(-(r-1)/40) : 0.0 # zero po 150
         #return - cos(π*r/(2*150)) # some tests
         #return - a * (r/150)^2 # solid-body like ?
+    end
+
+
+    """
+    Runs sparks simulation, for simple solidbody-like rotation 
+    """
+    function simulate_sparks_solidbody(psr)
+
+
+        for (i,s) in enumerate(psr.sparks)
+            r = sqrt(s[1]^2 + s[2]^2 + s[3]^2)
+            println("$i $s $r")
+
+            #s[1] = s[1] + sv[i][1] * speedup
+            #s[2] = s[2] + sv[i][2] * speedup
+            # at the setellar surface
+            #s[3] = sqrt(psr.r^2 - s[1]^2 - s[2]^2)
+        end
+
+        #ω = 2π / (n_sparks * P3)  # rad per P1
+        #Δφ = ω  # bo dt = 1 okres P1
+
+        return
+
+
+        for i in 1:n_steps
+            save = (i % skip_steps == 0)
+            # small grids around sparks
+            Sparks.create_grids!(psr) 
+            # potentials around sparks (drift direction, etc.)
+            Sparks.calculate_potentials!(psr; save=save) 
+            # one step based on sparks_velocity
+            Sparks.step(psr; speedup=speedup) 
+            if save == true
+                println("\n--- Simulation step $i/$n_steps ---")
+                # full grid for potential calculation
+                Sparks.create_grid!(psr) 
+                # potential at the polar cap
+                Sparks.calculate_potential_sparks!(psr) 
+            end
+        end
+
     end
 
 
