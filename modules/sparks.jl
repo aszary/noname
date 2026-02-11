@@ -576,9 +576,9 @@ module Sparks
 
 
     """
-    Runs sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
+    Runs MC model sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
     """
-    function simulate_sparks(psr; n_steps=1000, skip_steps=10, speedup=10)
+    function simulate_sparks_mc(psr; n_steps=1000, skip_steps=10, speedup=10)
         for i in 1:n_steps
             save = (i % skip_steps == 0)
             # small grids around sparks
@@ -643,7 +643,7 @@ module Sparks
         ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
 
         for i in 1:n_steps
-            SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(3))
+            SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(360/n_steps))
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
 
