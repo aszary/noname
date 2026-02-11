@@ -167,7 +167,7 @@ module NoName
         #Sparks.init_sparks3!(psr ;num=30, rfmax=0.7)
 
         #Sparks.generate_potentials # TODO
-        Sparks.simulate_sparks(psr)
+        Sparks.simulate_sparks_mc(psr)
         Plot.steps2D(psr)
     end
 
@@ -243,12 +243,12 @@ module NoName
 
     function main()
 
-        #full_grid()
+        full_grid()
         #small_grids()
         #full_plus_smallgrids()
 
         #generate_signal_obsolete()
-        generate_signal()
+        #generate_signal()
 
         println("Bye")
     end

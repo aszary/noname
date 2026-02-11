@@ -81,7 +81,7 @@ module Plot
         gr = psr.grid
         if psr.sparks !== nothing
             for (i, j) in psr.sparks
-                scatter!(ax, gr[1][i], gr[2][j], gr[3][i, j], marker=:xcross, color=:red)
+                scatter!(ax, gr[1][round(Int,i)], gr[2][round(Int,j)], gr[3][round(Int,i), round(Int,j)], marker=:xcross, color=:red)
             end
         end
 

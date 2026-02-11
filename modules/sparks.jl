@@ -102,9 +102,9 @@ module Sparks
                 md = 2 * min_dist
                 # check distance between sparks
                 for si in sp
-                    sx = gr[1][si[1]]
-                    sy = gr[2][si[2]]
-                    sz = gr[3][si[1], si[2]]
+                    sx = gr[1][round(Int,si[1])]
+                    sy = gr[2][round(Int,si[2])]
+                    sz = gr[3][round(Int,si[1]), round(Int,si[2])]
                     dist = norm([sx, sy, sz] - [x, y, z])
                     #println(dist)
                     if dist < md
@@ -230,9 +230,9 @@ module Sparks
                 for k in 1:spark_num
                     (ii, jj) = sp[k]
                     if (gr[3][i, j]!=0) # (ii != i) && (jj !=j) && (gr[3][i, j]!=0) # why?
-                        sx = gr[1][ii]
-                        sy = gr[2][jj]
-                        sz = gr[3][ii, jj]
+                        sx = gr[1][round(Int,ii)]
+                        sy = gr[2][round(Int,jj)]
+                        sz = gr[3][round(Int,ii), round(Int,jj)]
                         dist = norm([gr[1][i], gr[2][j], gr[3][i, j]] - [sx, sy, sz])
                         #vv += v(dist) # nice looking dots (Inf) in the plot, but no
                         if dist != 0
