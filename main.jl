@@ -222,7 +222,7 @@ module NoName
         Lines.init_line_of_sight(psr, num=100)
         Lines.calculate_line_of_sight(psr)
 
-        # TODO work on skip_steps to ensure only single pulses
+        # TODO work on n_steps + skip_steps for single pulses
         Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, skip_steps=20, speedup=10)
         Sparks.simulate_sparks_solidbody(psr; n_steps=100)
@@ -243,12 +243,12 @@ module NoName
 
     function main()
 
-        full_grid()
+        #full_grid()
         #small_grids()
         #full_plus_smallgrids()
 
         #generate_signal_obsolete()
-        #generate_signal()
+        generate_signal()
 
         println("Bye")
     end
