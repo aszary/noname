@@ -8,7 +8,6 @@ module NoName
     include("modules/sparks.jl")
     include("modules/signal.jl")
 
-
     mutable struct Pulsar
         r # pulsar radiuis in [m]
         p # pulsar period in [s]
@@ -162,8 +161,8 @@ module NoName
         #Lines.generate_open!(psr)
 
         #Sparks.random_sparks!(psr) 
-        Sparks.init_sparks1!(psr ;num=5)
-        #Sparks.init_sparks2!(psr ;num=5)
+        #Sparks.init_sparks1!(psr ;num=5)
+        Sparks.init_sparks2!(psr ;num=5)
         #Sparks.init_sparks3!(psr ;num=30, rfmax=0.7)
 
         #Sparks.generate_potentials # TODO
@@ -187,7 +186,7 @@ module NoName
         #Sparks.simulate_sparks(psr; n_steps=2000, skip_steps=20, speedup=10)
         #Sparks.save_sparks(psr; num=1)
 
-        Sparks.load_sparks(psr; num=1)
+        Sparks.load_sparks(psr; num=2)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
         Signal.generate_longitudes_obsolete(psr) # TODO work on that
@@ -204,7 +203,7 @@ module NoName
         println("Szerokość profilu teoretyczna: $(round(W, digits=2))°")
         println("Szerokość profilu z symulacji ", psr.longitudes[end]-psr.longitudes[1], " deg.")
 
-        #Plot.signal(psr)
+        Plot.signal(psr)
         Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
@@ -223,10 +222,10 @@ module NoName
         Lines.calculate_line_of_sight(psr)
 
         # TODO work on n_steps + skip_steps for single pulses
-        Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, skip_steps=20, speedup=10)
         Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        Sparks.save_sparks(psr; num=2)
+        #Sparks.save_sparks(psr; num=2)
 
         Sparks.load_sparks(psr; num=2)
         Signal.generate_signal(psr; noise_level=0.05)
@@ -234,7 +233,7 @@ module NoName
         
         # CHECKING in obsolete...
 
-        #Plot.signal(psr)
+        Plot.signal(psr)
         Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)

@@ -105,7 +105,7 @@ module Lines
     end
 
 
-    function init_line_of_sight(psr; num=10)
+    function init_line_of_sight(psr; num=100)
 
          # calculates line of sight
         psr.line_of_sight = []
