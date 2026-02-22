@@ -1,6 +1,9 @@
 module Lines
     using LinearAlgebra # Niezbędne dla: norm, dot, cross
     include("functions.jl")
+    include("field.jl")
+    include("transformations.jl")
+    include("geometry.jl")
 
     """
     Core geometry calculator.
@@ -73,5 +76,81 @@ module Lines
             end
         end
     end
+    function init_line_of_sight(psr; num=10)
+
+         # calculates line of sight
+        psr.line_of_sight = []
+        psr.longitudes = zeros(num)
+
+        α = deg2rad(psr.alpha)
+        β = deg2rad(psr.beta)
+
+        φ_s = Geometry.generate_uniform_phase_array(num, α ,β , psr.r_em, psr.p)
+        θ_array, ψ_array = Geometry.emission_points_from_phase(φ_s, α, β, psr.r_em, psr.p)
+
+        for i in eachindex(θ_array)
+            ψ = ψ_array[i]
+            θ = θ_array[i]
+            push!(psr.line_of_sight, Functions.spherical2cartesian([psr.r_em, θ, ψ]))
+            psr.longitudes[i] = rad2deg(φ_s[i])
+        end
+
+    end
+
+
+
+    function calculate_line_of_sight(psr, step=10)
+
+        if isnothing(psr.line_of_sight)
+            println("Init line of sight first!")
+            return
+        end
+
+        fv = psr.fields
+
+        for point in psr.line_of_sight
+            pos = copy(point)
+            pos_sph = Functions.cartesian2spherical(pos)
+            # new line with 
+            push!(psr.los_lines, [Float64[], Float64[], Float64[]]) # push!(los[end][1], x) etc.
+            push!(psr.los_lines[end][1], pos[1]) # x coordinate
+            push!(psr.los_lines[end][2], pos[2]) # y coordinate
+            push!(psr.los_lines[end][3], pos[3]) # z coordinate
+            while (pos_sph[1] >= psr.r) 
+                b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+                b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                st = - b / norm(b) * step # negative step towards the surface
+                pos += st # new position for magnetic line
+                pos_sph = Functions.cartesian2spherical(pos)
+                push!(psr.los_lines[end][1], pos[1])
+                push!(psr.los_lines[end][2], pos[2])
+                push!(psr.los_lines[end][3], pos[3])
+            end
+            
+            # Correct last point - interpolate to surface
+            line = psr.los_lines[end]
+            n = length(line[1])
+            
+            # Second to last point (above surface)
+            pos_prev = [line[1][n-1], line[2][n-1], line[3][n-1]]
+            # Last point (below surface)
+            pos_last = [line[1][n], line[2][n], line[3][n]]
+            
+            r_prev = norm(pos_prev)
+            r_last = norm(pos_last)
+            
+            # Interpolation factor
+            t = (r_prev - psr.r) / (r_prev - r_last)
+            pos_surface = pos_prev + t * (pos_last - pos_prev)
+            
+            # Overwrite last point
+            line[1][n] = pos_surface[1]
+            line[2][n] = pos_surface[2]
+            line[3][n] = pos_surface[3]
+
+        end
+        #println(size(psr.los_lines))
+    end
+
 end
 #przerzucić wszystko co związane z liniami pola magnetycznego i los tutaj

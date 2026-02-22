@@ -7,7 +7,6 @@ module NoName
     include("modules/transformations.jl")
     include("modules/lines.jl")
     include("modules/signal.jl")
-    
 
     mutable struct Pulsar
         r # pulsar radiuis in [m]
@@ -32,6 +31,7 @@ module NoName
         sparks_velocity # step in simulation)
         potential_simulation # potential for simulation step
         line_of_sight #line of sight points at the polar cap
+        los_lines 
         r_em #emission height
         beta #impact parameter
         signal # radio intensity
@@ -62,14 +62,15 @@ module NoName
             sparks_locations = []
             sparks_velocity = nothing
             potential_simulation = []
-            line_of_sight = Vector{Vector{Vector{Float64}}}()
+            line_of_sight = nothing
+            los_lines = Vector{Vector{Vector{Float64}}}()
             r_em = 500000
-            beta = 1
+            beta = 4
             signal = nothing
             spark_radius = 20
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, r_em, beta, signal, spark_radius, pulses, longitudes)
+            return new(r, p, pdot, r_lc, alpha, magnetic_axis, rotation_axis, pc, r_pc, fields, grid, sparks, locations, sparks_velocities, potential, pot_minmax, electric_field, drift_velocity, sparks_locations, sparks_velocities, potential_simulation, line_of_sight, los_lines, r_em, beta, signal, spark_radius, pulses, longitudes)
         end
     end
     function full_grid()
@@ -150,8 +151,9 @@ module NoName
         Field.pc(psr; phi_num=100)
         Field.generate_polarcap_lines!(psr)
 
-        Lines.calculate_los(psr)
-        
+        #Lines.calculate_los(psr)
+        Lines.init_line_of_sight(psr, num=100)
+        Lines.calculate_line_of_sight(psr)
         #Sparks.create_grid!(psr; size=500) # Still needed for potential map calculation
         #Sparks.init_sparks1!(psr; rfs=[0.3, 0.6], num=6, center=true)
         #Sparks.simulate_sparks!(psr)
@@ -167,8 +169,8 @@ module NoName
         Signal.generate_pulses(psr)
         
         #Plot.signal(psr)
-        #Plot.pulses(psr) #heatmap
-        Plot.pulses0(psr) #lines
+        Plot.pulses(psr) #heatmap
+        #Plot.pulses0(psr) #lines
         #Plot.pulses1(psr)
         println("Bye")
     end
