@@ -186,7 +186,7 @@ function sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
         a_out -= 2.0 * h_sprk;  a_in -= 2.0 * h_sprk
         b_out -= b_cap / a_cap * 2.0 * h_sprk
         b_in  -= b_cap / a_cap * 2.0 * h_sprk
-    end
+    end # ring end
 
     # ------------------------------------------------------------------
     # Central (core) spark that fills the innermost region of the cap.
