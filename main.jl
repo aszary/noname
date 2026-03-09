@@ -183,12 +183,17 @@ module NoName
         Lines.calculate_line_of_sight(psr)
 
         # TODO work on n_steps + skip_steps for single pulses
-        Sparks.init_sparks1!(psr ;num=5)
-        Sparks.init_sparks_lbc!(psr ;num=5)
+        #Sparks.init_sparks1!(psr ;num=5)
+        Sparks.init_sparks_lbc!(psr ;num=2)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, skip_steps=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
         #Sparks.simulate_sparks_lbc(psr; n_steps=100)
         #Sparks.save_sparks(psr; num=2)
+
+        println(psr.sparks)
+        Plot.sparks(psr)
+
+        return
 
         Sparks.load_sparks(psr; num=2)
         Signal.generate_signal(psr; noise_level=0.05)
@@ -207,9 +212,9 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        #generate_signal()
+        generate_signal()
 
-        LBC.animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h_sprk=3, h_drft=0.1)
+        #LBC.animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h_sprk=3, h_drft=0.1)
 
         println("Bye")
     end

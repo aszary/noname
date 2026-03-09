@@ -437,49 +437,31 @@ module Sparks
 
     """
     Initiate sparks at the polar cap using the LBC (Basu) ring-packing algorithm.
-    Sparks are placed on concentric rings; number of sparks per ring is derived
-    from the annular area / spark area packing formula (factor 0.75), matching
-    the geometry used in `LBC.sparkconfig`. A central spark is always added.
+    Number of sparks per ring is derived from the annular area / spark area
+    packing formula (factor 0.75), matching `LBC.sparkconfig`. Sparks are placed
+    uniformly around each ring. A central spark is always added.
 
     # Arguments
     - num: number of concentric spark rings
-    - co_angl: co-rotation phase offset [rad] (initial angular offset)
     """
-    function init_sparks_lbc!(psr; num=3, co_angl=0.0)
+    function init_sparks_lbc!(psr; num=3)
         sp = Vector{Float64}[]
 
-        r_pc   = psr.r_pc
-        h_sprk = r_pc / (2 * num)   # spark semi-axis so that num rings fit exactly
+        h_sprk = psr.r_pc / (2 * num)   # spark semi-axis so that num rings fit exactly
 
-        # Annular ring boundaries, starting from the outermost
-        a_out = r_pc
+        a_out = psr.r_pc
         a_in  = a_out - 2.0 * h_sprk
 
         for ring in 1:num
-            a_trk = 0.5 * (a_out + a_in)   # track mid-line radius
+            a_trk = 0.5 * (a_out + a_in)
 
             # Number of sparks on this ring (LBC packing formula)
-            N_s = floor(Int, 0.75 * (a_out^2 - a_in^2) / h_sprk^2)
-            if N_s < 1
-                N_s = 1
-            end
-            theta_sp = 2π / N_s
+            N_s = max(1, floor(Int, 0.75 * (a_out^2 - a_in^2) / h_sprk^2))
 
-            # Upper half-ring: angles decrease from π toward 0
-            ang = π - theta_sp / 2 - co_angl
-            while ang >= theta_sp - co_angl
-                push!(sp, Functions.spherical2cartesian([psr.r, asin(clamp(a_trk / psr.r, -1.0, 1.0)), ang]))
-                ang -= theta_sp
+            for phi in range(0, 2π, length=N_s+1)[1:N_s]
+                push!(sp, Functions.spherical2cartesian([psr.r, asin(clamp(a_trk / psr.r, -1.0, 1.0)), phi]))
             end
 
-            # Lower half-ring: angles increase from π toward 2π
-            ang = π + theta_sp / 2 - co_angl
-            while ang <= 2π - theta_sp - co_angl
-                push!(sp, Functions.spherical2cartesian([psr.r, asin(clamp(a_trk / psr.r, -1.0, 1.0)), ang]))
-                ang += theta_sp
-            end
-
-            # Step inward
             a_out -= 2.0 * h_sprk
             a_in  -= 2.0 * h_sprk
         end
