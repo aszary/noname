@@ -184,8 +184,10 @@ module NoName
 
         # TODO work on n_steps + skip_steps for single pulses
         Sparks.init_sparks1!(psr ;num=5)
+        Sparks.init_sparks_lbc!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, skip_steps=20, speedup=10)
-        Sparks.simulate_sparks_solidbody(psr; n_steps=100)
+        #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
+        #Sparks.simulate_sparks_lbc(psr; n_steps=100)
         #Sparks.save_sparks(psr; num=2)
 
         Sparks.load_sparks(psr; num=2)
