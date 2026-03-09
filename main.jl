@@ -205,9 +205,9 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        generate_signal()
+        #generate_signal()
 
-        #LBC.animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h_sprk=3, h_drft=0.1)
+        LBC.animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h_sprk=3, h_drft=0.1)
 
         println("Bye")
     end
