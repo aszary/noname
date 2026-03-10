@@ -8,6 +8,7 @@ module NoName
     include("modules/sparks.jl")
     include("modules/signal.jl")
     include("modules/lbc.jl")
+    include("modules/lbc2.jl")
 
     mutable struct Pulsar
         r # pulsar radiuis in [m]
@@ -193,14 +194,14 @@ module NoName
         #Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
-        return
+        #return
 
         Sparks.load_sparks(psr; num=2)
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
         
         #Plot.signal(psr)
-        Plot.pulses(psr)
+        #Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -214,7 +215,8 @@ module NoName
 
         #generate_signal()
 
-        LBC.animate(;ntime=200, th_cap=0.0, a_cap=15.0, b_cap=15.0, co_angl=30.0, h_sprk=3, h_drft=0.1)
+        #LBC.animate(;ntime=200, th_cap=0.0, a_cap=15.0, b_cap=15.0, co_angl=30.0, h_sprk=3, h_drft=0.1)
+        LBC2.animate(;ntime=200, th_cap=0.0, a_cap=15.0, b_cap=15.0, co_angl=30.0, h_sprk=3, h_drft=0.1)
 
         println("Bye")
     end

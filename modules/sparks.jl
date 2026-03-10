@@ -435,44 +435,6 @@ module Sparks
     end
 
 
-    """
-    Initiate sparks at the polar cap using the LBC (Basu) ring-packing algorithm.
-    Number of sparks per ring is derived from the annular area / spark area
-    packing formula (factor 0.75), matching `LBC.sparkconfig`. Sparks are placed
-    uniformly around each ring. A central spark is always added.
-
-    # Arguments
-    - num: number of concentric spark rings
-    """
-    function init_sparks_lbc!(psr; num=3)
-        sp = Vector{Float64}[]
-
-        h_sprk = psr.r_pc / (2 * num)   # spark semi-axis so that num rings fit exactly
-
-        a_out = psr.r_pc
-        a_in  = a_out - 2.0 * h_sprk
-
-        for ring in 1:num
-            a_trk = 0.5 * (a_out + a_in)
-
-            # Number of sparks on this ring (LBC packing formula)
-            N_s = max(1, floor(Int, 0.75 * (a_out^2 - a_in^2) / h_sprk^2))
-
-            for phi in range(0, 2π, length=N_s+1)[1:N_s]
-                push!(sp, Functions.spherical2cartesian([psr.r, asin(clamp(a_trk / psr.r, -1.0, 1.0)), phi]))
-            end
-
-            a_out -= 2.0 * h_sprk
-            a_in  -= 2.0 * h_sprk
-        end
-
-        # Central spark
-        push!(sp, Functions.spherical2cartesian([psr.r, 0.0, 0.0]))
-
-        psr.sparks = sp
-        println("Number of sparks added (LBC): ", length(sp))
-    end
-
 
     """
     Creates small grids around sparks to calculate gradient (for simulation)...
@@ -686,6 +648,34 @@ module Sparks
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
 
+    end
+
+
+    """
+    Runs sparks simulation, for LBC model 
+    """
+    function simulate_sparks_lbc(psr; n_steps=100)
+
+        #=
+        struct EllipseFit
+    center_local::Vector{Float64}  # ellipse center in tangent plane
+    a::Float64                      # semi-major axis
+    b::Float64                      # semi-minor axis
+    θ::Float64                      # orientation angle of major axis
+    x_hat::Vector{Float64}          # local x-axis (tangent plane)
+    y_hat::Vector{Float64}          # local y-axis (tangent plane)
+    z_hat::Vector{Float64}          # local z-axis (normal to tangent plane)
+    centroid::Vector{Float64}       # cap centroid on sphere
+    R::Float64                      # sphere radius
+    end
+    =#
+
+
+        ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
+
+        println(ef.a)
+
+       
     end
 
 
