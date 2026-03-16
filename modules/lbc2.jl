@@ -315,9 +315,9 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
     lines!(ax, x_elips, y_elips; color = :black, linewidth = 2)
 
     spark_pts   = Observable(Point2f[])   # spark centre positions
-    spark_sizes = Observable(Float64[])   # spark diameters in data units
+    spark_sizes = Observable(Vec2f[])     # spark diameters (major, minor) in data units
     scatter!(ax, spark_pts; markersize = spark_sizes, markerspace = :data,
-             color = :steelblue, marker = :circle)
+             color = :steelblue, marker = :circle, rotation = -th_cap)
 
     display(fig)
 
@@ -341,7 +341,7 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
 
         # Push new spark data to the plot and update the frame counter in the title
         spark_pts[]   = Point2f.(sx, sy)
-        spark_sizes[] = 2.0 .* ss    # diameter = 2 × semi-axis
+        spark_sizes[] = Vec2f.(2.0 .* ss, 2.0 .* ss .* b_cap ./ a_cap)   # elliptical: (major, minor) diameters
         title_obs[]   = "Iteration # $step"
         sleep(0.05)   # ~50 ms per frame — matches the delay(50) call in the C original
         println("Number of sparks: ", length(sx))

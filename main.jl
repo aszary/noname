@@ -213,10 +213,10 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        #generate_signal()
+        generate_signal()
 
-        #LBC.animate(;ntime=200, th_cap=0.0, a_cap=15.0, b_cap=15.0, co_angl=30.0, h_sprk=3, h_drft=0.1)
-        LBC2.animate(;ntime=200, th_cap=0.0, a_cap=15.0, b_cap=15.0, co_angl=30.0, h_sprk=3, h_drft=0.1)
+        #LBC.animate(;ntime=200, th_cap=0.0, a_cap=30.0, b_cap=10.0, co_angl=30.0, h_sprk=5.5, h_drft=0.1)
+        #LBC2.animate(;ntime=200, th_cap=0.0, a_cap=30.0, b_cap=10.0, co_angl=30.0, h_sprk=5.5, h_drft=0.1)
 
         println("Bye")
     end

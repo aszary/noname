@@ -6,6 +6,7 @@ module Sparks
     include("functions.jl")
     include("field.jl")
     include("solid_body.jl")
+    include("lbc2.jl")
 
 
     """
@@ -654,28 +655,21 @@ module Sparks
     """
     Runs sparks simulation, for LBC model 
     """
-    function simulate_sparks_lbc(psr; n_steps=100)
-
-        #=
-        struct EllipseFit
-    center_local::Vector{Float64}  # ellipse center in tangent plane
-    a::Float64                      # semi-major axis
-    b::Float64                      # semi-minor axis
-    θ::Float64                      # orientation angle of major axis
-    x_hat::Vector{Float64}          # local x-axis (tangent plane)
-    y_hat::Vector{Float64}          # local y-axis (tangent plane)
-    z_hat::Vector{Float64}          # local z-axis (normal to tangent plane)
-    centroid::Vector{Float64}       # cap centroid on sphere
-    R::Float64                      # sphere radius
-    end
-    =#
-
+    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1)
 
         ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
 
-        println(ef.a)
+        println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
 
-       
+        LBC2.animate(;
+            ntime   = n_steps,
+            a_cap   = ef.a,
+            b_cap   = ef.b,
+            th_cap  = rad2deg(ef.θ),
+            h_sprk  = psr.spark_radius,
+            co_angl = co_angl,
+            h_drft  = h_drft,
+        )
     end
 
 
