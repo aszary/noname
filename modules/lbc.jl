@@ -1,5 +1,5 @@
 # Based on Rahul Basu original C code.
-module LBC2
+module LBC
 
 using GLMakie
 

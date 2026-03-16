@@ -661,7 +661,7 @@ module Sparks
 
         println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
 
-        LBC2.animate(;
+        LBC.animate(;
             ntime   = n_steps,
             a_cap   = ef.a,
             b_cap   = ef.b,
