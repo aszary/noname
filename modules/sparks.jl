@@ -6,7 +6,7 @@ module Sparks
     include("functions.jl")
     include("field.jl")
     include("solid_body.jl")
-    include("lbc2.jl")
+    include("lbc.jl")
 
 
     """

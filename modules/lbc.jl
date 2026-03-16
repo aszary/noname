@@ -1,5 +1,5 @@
 # Based on Rahul Basu original C code.
-module LBC
+module LBC2
 
 using GLMakie
 
@@ -44,8 +44,8 @@ end
 #
 # Returns
 # -------
-#   x_pts, y_pts : coordinates of every raster cell that falls inside
-#                  at least one spark — ready for scatter plotting.
+#   spark_x, spark_y : x/y coordinates of each spark centre [m]
+#   spark_size        : effective semi-axis of each spark [m]
 # -----------------------------------------------------------------------------
 function sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
                      h_sprk, h_drft, a_cap, b_cap, th_cap,
@@ -195,42 +195,7 @@ function sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
     push!(spark_x, x_cent);  push!(spark_y, y_cent)
     push!(spark_size, a_cap - N_trk * 2.0 * h_sprk - 1.5 * h_drft)
 
-    n_sparks = length(spark_x)
-
-    # ------------------------------------------------------------------
-    # Rasterize: walk a regular grid of step h_drft over the cap area and
-    # record every cell that falls inside at least one spark ellipse.
-    # The ellipse test in the rotated (tilted) frame is:
-    #   (xt / a_s)² + (yt / b_s)² < 1
-    # ------------------------------------------------------------------
-    x_pts = Float64[]   # x-coordinates of lit raster cells
-    y_pts = Float64[]   # y-coordinates of lit raster cells
-
-    x_val = h_drft / 2          # start half a step in so cells are centred
-    while x_val < 2 * x_cent
-        y_val = h_drft / 2
-        while y_val < 2 * y_cent
-            for k in 1:n_sparks
-                a_s = spark_size[k]
-                b_s = a_s * b_cap / a_cap   # keep the same ellipticity as the cap
-                if a_s > 0 && b_s > 0
-                    # Shift to spark-centre frame, then rotate into cap frame
-                    dx, dy = x_val - spark_x[k], y_val - spark_y[k]
-                    xt, yt = coortrans(dx, dy, th_cap)
-                    # Standard ellipse membership test
-                    if sqrt(xt^2 / a_s^2 + yt^2 / b_s^2) < 1.0
-                        push!(x_pts, x_val)
-                        push!(y_pts, y_val)
-                        break   # point already lit — skip remaining sparks
-                    end
-                end
-            end
-            y_val += h_drft
-        end
-        x_val += h_drft
-    end
-
-    return x_pts, y_pts
+    return spark_x, spark_y, spark_size
 end
 
 
@@ -349,8 +314,10 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
 
     lines!(ax, x_elips, y_elips; color = :black, linewidth = 2)
 
-    pts = Observable(Point2f[])    # raster points updated at each frame
-    scatter!(ax, pts; color = :steelblue, markersize = 3, marker = :circle)
+    spark_pts   = Observable(Point2f[])   # spark centre positions
+    spark_sizes = Observable(Vec2f[])     # spark diameters (major, minor) in data units
+    scatter!(ax, spark_pts; markersize = spark_sizes, markerspace = :data,
+             color = :steelblue, marker = :circle, rotation = -th_cap)
 
     display(fig)
 
@@ -367,15 +334,17 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
     # =========================================================================
     for step in 1:ntime
 
-        # Compute rasterized spark pattern for the current angles
-        x_pts, y_pts = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
-                                    h_sprk, h_drft, a_cap, b_cap, th_cap,
-                                    co_angl, x_cent, y_cent, N_trk, trk_max)
+        # Compute spark positions and sizes for the current angles
+        sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
+                                  h_sprk, h_drft, a_cap, b_cap, th_cap,
+                                  co_angl, x_cent, y_cent, N_trk, trk_max)
 
-        # Push new points to the plot and update the frame counter in the title
-        pts[]       = Point2f.(x_pts, y_pts)
-        title_obs[] = "Iteration # $step"
+        # Push new spark data to the plot and update the frame counter in the title
+        spark_pts[]   = Point2f.(sx, sy)
+        spark_sizes[] = Vec2f.(2.0 .* ss, 2.0 .* ss .* b_cap ./ a_cap)   # elliptical: (major, minor) diameters
+        title_obs[]   = "Iteration # $step"
         sleep(0.05)   # ~50 ms per frame — matches the delay(50) call in the C original
+        println("Number of sparks: ", length(sx))
 
         # ---------------------------------------------------------------------
         # Advance spark angles by one drift step and rebuild the spark lists.
