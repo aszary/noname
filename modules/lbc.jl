@@ -201,6 +201,115 @@ end
 
 
 
+# -----------------------------------------------------------------------------
+# generate_sparks — compute spark positions and sizes without animation
+#
+# Same parameters as animate(), plus:
+#   n_steps    : total number of drift steps to simulate
+#   skip_steps : save a snapshot every skip_steps steps (at steps 1, 1+skip, ...)
+#
+# Returns two vectors, one entry per saved snapshot:
+#   positions  : Vector of (spark_x, spark_y) tuples
+#   sizes      : Vector of spark_size arrays
+# -----------------------------------------------------------------------------
+function generate_sparks(;th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
+                          h_sprk=2.6, h_drft=0.1, n_steps=100, save_every=1)
+
+    th_cap  = deg2rad(th_cap)
+    co_angl = deg2rad(co_angl)
+
+    a_sprk = h_sprk
+    b_sprk = a_sprk * b_cap / a_cap
+
+    x_cent = sqrt((a_cap * cos(th_cap))^2 + (b_cap * sin(th_cap))^2)
+    y_cent = sqrt((a_cap * sin(th_cap))^2 + (b_cap * cos(th_cap))^2)
+
+    N_trk = floor(Int, b_cap / (2 * b_sprk))
+
+    theta_sp = zeros(Float64, N_trk)
+    let a_o = a_cap, a_i = a_o - 2*a_sprk,
+        b_o = b_cap, b_i = b_o - 2*b_sprk
+        for ring in 1:N_trk
+            N_s = floor(Int, 0.75 * (a_o*b_o - a_i*b_i) / (a_sprk*b_sprk))
+            theta_sp[ring] = 2π / N_s
+            a_o -= 2*a_sprk;  a_i -= 2*a_sprk
+            b_o -= 2*b_sprk;  b_i -= 2*b_sprk
+        end
+    end
+
+    trk_max = floor(Int,
+        0.75 * (a_cap*b_cap - (a_cap - 2*a_sprk)*(b_cap - 2*b_sprk)) /
+        (a_sprk * b_sprk) / 2) + 1
+
+    sz        = 2 * trk_max * N_trk + 2
+    th_sprk_u = zeros(Float64, sz)
+    th_sprk_d = zeros(Float64, sz)
+    N_up      = zeros(Int, N_trk)
+    N_dn      = zeros(Int, N_trk)
+
+    for ring in 1:N_trk
+        u_off = (ring - 1) * trk_max
+        d_off = (ring - 1) * trk_max
+        th_sprk_u[u_off + 1] = π - theta_sp[ring] / 2 - co_angl
+        N_up[ring] = 1
+        while th_sprk_u[u_off + N_up[ring]] >= theta_sp[ring] - co_angl
+            th_sprk_u[u_off + N_up[ring] + 1] = th_sprk_u[u_off + N_up[ring]] - theta_sp[ring]
+            N_up[ring] += 1
+        end
+        th_sprk_d[d_off + 1] = π + theta_sp[ring] / 2 - co_angl
+        N_dn[ring] = 1
+        while th_sprk_d[d_off + N_dn[ring]] <= 2π - theta_sp[ring] - co_angl
+            th_sprk_d[d_off + N_dn[ring] + 1] = th_sprk_d[d_off + N_dn[ring]] + theta_sp[ring]
+            N_dn[ring] += 1
+        end
+    end
+
+    mean_outer_radius = 0.5 * (a_cap + (a_cap - 2 * a_sprk))
+    del_theta_drift   = h_drft / mean_outer_radius
+
+    positions = Vector{Tuple{Vector{Float64}, Vector{Float64}}}()
+    sizes     = Vector{Vector{Float64}}()
+
+    for step in 1:n_steps
+
+        # advance angles by one drift step
+        for ring in 1:N_trk
+            u_off = (ring - 1) * trk_max
+            d_off = (ring - 1) * trk_max
+            th_sprk_u[u_off + 1] -= del_theta_drift
+            if th_sprk_u[u_off + 1] < π - theta_sp[ring] - co_angl
+                th_sprk_u[u_off + 1] += theta_sp[ring]
+            end
+            N_up[ring] = 1
+            while th_sprk_u[u_off + N_up[ring]] >= theta_sp[ring] - co_angl
+                th_sprk_u[u_off + N_up[ring] + 1] = th_sprk_u[u_off + N_up[ring]] - theta_sp[ring]
+                N_up[ring] += 1
+            end
+            th_sprk_d[d_off + 1] += del_theta_drift
+            if th_sprk_d[d_off + 1] > π + theta_sp[ring] - co_angl
+                th_sprk_d[d_off + 1] -= theta_sp[ring]
+            end
+            N_dn[ring] = 1
+            while th_sprk_d[d_off + N_dn[ring]] <= 2π - theta_sp[ring] - co_angl
+                th_sprk_d[d_off + N_dn[ring] + 1] = th_sprk_d[d_off + N_dn[ring]] + theta_sp[ring]
+                N_dn[ring] += 1
+            end
+        end
+
+        # save snapshot every save_every steps
+        if step  % save_every == 0
+            sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
+                                     h_sprk, h_drft, a_cap, b_cap, th_cap,
+                                     co_angl, x_cent, y_cent, N_trk, trk_max)
+            push!(positions, (sx, sy))
+            push!(sizes, ss)
+        end
+    end
+
+    return positions, sizes
+end
+
+
 function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h_sprk=2.6, h_drft=0.1)
     
     th_cap = deg2rad(th_cap)

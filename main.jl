@@ -182,14 +182,12 @@ module NoName
         Lines.init_line_of_sight(psr, num=100)
         Lines.calculate_line_of_sight(psr)
 
-        # TODO work on n_steps + skip_steps for single pulses
+        # TODO work on n_steps + save_every for single pulses
         #Sparks.init_sparks1!(psr ;num=5)
-        #Sparks.simulate_sparks_mc(psr; n_steps=2000, skip_steps=20, speedup=10)
+        #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        
         # TODO work on that one
-        Sparks.simulate_sparks_lbc(psr; n_steps=100)
-        
+        #Sparks.simulate_sparks_lbc(psr; n_steps=100)
         #Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
@@ -200,7 +198,7 @@ module NoName
         Signal.generate_pulses(psr)
         
         #Plot.signal(psr)
-        #Plot.pulses(psr)
+        Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
