@@ -197,8 +197,8 @@ module NoName
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
         
-        #Plot.signal(psr)
-        Plot.pulses(psr)
+        Plot.signal(psr)
+        #Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
