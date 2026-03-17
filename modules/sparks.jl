@@ -6,6 +6,7 @@ module Sparks
     include("functions.jl")
     include("field.jl")
     include("solid_body.jl")
+    include("lbc.jl")
 
 
     """
@@ -435,6 +436,7 @@ module Sparks
     end
 
 
+
     """
     Creates small grids around sparks to calculate gradient (for simulation)...
 
@@ -578,9 +580,9 @@ module Sparks
     """
     Runs MC model sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
     """
-    function simulate_sparks_mc(psr; n_steps=1000, skip_steps=10, speedup=10)
+    function simulate_sparks_mc(psr; n_steps=1000, save_every=10, speedup=10)
         for i in 1:n_steps
-            save = (i % skip_steps == 0)
+            save = (i % save_every == 0)
             # small grids around sparks
             Sparks.create_grids!(psr) 
             # potentials around sparks (drift direction, etc.)
@@ -649,6 +651,46 @@ module Sparks
 
     end
 
+
+    """
+    Runs sparks simulation, for LBC model 
+    """
+    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1)
+
+        ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
+
+        println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
+
+        #=
+        LBC.animate(;
+            ntime   = n_steps,
+            a_cap   = ef.a,
+            b_cap   = ef.b,
+            th_cap  = rad2deg(ef.θ),
+            h_sprk  = psr.spark_radius,
+            co_angl = co_angl,
+            h_drft  = h_drft*10,
+        )
+        
+        =#
+
+        positions, sizes = LBC.generate_sparks(;
+            a_cap   = ef.a,
+            b_cap   = ef.b,
+            th_cap  = rad2deg(ef.θ),
+            h_sprk  = psr.spark_radius,
+            co_angl = co_angl,
+            h_drft  = h_drft, 
+            n_steps=100,
+            save_every=1)
+
+            (sx, sy) = positions
+            println(size(sx[1]))
+            #println(size(sx))
+            println(size(sizes))
+
+
+    end
 
 
 

@@ -634,6 +634,40 @@ module Plot
 
     end
 
+
+    function sparks(psr;)
+
+        # better accuracy for the sphere 
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
+        # plot polar cap
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # line of sight end points
+        for line in psr.los_lines
+            scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        if psr.sparks !== nothing
+            for sp in psr.sparks
+                scatter!(ax, sp[1], sp[2], sp[3], marker=:xcross, color=:red)
+            end
+        end
+
+        cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
+
+        display(fig)
+    end
+
+
     function signal(psr; delay=0.1)
 
         # better accuracy for the sphere 
