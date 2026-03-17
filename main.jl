@@ -187,11 +187,11 @@ module NoName
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
         # TODO work on that one
-        Sparks.simulate_sparks_lbc(psr; n_steps=100)
-        #Sparks.save_sparks(psr; num=2)
+        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=90.0, h_drft=0.5)
+        Sparks.save_sparks(psr; num=2)
 
-        Plot.sparks(psr)
-        return
+        #Plot.sparks(psr)
+        #return
 
         Sparks.load_sparks(psr; num=2)
         Signal.generate_signal(psr; noise_level=0.05)

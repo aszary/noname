@@ -2,6 +2,7 @@
 module LBC
 
 using GLMakie
+using LinearAlgebra
 
 
 # -----------------------------------------------------------------------------
@@ -212,7 +213,7 @@ end
 #   positions  : Vector of (spark_x, spark_y) tuples
 #   sizes      : Vector of spark_size arrays
 # -----------------------------------------------------------------------------
-function generate_sparks(psr; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
+function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
                           h_sprk=2.6, h_drft=0.1, n_steps=100, save_every=1)
 
     th_cap  = deg2rad(th_cap)
@@ -301,8 +302,14 @@ function generate_sparks(psr; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
             sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
                                      h_sprk, h_drft, a_cap, b_cap, th_cap,
                                      co_angl, x_cent, y_cent, N_trk, trk_max)
-            sz = sqrt.(psr.r^2 .- sx.^2 .- sy.^2)  # at the stellar surface
-            push!(positions, [[sx[i], sy[i], sz[i]] for i in eachindex(sx)])
+            sparks_3d = Vector{Vector{Float64}}()
+            for i in eachindex(sx)
+                dx =  (sx[i] - x_cent) * cos(th_cap) + (sy[i] - y_cent) * sin(th_cap)
+                dy = -(sx[i] - x_cent) * sin(th_cap) + (sy[i] - y_cent) * cos(th_cap)
+                p = ef.centroid + dx * ef.x_hat + dy * ef.y_hat
+                push!(sparks_3d, p / norm(p) * psr.r)
+            end
+            push!(positions, sparks_3d)
             push!(sizes, ss)
         end
     end
