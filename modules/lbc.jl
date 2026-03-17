@@ -206,13 +206,13 @@ end
 #
 # Same parameters as animate(), plus:
 #   n_steps    : total number of drift steps to simulate
-#   skip_steps : save a snapshot every skip_steps steps (at steps 1, 1+skip, ...)
+#   save_every : save a snapshot every save_every steps
 #
 # Returns two vectors, one entry per saved snapshot:
 #   positions  : Vector of (spark_x, spark_y) tuples
 #   sizes      : Vector of spark_size arrays
 # -----------------------------------------------------------------------------
-function generate_sparks(;th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
+function generate_sparks(psr; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
                           h_sprk=2.6, h_drft=0.1, n_steps=100, save_every=1)
 
     th_cap  = deg2rad(th_cap)
@@ -267,7 +267,7 @@ function generate_sparks(;th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
     mean_outer_radius = 0.5 * (a_cap + (a_cap - 2 * a_sprk))
     del_theta_drift   = h_drft / mean_outer_radius
 
-    positions = Vector{Tuple{Vector{Float64}, Vector{Float64}}}()
+    positions = Vector{Vector{Vector{Float64}}}()
     sizes     = Vector{Vector{Float64}}()
 
     for step in 1:n_steps
@@ -301,7 +301,8 @@ function generate_sparks(;th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
             sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
                                      h_sprk, h_drft, a_cap, b_cap, th_cap,
                                      co_angl, x_cent, y_cent, N_trk, trk_max)
-            push!(positions, (sx, sy))
+            sz = sqrt.(psr.r^2 .- sx.^2 .- sy.^2)  # at the stellar surface
+            push!(positions, [[sx[i], sy[i], sz[i]] for i in eachindex(sx)])
             push!(sizes, ss)
         end
     end

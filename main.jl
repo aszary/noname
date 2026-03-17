@@ -10,7 +10,7 @@ module NoName
     include("modules/lbc.jl")
 
     mutable struct Pulsar
-        r # pulsar radiuis in [m]
+        r # pulsar radius in [m]
         p # pulsar period in [s]
         pdot # pulsar period derivative in [s/s]
         r_pc # polar cap radius [in m]       
