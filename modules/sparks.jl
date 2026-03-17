@@ -690,7 +690,8 @@ module Sparks
 
             psr.sparks = positions[1] # initial positions
             psr.sparks_locations = positions
-            psr.spark_radius = sizes # TODO work here czasami liczba czasami lista
+            
+            #psr.spark_radius = sizes # TODO work here czasami liczba czasami lista
 
             #println(positions[1])
             #println(size(positions[1]))
