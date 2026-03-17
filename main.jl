@@ -197,8 +197,8 @@ module NoName
         Signal.generate_signal(psr; noise_level=0.05)
         Signal.generate_pulses(psr)
         
-        Plot.signal(psr)
-        #Plot.pulses(psr)
+        #Plot.signal(psr)
+        Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -211,8 +211,6 @@ module NoName
         #full_plus_smallgrids()
 
         generate_signal()
-
-        #LBC.animate(;ntime=200, th_cap=0.0, a_cap=30.0, b_cap=10.0, co_angl=30.0, h_sprk=5.5, h_drft=0.1)
 
         println("Bye")
     end
