@@ -607,15 +607,17 @@ module Sparks
         dir = "output/$num"
         mkpath(dir) # check if exists if not creates one
         sl = psr.sparks_locations
-        @save "$dir/sparks_locations.jld2" sl
+        sr = psr.spark_radius
+        @save "$dir/sparks_locations.jld2" sl sr
     end
 
     """
     Loads sparks positions
     """
     function load_sparks(psr; num=1) 
-        @load "output/$num/sparks_locations.jld2" sl
+        @load "output/$num/sparks_locations.jld2" sl sr
         psr.sparks_locations = sl
+        psr.spark_radius = sr
     end
 
 
@@ -655,13 +657,15 @@ module Sparks
     """
     Runs sparks simulation, for LBC model 
     """
-    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1)
+    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1, save_every=1)
 
         ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
 
         println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
 
         #=
+        # animate in DISPLAY FRAME!
+
         LBC.animate(;
             ntime   = n_steps,
             a_cap   = ef.a,
@@ -671,23 +675,28 @@ module Sparks
             co_angl = co_angl,
             h_drft  = h_drft*10,
         )
-        
         =#
 
-        positions, sizes = LBC.generate_sparks(;
+        positions, sizes = LBC.generate_sparks(psr, ef;
             a_cap   = ef.a,
             b_cap   = ef.b,
             th_cap  = rad2deg(ef.θ),
             h_sprk  = psr.spark_radius,
             co_angl = co_angl,
             h_drft  = h_drft, 
-            n_steps=100,
-            save_every=1)
+            n_steps=n_steps,
+            save_every=save_every)
 
-            (sx, sy) = positions
-            println(size(sx[1]))
+
+            psr.sparks = positions[1] # initial positions
+            psr.sparks_locations = positions
+            
+            #psr.spark_radius = sizes # TODO work here czasami liczba czasami lista
+
+            #println(positions[1])
+            #println(size(positions[1]))
             #println(size(sx))
-            println(size(sizes))
+            #println(size(sizes))
 
 
     end
