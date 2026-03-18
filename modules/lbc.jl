@@ -55,7 +55,6 @@ function sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
     spark_x    = Float64[]   # x-coordinate of each spark centre
     spark_y    = Float64[]   # y-coordinate of each spark centre
     spark_size = Float64[]   # effective semi-axis of each spark (may shrink near cap edge)
-
     # Start from the outermost ring and work inward
     a_out = a_cap               # outer major semi-axis of current ring [m]
     a_in  = a_out - 2.0 * h_sprk  # inner major semi-axis of current ring [m]
@@ -108,6 +107,7 @@ function sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
                 yi = trk_a * b_trk / a_trk * sin(half_gap - th_cap - co_angl)
                 xs, ys = coortrans(xi, yi, -th_cap)
                 xs += x_cent;  ys += y_cent
+                println("$xs, $ys, $xi, $yi, $x_cent, $y_cent")
             end
 
             push!(spark_x, xs);  push!(spark_y, ys);  push!(spark_size, a_s)
