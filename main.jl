@@ -32,6 +32,7 @@ module NoName
         sparks_velocity # step in simulation)
         potential_simulation # potential for simulation step
         spark_radius # spark radius in meters
+        spark_radii # spark radii in meters for e.g. LBC model [n_step][spark_num]?
         line_of_sight # line of sight points
         r_em # emission height
         beta # impact parameter in [deg.]
@@ -63,6 +64,7 @@ module NoName
             sparks_velocity = nothing
             potential_simulation = []
             spark_radius = 20
+            spark_radii = nothing
             line_of_sight = nothing
             r_em = 500_000 # TODO 20 km for tests change it to 500km
             beta = 4.0 # deg by default
@@ -70,7 +72,7 @@ module NoName
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -84,6 +86,7 @@ module NoName
             beta = d.psr.beta
             r_em = d.psr.R_em
             spark_radius = d.psr.spark_radius
+            spark_radii = nothing
             r_pc = Functions.rdp(p, r)            
             r_lc = Functions.rlc(p)
             magnetic_axis = (r, 0, 0)
@@ -107,7 +110,7 @@ module NoName
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
         end
     end
 
@@ -186,19 +189,18 @@ module NoName
         #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        # TODO work on that one
-        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=90.0, h_drft=0.5)
+        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.5, save_every=1)
         Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
-        #return
-
         Sparks.load_sparks(psr; num=2)
-        Signal.generate_signal(psr; noise_level=0.05)
-        Signal.generate_pulses(psr)
+
+        #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
+        Signal.generate_signal_radii(psr; noise_level=0.05) # new
+        Signal.generate_pulses(psr, pulse_max=500)
         
         #Plot.signal(psr)
-        Plot.pulses(psr)
+        Plot.pulses(psr, number=500)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
