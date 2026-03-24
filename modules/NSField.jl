@@ -23,14 +23,14 @@ module NSField
 
     mutable struct Anomaly
         r # spherical coordiante r,  location of the anommaly [in stellar radius]
-        theta_r # spherical coordiante theta, location of the anommaly [deg]
-        phi_r # spherical coordiante phi, location of the anommaly [deg]
+        theta_r # spherical coordiante theta, location of the anommaly [rad]
+        phi_r # spherical coordiante phi, location of the anommaly [rad]
         m # strength of the anomally with respect to the global dipol
-        theta_m # spherical coordiante theta, orientation of the anommaly [deg]
-        phi_m # spherical coordiante phi, orientation of the anommaly [deg]
+        theta_m # spherical coordiante theta, orientation of the anommaly [rad]
+        phi_m # spherical coordiante phi, orientation of the anommaly [rad]
         
         function Anomaly(json)
-            new(json.r, json.theta, json.phi, json.m, json.theta_m, json.phi_m)
+            new(json.r, deg2rad(json.theta), deg2rad(json.phi), json.m, deg2rad(json.theta_m), deg2rad(json.phi_m))
         end
 
     end

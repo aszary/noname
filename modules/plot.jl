@@ -987,9 +987,8 @@ module Plot
 
         # anomalies
         for a in psr.nsfield.anomalies
-            pos = Functions.spherical2cartesian([a.r * psr.r, deg2rad(a.theta_r), deg2rad(a.phi_r)])
-            dir = Functions.spherical2cartesian([a.m * psr.r, deg2rad(a.theta_m), deg2rad(a.phi_m)])
-            #dir = Functions.vec_spherical2cartesian([a.m * psr.r, deg2rad(a.theta_m), deg2rad(a.phi_m)]) ???
+            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
             arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange)
         end
 
@@ -1044,8 +1043,8 @@ module Plot
 
         # anomalies
         for a in psr.nsfield.anomalies
-            pos = Functions.spherical2cartesian([a.r * psr.r, deg2rad(a.theta_r), deg2rad(a.phi_r)])
-            dir = Functions.spherical2cartesian([a.m * psr.r, deg2rad(a.theta_m), deg2rad(a.phi_m)])
+            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
             arrows2d!(ax, [pos[1]], [pos[3]], [dir[1]], [dir[3]], color = :orange)
             scatter!(ax, pos[1], pos[3], color = :orange, marker = :circle)
         end

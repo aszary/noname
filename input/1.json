@@ -18,13 +18,18 @@
 
     "anomalies":[
         {
+            "_r": "spherical coordiante r,  location of the anommaly [in stellar radius]",
+            "_theta_r": "spherical coordiante theta, location of the anommaly [deg]",
+            "_phi_r": "spherical coordiante phi, location of the anommaly [deg]",
+            "_m": "strength of the anomally with respect to the global dipol",
+            "_theta_m": "spherical coordiante theta, orientation of the anommaly [deg]",
+            "_phi_m,": "spherical coordiante phi, orientation of the anommaly [deg]",
             "r": 0.95,
             "theta": 3,
             "phi": 0,
             "m" : 0.1,
             "theta_m": 45,
             "phi_m": 0
-
         },
         {
             "r": 0.95,
