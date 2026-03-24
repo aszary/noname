@@ -37,7 +37,78 @@ module NSField
 
 
 
+    r1(a::Anomaly, theta, phi) = a.r * (sin(a.theta_r)*sin(theta)*cos(phi - a.phi_r) + cos(a.theta_r)*cos(theta))
+    r2(a::Anomaly, theta, phi) = a.r * (sin(a.theta_r)*cos(theta)*cos(phi - a.phi_r) - cos(a.theta_r)*sin(theta))
+    r3(a::Anomaly, phi)        = -a.r * sin(a.theta_r) * sin(phi - a.phi_r)
 
+    m1(a::Anomaly, theta, phi) = a.m * (sin(a.theta_m)*sin(theta)*cos(phi - a.phi_m) + cos(a.theta_m)*cos(theta))
+    m2(a::Anomaly, theta, phi) = a.m * (sin(a.theta_m)*cos(theta)*cos(phi - a.phi_m) - cos(a.theta_m)*sin(theta))
+    m3(a::Anomaly, phi)        = -a.m * sin(a.theta_m) * sin(phi - a.phi_m)
 
+    function _T(a::Anomaly, r, theta, phi)
+        m1(a,theta,phi)*r - (m1(a,theta,phi)*r1(a,theta,phi) + m2(a,theta,phi)*r2(a,theta,phi) + m3(a,phi)*r3(a,phi))
+    end
+
+    _D(a::Anomaly, r, theta, phi) = a.r^2 + r^2 - 2*a.r*r*(sin(a.theta_r)*sin(theta)*cos(phi - a.phi_r) + cos(a.theta_r)*cos(theta))
+
+    """
+        Bb(a, r, theta, phi) -> (b_r, b_θ, b_φ)
+
+    Magnetic field contribution of a single anomaly `a` at point (r, theta, phi)
+    in spherical basis (e_r, e_θ, e_φ). Based on the displaced dipole formula.
+    """
+    function Bb(a::Anomaly, r, theta, phi)
+        d  = _D(a, r, theta, phi)
+        dl = d^(-2.5)
+        t  = _T(a, r, theta, phi)
+        b1 = -dl * (3*t*r1(a,theta,phi) - 3*t*r + d*m1(a,theta,phi))
+        b2 = -dl * (3*t*r2(a,theta,phi)           + d*m2(a,theta,phi))
+        b3 = -dl * (3*t*r3(a,phi)                 + d*m3(a,phi))
+        return b1, b2, b3
+    end
+
+    # Global dipole field components (e_r, e_θ); H_φ = 0 by symmetry
+    H1(r, theta) = 2*cos(theta) / r^3
+    H2(r, theta) =   sin(theta) / r^3
+
+    """
+        B(f, r, theta, phi) -> (b_r, b_θ, b_φ)
+
+    Sum of magnetic field contributions from all anomalies in `f.anomalies`
+    at point (r, theta, phi). Does not include the global dipole.
+    """
+    function B(f::Field, r, theta, phi)
+        b1 = b2 = b3 = 0.0
+        for a in f.anomalies
+            db1, db2, db3 = Bb(a, r, theta, phi)
+            b1 += db1; b2 += db2; b3 += db3
+        end
+        return b1, b2, b3
+    end
+
+    """
+        BFull(f, r, theta, phi) -> scalar
+
+    Magnitude of the total magnetic field (anomalies + global dipole) at (r, theta, phi).
+    """
+    function BFull(f::Field, r, theta, phi)
+        b1, b2, b3 = B(f, r, theta, phi)
+        sqrt((b1 + H1(r,theta))^2 + (b2 + H2(r,theta))^2 + b3^2)
+    end
+
+    """
+        BVec(f, r, theta, phi) -> (Bx, By, Bz)
+
+    Total magnetic field vector (anomalies + global dipole) in Cartesian coordinates.
+    """
+    function BVec(f::Field, r, theta, phi)
+        br, bθ, bφ = B(f, r, theta, phi)
+        br += H1(r, theta)
+        bθ += H2(r, theta)
+        Bx = sin(theta)*cos(phi)*br + cos(theta)*cos(phi)*bθ - sin(phi)*bφ
+        By = sin(theta)*sin(phi)*br + cos(theta)*sin(phi)*bθ + cos(phi)*bφ
+        Bz = cos(theta)*br          - sin(theta)*bθ
+        return Bx, By, Bz
+    end
 
 end # module end
