@@ -963,4 +963,97 @@ module Plot
     end
 
 
+
+    function anomalies(psr; delay=0.1)
+
+        # better accuracy for the sphere 
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
+        # plot polar cap
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # line of sight end points
+        for line in psr.los_lines
+            scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        # anomalies
+        for a in psr.nsfield.anomalies
+            pos = Functions.spherical2cartesian([a.r * psr.r, deg2rad(a.theta_r), deg2rad(a.phi_r)])
+            dir = Functions.spherical2cartesian([a.m * psr.r, deg2rad(a.theta_m), deg2rad(a.phi_m)])
+            #dir = Functions.vec_spherical2cartesian([a.m * psr.r, deg2rad(a.theta_m), deg2rad(a.phi_m)]) ???
+            arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange)
+        end
+
+        cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
+
+        # Try accessing the scene's camera directly
+        println("Scene camera type: ", typeof(cam))
+        println("Scene camera fields: ", fieldnames(typeof(cam)))
+        println("Scene camera properties: ", propertynames(cam))
+
+        # Add a button to print camera state
+        #button = Button(f[7, 1], label = "Print Camera State")
+        button = Button(fig[1, 1], label = "Print", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+
+        on(button.clicks) do n
+            println("\n--- Camera State (Click $n) ---")
+            println("Camera type: ", typeof(cam))
+            println("Eye position: ", cam.eyeposition[])
+            println("View direction: ", cam.lookat[])
+            println("Up vector: ", cam.upvector[])
+        end
+ 
+
+
+
+        display(fig)
+
+    end
+
+
+
+
+    function anomalies2D(psr)
+
+        fig = Figure()
+        ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x [m]", ylabel = "z [m]", title = "Anomalies (x-z plane)")
+
+        # star surface
+        theta_range = range(0, 2π, length=200)
+        lines!(ax, psr.r .* cos.(theta_range), psr.r .* sin.(theta_range), color = :black)
+
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        arrows2d!(ax, [0.0], [0.0], [rot_vec[1]], [rot_vec[3]], color = :red, label = "rotation axis")
+
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+        arrows2d!(ax, [0.0], [0.0], [mag_vec[1]], [mag_vec[3]], color = :blue, label = "magnetic axis")
+
+        # anomalies
+        for a in psr.nsfield.anomalies
+            pos = Functions.spherical2cartesian([a.r * psr.r, deg2rad(a.theta_r), deg2rad(a.phi_r)])
+            dir = Functions.spherical2cartesian([a.m * psr.r, deg2rad(a.theta_m), deg2rad(a.phi_m)])
+            arrows2d!(ax, [pos[1]], [pos[3]], [dir[1]], [dir[3]], color = :orange)
+            scatter!(ax, pos[1], pos[3], color = :orange, marker = :circle)
+        end
+
+        axislegend(ax)
+        display(fig)
+
+    end
+
+
 end # module end

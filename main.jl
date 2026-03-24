@@ -8,6 +8,7 @@ module NoName
     include("modules/sparks.jl")
     include("modules/signal.jl")
     include("modules/lbc.jl")
+    include("modules/NSField.jl")
 
     mutable struct Pulsar
         r # pulsar radius in [m]
@@ -18,6 +19,7 @@ module NoName
         alpha # inclination angle in [deg.]
         magnetic_axis # in spherical coordinates
         rotation_axis # in spherical coordinates
+        nsfield # non-dipolar magneitc field structure 
         fields # magnetic and electric fields
         polar_caps # two polar caps boundries (xs, ys, zs)
         pc # single polar cap
@@ -49,6 +51,7 @@ module NoName
             alpha = 30 # 30 deg by default
             magnetic_axis = (r, 0, 0)
             rotation_axis = (r, deg2rad(alpha), 0)
+            nsfield = NSField.Field()
             fields = Field.Test() # using test class for now
             fields.beq = Field.beq(p, pdot)
             polar_caps = nothing
@@ -72,7 +75,7 @@ module NoName
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -91,6 +94,7 @@ module NoName
             r_lc = Functions.rlc(p)
             magnetic_axis = (r, 0, 0)
             rotation_axis = (r, deg2rad(alpha), 0)
+            nsfield = NSField.Field(d)
             fields = Field.Test() # using test class for now
             fields.beq = Field.beq(p, pdot)
             polar_caps = nothing
@@ -110,7 +114,7 @@ module NoName
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
         end
     end
 
@@ -206,13 +210,35 @@ module NoName
         
     end
 
+    function model_field()
+        psr = Pulsar("input/1.json")
+
+  
+        Lines.calculate_polarcaps!(psr)
+
+        Lines.init_line_of_sight(psr, num=100)
+        Lines.calculate_line_of_sight(psr)
+
+        #println(psr.nsfield)
+        println(psr.nsfield.anomalies[1].r)
+
+        #Plot.anomalies(psr)
+        Plot.anomalies2D(psr)
+
+       
+    end
+
+
+
     function main()
 
         #full_grid()
         #small_grids()
         #full_plus_smallgrids()
 
-        generate_signal()
+        #generate_signal()
+
+        model_field()
 
         println("Bye")
     end

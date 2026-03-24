@@ -1,4 +1,6 @@
 1. Simulate non-dipolar surface magnetic field
+    -  define anonamlies input paremeters
+    -
 
 2. generate_signal_radii() - add polar cap shape to intensity calculation
 
