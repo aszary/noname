@@ -1,0 +1,5 @@
+1. Simulate non-dipolar surface magnetic field
+
+2. generate_signal_radii() - add polar cap shape to intensity calculation
+
+

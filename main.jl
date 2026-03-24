@@ -200,7 +200,7 @@ module NoName
         Signal.generate_pulses(psr, pulse_max=500)
         
         Plot.signal(psr)
-        Plot.pulses(psr, number=500)
+        #Plot.pulses(psr, number=500)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
