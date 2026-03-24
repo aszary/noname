@@ -608,16 +608,18 @@ module Sparks
         mkpath(dir) # check if exists if not creates one
         sl = psr.sparks_locations
         sr = psr.spark_radius
-        @save "$dir/sparks_locations.jld2" sl sr
+        sri = psr.spark_radii
+        @save "$dir/sparks_locations.jld2" sl sr sri
     end
 
     """
     Loads sparks positions
     """
     function load_sparks(psr; num=1) 
-        @load "output/$num/sparks_locations.jld2" sl sr
+        @load "output/$num/sparks_locations.jld2" sl sr sri
         psr.sparks_locations = sl
         psr.spark_radius = sr
+        psr.spark_radii = sri
     end
 
 
@@ -690,13 +692,10 @@ module Sparks
 
             psr.sparks = positions[1] # initial positions
             psr.sparks_locations = positions
-            
-            #psr.spark_radius = sizes # TODO work here czasami liczba czasami lista
-
-            #println(positions[1])
+            psr.spark_radii = sizes 
+            #println(length(positions))
             #println(size(positions[1]))
-            #println(size(sx))
-            #println(size(sizes))
+            #println(size(sizes[1]))
 
 
     end

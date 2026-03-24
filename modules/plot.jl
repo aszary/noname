@@ -691,8 +691,13 @@ module Plot
 
         # spark positions Observable
         spark_positions_obs = Observable(Point3f.(psr.sparks_locations[1]))
-        # plotting sparks as spheres
-        meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        # plotting sparks as spheres if the same radius
+        if isnothing(psr.spark_radii)
+            meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        else
+            spark_radii_obs = Observable(psr.spark_radii[1])
+            meshscatter!(ax, spark_positions_obs, markersize=spark_radii_obs, color=:red)
+        end
         #scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
 
 
@@ -763,8 +768,11 @@ module Plot
         while (i < n_steps)
             println("\n--- Animation step $i/$n_steps ---")
            
-            # update spark positions 
+            # update spark positions
             spark_positions_obs[] = psr.sparks_locations[i]
+            if !isnothing(psr.spark_radii)
+                spark_radii_obs[] = psr.spark_radii[i]
+            end
 
             signal_obs[] = psr.signal[i, :]
 

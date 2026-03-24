@@ -30,6 +30,31 @@
 
     end
 
+    function generate_signal_radii(psr; noise_level=0.1)
+        los_points = []
+        for line in psr.los_lines
+            push!(los_points, [line[1][end], line[2][end], line[3][end]])
+        end
+        signal_number = size(psr.sparks_locations)[1]
+        bin_number = size(los_points)[1]
+        psr.signal = zeros(signal_number, bin_number)
+        for (i, p) in enumerate(los_points)
+            for (j, sparks) in enumerate(psr.sparks_locations)
+                for (k, s) in enumerate(sparks)
+                    if isnothing(psr.spark_radii)
+                        sigma = psr.spark_radius / 3.72 # 2.355->FWHM, 3.03->1%, 3.72->0.1%
+                    else
+                        sigma = psr.spark_radii[j][k] / 3.72
+                    end
+                    dist = norm(p - s)
+                    psr.signal[j, i] += exp(-dist^2 / (2 * sigma^2))
+                end
+            end
+        end
+        noise = noise_level * randn(size(psr.signal))
+        psr.signal .+= noise
+    end
+
     function generate_pulses(psr; pulse_max=100)
         # use skip_steps in simulate_sparks to have single pulses
 
