@@ -2,4 +2,4 @@
 
 2. generate_signal_radii() - add polar cap shape to intensity calculation
 
-
+3. Film Pulsary?

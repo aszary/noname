@@ -199,8 +199,8 @@ module NoName
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
         Signal.generate_pulses(psr, pulse_max=500)
         
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=500)
+        #Plot.signal(psr)
+        Plot.pulses(psr, number=500)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
