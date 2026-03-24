@@ -3,3 +3,5 @@
 2. generate_signal_radii() - add polar cap shape to intensity calculation
 
 3. Film Pulsary?
+
+4. Dodać parametr P3, P4?  n_steps + save_every

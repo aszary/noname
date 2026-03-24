@@ -665,18 +665,18 @@ module Sparks
 
         println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
 
-        #=
         # animate in DISPLAY FRAME!
 
         LBC.animate(;
             ntime   = n_steps,
-            a_cap   = ef.a,
+            a_cap   = ef.a*4,
             b_cap   = ef.b,
             th_cap  = rad2deg(ef.θ),
             h_sprk  = psr.spark_radius,
             co_angl = co_angl,
             h_drft  = h_drft*10,
         )
+        #=
         =#
 
         positions, sizes = LBC.generate_sparks(psr, ef;
