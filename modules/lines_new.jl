@@ -1,6 +1,7 @@
 module LinesNew
     include("functions.jl")
     include("geometry.jl")
+    import ..NSField
 
 
     function init_line_of_sight(psr; num=100)
@@ -26,7 +27,7 @@ module LinesNew
     end
 
 
-    function calculate_line_of_sight(psr, step=10)
+    function calculate_line_of_sight(psr)
 
         if isnothing(psr.line_of_sight)
             println("Init line of sight first!")
@@ -39,16 +40,18 @@ module LinesNew
         for point in psr.line_of_sight
             pos_sph = point
             pos = Functions.spherical2cartesian(pos_sph)
-            
+
+            #println(NSField.BSph(nf, pos_sph[1], pos_sph[2], pos_sph[3]))
+            println(pos_sph[1]," ", pos_sph[2]," ", pos_sph[3])
             # TODO work here...
             return
 
-            # new line with 
-            push!(psr.los_lines, [Float64[], Float64[], Float64[]]) # push!(los[end][1], x) etc.
-            push!(psr.los_lines[end][1], pos[1]) # x coordinate
-            push!(psr.los_lines[end][2], pos[2]) # y coordinate
-            push!(psr.los_lines[end][3], pos[3]) # z coordinate
-            while (pos_sph[1] >= psr.r) 
+            # new line 
+            push!(psr.los_lines, [Float64[], Float64[], Float64[]]) # push!(los[end][1], r) etc.
+            push!(psr.los_lines[end][1], pos_sph[1]) # r coordinate
+            push!(psr.los_lines[end][2], pos_sph[2]) # theta coordinate
+            push!(psr.los_lines[end][3], pos_sph[3]) # phi coordinate
+            while (pos_sph[1] > psr.r) 
                 b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
                 b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
                 st = - b / norm(b) * step # negative step towards the surface
