@@ -9,6 +9,8 @@ module NoName
     include("modules/signal.jl")
     include("modules/lbc.jl")
     include("modules/nsfield.jl")
+    include("modules/lines_new.jl")
+
 
     mutable struct Pulsar
         r # pulsar radius in [m]
@@ -214,13 +216,11 @@ module NoName
         psr = Pulsar("input/1.json")
 
   
-        Lines.calculate_polarcaps!(psr)
 
-        Lines.init_line_of_sight(psr, num=100)
-        Lines.calculate_line_of_sight(psr)
+        LinesNew.init_line_of_sight(psr, num=10)
+        #LinesNew.calculate_line_of_sight(psr)
 
         #println(psr.nsfield)
-        println(psr.nsfield.anomalies[1].r)
 
         #Plot.anomalies(psr)
         Plot.anomalies2D(psr)

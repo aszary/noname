@@ -24,6 +24,62 @@ module LinesNew
     end
 
 
+    function calculate_line_of_sight(psr, step=10)
+
+        if isnothing(psr.line_of_sight)
+            println("Init line of sight first!")
+            return
+        end
+
+        nf = psr.nsfield
+
+        for point in psr.line_of_sight
+            pos = copy(point)
+            pos_sph = Functions.cartesian2spherical(pos)
+            # new line with 
+            push!(psr.los_lines, [Float64[], Float64[], Float64[]]) # push!(los[end][1], x) etc.
+            push!(psr.los_lines[end][1], pos[1]) # x coordinate
+            push!(psr.los_lines[end][2], pos[2]) # y coordinate
+            push!(psr.los_lines[end][3], pos[3]) # z coordinate
+            while (pos_sph[1] >= psr.r) 
+                b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+                b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                st = - b / norm(b) * step # negative step towards the surface
+                pos += st # new position for magnetic line
+                pos_sph = Functions.cartesian2spherical(pos)
+                push!(psr.los_lines[end][1], pos[1])
+                push!(psr.los_lines[end][2], pos[2])
+                push!(psr.los_lines[end][3], pos[3])
+            end
+            
+            # Correct last point - interpolate to surface
+            line = psr.los_lines[end]
+            n = length(line[1])
+            
+            # Second to last point (above surface)
+            pos_prev = [line[1][n-1], line[2][n-1], line[3][n-1]]
+            # Last point (below surface)
+            pos_last = [line[1][n], line[2][n], line[3][n]]
+            
+            r_prev = norm(pos_prev)
+            r_last = norm(pos_last)
+            
+            # Interpolation factor
+            t = (r_prev - psr.r) / (r_prev - r_last)
+            pos_surface = pos_prev + t * (pos_last - pos_prev)
+            
+            # Overwrite last point
+            line[1][n] = pos_surface[1]
+            line[2][n] = pos_surface[2]
+            line[3][n] = pos_surface[3]
+
+        end
+        #println(size(psr.los_lines))
+    end
+
+
+
+
 
 
 
