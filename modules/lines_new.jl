@@ -1,4 +1,6 @@
 module LinesNew
+    include("functions.jl")
+    include("geometry.jl")
 
 
     function init_line_of_sight(psr; num=100)
@@ -32,10 +34,15 @@ module LinesNew
         end
 
         nf = psr.nsfield
+        step = nf.rmax / nf.size
 
         for point in psr.line_of_sight
-            pos = copy(point)
-            pos_sph = Functions.cartesian2spherical(pos)
+            pos_sph = point
+            pos = Functions.spherical2cartesian(pos_sph)
+            
+            # TODO work here...
+            return
+
             # new line with 
             push!(psr.los_lines, [Float64[], Float64[], Float64[]]) # push!(los[end][1], x) etc.
             push!(psr.los_lines[end][1], pos[1]) # x coordinate

@@ -6,7 +6,7 @@ module NSField
         anomalies # list of magnetic anomalies
 
         function Field()
-            rmax = 50_000 # 50 km 
+            rmax = 500_000 # 500 km 
             size = 100
             anomalies = []
             new(rmax, size, anomalies)

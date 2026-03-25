@@ -978,11 +978,17 @@ module Plot
         arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
 
         # plot polar cap
-        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+        #lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
 
         # line of sight end points
         for line in psr.los_lines
             scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        # line of sight emission points
+        if !isnothing(psr.line_of_sight)
+            los_pts = [Functions.spherical2cartesian(l) for l in psr.line_of_sight]
+            scatter!(ax, [p[1] for p in los_pts], [p[2] for p in los_pts], [p[3] for p in los_pts], color=:green, markersize=8)
         end
 
         # anomalies

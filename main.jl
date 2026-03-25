@@ -71,7 +71,7 @@ module NoName
             spark_radius = 20
             spark_radii = nothing
             line_of_sight = nothing
-            r_em = 500_000 
+            r_em = 500_000  # 500 km
             beta = 4.0 # deg by default
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
@@ -218,12 +218,12 @@ module NoName
   
 
         LinesNew.init_line_of_sight(psr, num=10)
-        #LinesNew.calculate_line_of_sight(psr)
+        LinesNew.calculate_line_of_sight(psr)
 
         #println(psr.nsfield)
 
-        #Plot.anomalies(psr)
-        Plot.anomalies2D(psr)
+        Plot.anomalies(psr)
+        #Plot.anomalies2D(psr)
 
        
     end
