@@ -7,6 +7,11 @@ module Lines
     include("signal.jl")
     include("geometry.jl")
 
+
+    """
+    Simple function assuming dipolar configuration of magnetic field at the surface. To be OBSOLETE.  
+
+    """
     function calculate_polarcaps!(psr; phi_num=100)
         theta = Functions.theta_max(1, psr)
         phis = range(0, 2*pi, length=phi_num)
@@ -31,6 +36,11 @@ module Lines
         psr.pc = [x, y, z]
     end
 
+
+    """
+    
+
+    """
     function generate_open!(psr, step=10)
         fv = psr.fields
         stepsnum = div(fv.rmax, step)
@@ -65,43 +75,6 @@ module Lines
                 end
             end
         end
-    end
-
-
-    function init_line_of_sight_obsolete(psr; num=10)
-        # DO NOT USE IT, IT IS WRONG...
-        theta_max = Functions.theta_max(psr.r_em/psr.r, psr) # at the emission height
-
-        # determine phi range 
-        init_length = 1000
-        phis = range(0, 2π, length=init_length)
-        phis_valid = []
-        for phi in phis
-            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
-            if vec[2] <= theta_max
-                push!(phis_valid, phi)
-            end
-        end
-        if size(phis_valid) == 0
-            println("No points in open field line region! Change beta?")
-            return
-        end
-
-        phi_min = minimum(phis_valid)
-        phi_max = maximum(phis_valid)
-        
-        # calculates line of sight
-        psr.line_of_sight = []
-        
-        phis = range(phi_min, phi_max, length=num)
-
-        for phi in phis
-            vec = Transformations.beaming(Functions.spherical2cartesian(psr.rotation_axis), deg2rad(psr.alpha+psr.beta), phi)
-            if vec[2] <= theta_max
-                push!(psr.line_of_sight, Functions.spherical2cartesian(vec)/psr.r* psr.r_em)
-            end
-        end
-
     end
 
 

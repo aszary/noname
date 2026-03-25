@@ -8,7 +8,7 @@ module NoName
     include("modules/sparks.jl")
     include("modules/signal.jl")
     include("modules/lbc.jl")
-    include("modules/NSField.jl")
+    include("modules/nsfield.jl")
 
     mutable struct Pulsar
         r # pulsar radius in [m]
@@ -69,7 +69,7 @@ module NoName
             spark_radius = 20
             spark_radii = nothing
             line_of_sight = nothing
-            r_em = 500_000 # TODO 20 km for tests change it to 500km
+            r_em = 500_000 
             beta = 4.0 # deg by default
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing

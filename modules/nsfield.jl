@@ -97,6 +97,18 @@ module NSField
     end
 
     """
+        BSph(f, r, theta, phi) -> (b_r, b_θ, b_φ)
+
+    Total magnetic field vector (anomalies + global dipole) in spherical coordinates.
+    """
+    function BSph(f::Field, r, theta, phi)
+        br, bθ, bφ = B(f, r, theta, phi)
+        br += H1(r, theta)
+        bθ += H2(r, theta)
+        return br, bθ, bφ
+    end
+
+    """
         BVec(f, r, theta, phi) -> (Bx, By, Bz)
 
     Total magnetic field vector (anomalies + global dipole) in Cartesian coordinates.
