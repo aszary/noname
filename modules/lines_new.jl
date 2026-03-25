@@ -43,7 +43,8 @@ module LinesNew
 
             #println(NSField.BSph(nf, pos_sph[1], pos_sph[2], pos_sph[3]))
             println(pos_sph[1]," ", pos_sph[2]," ", pos_sph[3])
-            # TODO work here...
+            println(NSField.BSph(nf, 1, pos_sph[2], pos_sph[3]))
+            # TODO work here... promień R nie metrach!!
             return
 
             # new line 
