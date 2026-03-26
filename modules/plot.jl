@@ -980,8 +980,9 @@ module Plot
         # plot polar cap
         #lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
 
-        # line of sight end points
+        # magnetic field lines from line of sight
         for line in psr.los_lines
+            lines!(ax, line[1], line[2], line[3], color=:blue, linewidth=1)
             scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
         end
 
