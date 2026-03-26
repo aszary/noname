@@ -427,7 +427,7 @@ module Geometry
     end
 
     """
-        apply_aberration(θ, ψ, r_em, P)
+        apply_aberration(θ, ψ, α, r_em, P)
 
     Apply aberration correction to emission direction.
 
@@ -441,6 +441,7 @@ module Geometry
     # Arguments
     - `θ::Real`: colatitude from magnetic axis [radians]
     - `ψ::Real`: azimuthal angle around magnetic axis [radians]
+    - `α::Real`: magnetic inclination angle (rotation axis to magnetic axis) [radians]
     - `r_em::Real`: emission height [m]
     - `P::Real`: rotation period [s]
 
@@ -451,17 +452,26 @@ module Geometry
     The azimuthal shift is negative (backward) because the photon appears to 
     "lag" behind the corotating emission point from the observer's perspective.
     """
-    function apply_aberration(θ, ψ, r_em, P)
+    function apply_aberration(θ, ψ, α, r_em, P)
         r_LC = c * P / (2π)
-        
+
+        # Transform emission point from magnetic frame to rotation frame.
+        # Magnetic axis is inclined by α from rotation axis (in the X-Z plane).
+        # Rotation by α around Y-axis:
+        #   x_rot = r_em·(cos(α)·sin(θ)·cos(ψ) + sin(α)·cos(θ))
+        #   y_rot = r_em·sin(θ)·sin(ψ)
+        x_rot = r_em * (cos(α) * sin(θ) * cos(ψ) + sin(α) * cos(θ))
+        y_rot = r_em * sin(θ) * sin(ψ)
+
+        # Cylindrical distance from rotation axis
+        ρ_cyl = sqrt(x_rot^2 + y_rot^2)
+
         # Corotation velocity at emission point (as fraction of c)
-        # This depends on distance from rotation axis, not magnetic axis
-        # For simplicity, we use sin(θ) as proxy for cylindrical radius
-        β_rot = r_em * sin(θ) / r_LC
-        
+        β_rot = ρ_cyl / r_LC
+
         # Aberration shifts emission backward relative to rotation
         Δψ = -β_rot
-        
+
         return θ, ψ + Δψ
     end
 
