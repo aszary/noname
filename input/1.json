@@ -13,7 +13,7 @@
     "field":
     {
         "rmax":500000,
-        "size":100
+        "size":1000
     },
 
     "anomalies":[

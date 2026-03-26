@@ -212,8 +212,8 @@ module NoName
     end
 
     function model_field()
-        #psr = Pulsar("input/1.json")
-        psr = Pulsar("input/2.json")
+        psr = Pulsar("input/1.json")
+        #psr = Pulsar("input/2.json")
 
         Lines.init_line_of_sight(psr, num=10)
         Lines.calculate_line_of_sight(psr)
