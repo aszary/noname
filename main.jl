@@ -2,14 +2,13 @@ module NoName
 
     using JSON3
     include("modules/functions.jl")
-    include("modules/plot.jl") 
+    include("modules/plot.jl")
     include("modules/field.jl")
+    include("modules/nsfield.jl")
     include("modules/lines.jl")
     include("modules/sparks.jl")
     include("modules/signal.jl")
     include("modules/lbc.jl")
-    include("modules/nsfield.jl")
-    include("modules/lines_new.jl")
 
 
     mutable struct Pulsar
@@ -135,7 +134,7 @@ module NoName
         Sparks.calculate_potential!(psr)
 
         Lines.init_line_of_sight(psr)
-        Lines.calculate_line_of_sight(psr)
+        Lines.calculate_line_of_sight_dipole(psr)
         Plot.pulsar(psr)
         #Plot.potential2D(psr)
         #Plot.potential2Dv2(psr)
@@ -171,8 +170,8 @@ module NoName
         #Lines.generate_open!(psr)
 
         #Sparks.random_sparks!(psr) 
-        #Sparks.init_sparks1!(psr ;num=5)
-        Sparks.init_sparks2!(psr ;num=5)
+        Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.init_sparks2!(psr ;num=5)
         #Sparks.init_sparks3!(psr ;num=30, rfmax=0.7)
 
         #Sparks.generate_potentials # TODO
@@ -189,7 +188,7 @@ module NoName
         #Field.calculate_dipole!(psr)
 
         Lines.init_line_of_sight(psr, num=100)
-        Lines.calculate_line_of_sight(psr)
+        Lines.calculate_line_of_sight_dipole(psr)
 
         # TODO work on n_steps + save_every for single pulses
         #Sparks.init_sparks1!(psr ;num=5)
@@ -215,15 +214,13 @@ module NoName
     function model_field()
         psr = Pulsar("input/1.json")
 
-  
-
-        LinesNew.init_line_of_sight(psr, num=10)
-        LinesNew.calculate_line_of_sight(psr)
+        Lines.init_line_of_sight(psr, num=10)
+        Lines.calculate_line_of_sight(psr)
 
         #println(psr.nsfield)
 
-        Plot.anomalies(psr)
-        #Plot.anomalies2D(psr)
+        #Plot.anomalies(psr)
+        Plot.anomalies2D(psr)
 
        
     end

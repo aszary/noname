@@ -985,10 +985,9 @@ module Plot
             scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
         end
 
-        # line of sight emission points
+        # line of sight emission points (already in cartesian)
         if !isnothing(psr.line_of_sight)
-            los_pts = [Functions.spherical2cartesian(l) for l in psr.line_of_sight]
-            scatter!(ax, [p[1] for p in los_pts], [p[2] for p in los_pts], [p[3] for p in los_pts], color=:green, markersize=8)
+            scatter!(ax, [p[1] for p in psr.line_of_sight], [p[2] for p in psr.line_of_sight], [p[3] for p in psr.line_of_sight], color=:green, markersize=8)
         end
 
         # anomalies
