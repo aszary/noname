@@ -212,16 +212,17 @@ module NoName
     end
 
     function model_field()
-        psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/1.json")
+        psr = Pulsar("input/2.json")
 
-        Lines.init_line_of_sight(psr, num=10)
-        Lines.calculate_line_of_sight(psr)
+        Lines.init_line_of_sight(psr, num=5)
+        Lines.calculate_line_of_sight_dipole(psr)
+        #Lines.calculate_line_of_sight(psr)
 
         #println(psr.nsfield)
 
-        Plot.anomalies(psr)
-        #Plot.anomalies2D(psr)
+        #Plot.anomalies(psr)
+        Plot.anomalies2D(psr)
 
        
     end

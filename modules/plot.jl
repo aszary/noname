@@ -1032,30 +1032,66 @@ module Plot
 
     function anomalies2D(psr)
 
-        fig = Figure()
-        ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x [m]", ylabel = "z [m]", title = "Anomalies (x-z plane)")
+        fig = Figure(size = (1200, 600))
 
-        # star surface
-        theta_range = range(0, 2π, length=200)
-        lines!(ax, psr.r .* cos.(theta_range), psr.r .* sin.(theta_range), color = :black)
-
-        # rotation axis
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
-        arrows2d!(ax, [0.0], [0.0], [rot_vec[1]], [rot_vec[3]], color = :red, label = "rotation axis")
-
-        # magnetic axis
         mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
-        arrows2d!(ax, [0.0], [0.0], [mag_vec[1]], [mag_vec[3]], color = :blue, label = "magnetic axis")
+        theta_range = range(0, 2π, length=200)
+        clip_r = 5 * psr.r
 
-        # anomalies
+        # legend elements (shared)
+        rot_elem = [LineElement(color = :red, linewidth = 2, points = Point2f[(0.0, 0.5), (0.7, 0.5)]),
+                    MarkerElement(color = :red, marker = :rtriangle, markersize = 10, points = Point2f[(0.9, 0.5)])]
+        mag_elem = [LineElement(color = :blue, linewidth = 2, points = Point2f[(0.0, 0.5), (0.7, 0.5)]),
+                    MarkerElement(color = :blue, marker = :rtriangle, markersize = 10, points = Point2f[(0.9, 0.5)])]
+        los_elem = [LineElement(color = :green, linewidth = 1),
+                    MarkerElement(color = :green, marker = :xcross, markersize = 8)]
+
+        # --- left panel: x-z plane ---
+        ax1 = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x [m]", ylabel = "z [m]", title = "Anomalies (x-z plane)")
+        lines!(ax1, psr.r .* cos.(theta_range), psr.r .* sin.(theta_range), color = :black)
+        arrows2d!(ax1, [0.0], [0.0], [rot_vec[1]], [rot_vec[3]], color = :red)
+        arrows2d!(ax1, [0.0], [0.0], [mag_vec[1]], [mag_vec[3]], color = :blue)
         for a in psr.nsfield.anomalies
             pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
             dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
-            arrows2d!(ax, [pos[1]], [pos[3]], [dir[1]], [dir[3]], color = :orange)
-            scatter!(ax, pos[1], pos[3], color = :orange, marker = :circle)
+            arrows2d!(ax1, [pos[1]], [pos[3]], [dir[1]], [dir[3]], color = :orange)
+            scatter!(ax1, pos[1], pos[3], color = :orange, marker = :circle)
         end
+        for line in psr.los_lines
+            mask = [sqrt(line[1][i]^2 + line[2][i]^2 + line[3][i]^2) <= clip_r for i in eachindex(line[1])]
+            xs = line[1][mask]
+            zs = line[3][mask]
+            isempty(xs) && continue
+            lines!(ax1, xs, zs, color = :green, linewidth = 1)
+            scatter!(ax1, line[1][end], line[3][end], color = :green, marker = :xcross)
+        end
+        xlims!(ax1, -2.5 * psr.r, 2.5 * psr.r)
+        ylims!(ax1, -0.5 * psr.r, 3.5 * psr.r)
 
-        axislegend(ax)
+        # --- right panel: y-z plane ---
+        ax2 = Axis(fig[1, 2], aspect = DataAspect(), xlabel = "y [m]", ylabel = "z [m]", title = "Anomalies (y-z plane)")
+        lines!(ax2, psr.r .* cos.(theta_range), psr.r .* sin.(theta_range), color = :black)
+        arrows2d!(ax2, [0.0], [0.0], [rot_vec[2]], [rot_vec[3]], color = :red)
+        arrows2d!(ax2, [0.0], [0.0], [mag_vec[2]], [mag_vec[3]], color = :blue)
+        for a in psr.nsfield.anomalies
+            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+            arrows2d!(ax2, [pos[2]], [pos[3]], [dir[2]], [dir[3]], color = :orange)
+            scatter!(ax2, pos[2], pos[3], color = :orange, marker = :circle)
+        end
+        for line in psr.los_lines
+            mask = [sqrt(line[1][i]^2 + line[2][i]^2 + line[3][i]^2) <= clip_r for i in eachindex(line[1])]
+            ys = line[2][mask]
+            zs = line[3][mask]
+            isempty(ys) && continue
+            lines!(ax2, ys, zs, color = :green, linewidth = 1)
+            scatter!(ax2, line[2][end], line[3][end], color = :green, marker = :xcross)
+        end
+        xlims!(ax2, -2.5 * psr.r, 2.5 * psr.r)
+        ylims!(ax2, -0.5 * psr.r, 3.5 * psr.r)
+
+        axislegend(ax2, [rot_elem, mag_elem, los_elem], ["rotation axis", "magnetic axis", "los field lines"])
         display(fig)
 
     end
