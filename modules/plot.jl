@@ -1067,6 +1067,7 @@ module Plot
             lines!(ax1, xs, zs, color = :red, linewidth = 1)
             scatter!(ax1, line[1][end], line[3][end], color = :red, marker = :xcross)
         end
+        #=
         for ml in psr.open_lines
             mask = [sqrt(ml[1][i]^2 + ml[2][i]^2 + ml[3][i]^2) <= clip_r for i in eachindex(ml[1])]
             xs = ml[1][mask]
@@ -1074,6 +1075,7 @@ module Plot
             isempty(xs) && continue
             lines!(ax1, xs, zs, color=:green, linewidth=1)
         end
+        =#
         xlims!(ax1, -2.5 * psr.r, 2.5 * psr.r)
         ylims!(ax1, -0.5 * psr.r, 3.5 * psr.r)
 
@@ -1096,6 +1098,7 @@ module Plot
             lines!(ax2, ys, zs, color = :red, linewidth = 1)
             scatter!(ax2, line[2][end], line[3][end], color = :red, marker = :xcross)
         end
+        #=
         for ml in psr.open_lines
             mask = [sqrt(ml[1][i]^2 + ml[2][i]^2 + ml[3][i]^2) <= clip_r for i in eachindex(ml[1])]
             ys = ml[2][mask]
@@ -1103,6 +1106,7 @@ module Plot
             isempty(ys) && continue
             lines!(ax2, ys, zs, color=:green, linewidth=1)
         end
+        =#
         xlims!(ax2, -2.5 * psr.r, 2.5 * psr.r)
         ylims!(ax2, -0.5 * psr.r, 3.5 * psr.r)
 
