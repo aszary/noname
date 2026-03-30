@@ -42,7 +42,7 @@ module Lines
     
 
     """
-    function generate_open!(psr, step=10)
+    function generate_open_obsolete!(psr, step=10)
         fv = psr.fields
         stepsnum = div(fv.rmax, step)
 

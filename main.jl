@@ -125,7 +125,7 @@ module NoName
         Field.calculate_dipole!(psr)
         Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
-        Lines.generate_open!(psr)
+        Lines.generate_open_obsolete!(psr)
 
         #Sparks.random_sparks!(psr) # cannot calculate potential (points beyond grid. do not use it, just for show) 
         Sparks.create_grid!(psr)
@@ -145,7 +145,7 @@ module NoName
         Field.calculate_dipole!(psr)
         Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
-        Lines.generate_open!(psr)
+        Lines.generate_open_obsolete!(psr)
 
         #Sparks.random_sparks!(psr) 
         Sparks.init_sparks1!(psr ;num=5)
@@ -167,7 +167,7 @@ module NoName
         #Field.calculate_dipole!(psr)
         #Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
-        #Lines.generate_open!(psr)
+        #Lines.generate_open_obsolete!(psr)
 
         #Sparks.random_sparks!(psr) 
         Sparks.init_sparks1!(psr ;num=5)
