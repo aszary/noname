@@ -57,7 +57,7 @@ module NoName
             fields.beq = Field.beq(p, pdot)
             polar_caps = nothing
             pc = nothing
-            open_lines = [[], []]
+            open_lines = []
             sparks = nothing
             grid = nothing
             potential = nothing
@@ -100,7 +100,7 @@ module NoName
             fields.beq = Field.beq(p, pdot)
             polar_caps = nothing
             pc = nothing
-            open_lines = [[], []]
+            open_lines = []
             sparks = nothing
             grid = nothing
             potential = nothing
@@ -222,8 +222,8 @@ module NoName
 
         #println(psr.nsfield)
 
-        Plot.anomalies(psr)
-        #Plot.anomalies2D(psr)
+        #Plot.anomalies(psr)
+        Plot.anomalies2D(psr)
 
        
     end

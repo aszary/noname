@@ -46,34 +46,27 @@ module Lines
         fv = psr.fields
         stepsnum = div(fv.rmax, step)
 
-        # two polar caps
-        for (i,pc) in enumerate(psr.polar_caps)
-            # points at the polar cap
-            xs = pc[1]
-            ys = pc[2]
-            zs = pc[3]
-            # goint other direction at south pole
-            if i == 2
-                step = -step
-            end
-            # all points
-            for (j,x) in enumerate(xs) 
-                pos = [xs[j], ys[j], zs[j]]
+        # first polar cap only
+        pc = psr.polar_caps[1]
+        xs = pc[1]
+        ys = pc[2]
+        zs = pc[3]
+        for (j,x) in enumerate(xs)
+            pos = [xs[j], ys[j], zs[j]]
+            pos_sph = Functions.cartesian2spherical(pos)
+            b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
+            b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+            push!(psr.open_lines, [[pos[1]], [pos[2]], [pos[3]]]) # adding initial position
+            ml = psr.open_lines[j] # magnetic line add values to ml[1] is x ml[2] is y ml[3] is z
+            for k in 1:stepsnum
                 pos_sph = Functions.cartesian2spherical(pos)
                 b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
                 b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
-                push!(psr.open_lines[i], [[pos[1]], [pos[2]], [pos[3]]]) # adding initial position
-                ml = psr.open_lines[i][j] # magnetic line add values to ml[1] is x ml[2] is y ml[3] is z 
-                for k in 1:stepsnum
-                    pos_sph = Functions.cartesian2spherical(pos)
-                    b_sph = Field.bvac(pos_sph, psr.r, fv.beq)
-                    b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
-                    st = b / norm(b) * step
-                    pos += st # new position for magnetic line
-                    push!(ml[1], pos[1])
-                    push!(ml[2], pos[2])
-                    push!(ml[3], pos[3])
-                end
+                st = b / norm(b) * step
+                pos += st # new position for magnetic line
+                push!(ml[1], pos[1])
+                push!(ml[2], pos[2])
+                push!(ml[3], pos[3])
             end
         end
     end
@@ -87,7 +80,7 @@ module Lines
 
     At rmax the last-open-line polar angle is estimated from the dipole formula.
     num uniformly spaced azimuthal points are placed on that circle and each line
-    is integrated inward. Results are appended to psr.open_lines[1].
+    is integrated inward. Results are appended to psr.open_lines.
 
     # Arguments
     - num: number of points (field lines) distributed around the circle at rmax
@@ -104,8 +97,8 @@ module Lines
             pos = Functions.spherical2cartesian([nf.rmax, theta_rmax, phi])
             pos_sph = Functions.cartesian2spherical(pos)
 
-            push!(psr.open_lines[1], [[pos[1]], [pos[2]], [pos[3]]])
-            ml = psr.open_lines[1][end]
+            push!(psr.open_lines, [[pos[1]], [pos[2]], [pos[3]]])
+            ml = psr.open_lines[end]
 
             while pos_sph[1] > psr.r
                 b_sph = NSField.BSph(nf, pos_sph[1]/psr.r, pos_sph[2], pos_sph[3])

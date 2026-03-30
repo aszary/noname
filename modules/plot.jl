@@ -56,10 +56,8 @@ module Plot
         end
 
         # draw open lines
-        for i in eachindex(psr.open_lines)
-            for j in eachindex(psr.open_lines[i])
-                lines!(ax, psr.open_lines[i][j][1], psr.open_lines[i][j][2], psr.open_lines[i][j][3], color=:green)         
-            end
+        for ml in psr.open_lines
+            lines!(ax, ml[1], ml[2], ml[3], color=:green)
         end
 
 
@@ -179,10 +177,8 @@ module Plot
         end
 
         # draw open lines
-        for i in eachindex(psr.open_lines)
-            for j in eachindex(psr.open_lines[i])
-                lines!(ax, psr.open_lines[i][j][1], psr.open_lines[i][j][2], psr.open_lines[i][j][3], color=:green)         
-            end
+        for ml in psr.open_lines
+            lines!(ax, ml[1], ml[2], ml[3], color=:green)
         end
 
 
@@ -991,6 +987,11 @@ module Plot
             scatter!(ax, [p[1] for p in psr.line_of_sight], [p[2] for p in psr.line_of_sight], [p[3] for p in psr.line_of_sight], color=:green, markersize=8)
         end
 
+        # draw open lines
+        for ml in psr.open_lines
+            lines!(ax, ml[1], ml[2], ml[3], color=:green)
+        end
+
         # anomalies
         for a in psr.nsfield.anomalies
             pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
@@ -1044,8 +1045,8 @@ module Plot
                     MarkerElement(color = :red, marker = :rtriangle, markersize = 10, points = Point2f[(0.9, 0.5)])]
         mag_elem = [LineElement(color = :blue, linewidth = 2, points = Point2f[(0.0, 0.5), (0.7, 0.5)]),
                     MarkerElement(color = :blue, marker = :rtriangle, markersize = 10, points = Point2f[(0.9, 0.5)])]
-        los_elem = [LineElement(color = :green, linewidth = 1),
-                    MarkerElement(color = :green, marker = :xcross, markersize = 8)]
+        los_elem = [LineElement(color = :red, linewidth = 1),
+                    MarkerElement(color = :red, marker = :xcross, markersize = 8)]
 
         # --- left panel: x-z plane ---
         ax1 = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x [m]", ylabel = "z [m]", title = "Anomalies (x-z plane)")
@@ -1063,8 +1064,15 @@ module Plot
             xs = line[1][mask]
             zs = line[3][mask]
             isempty(xs) && continue
-            lines!(ax1, xs, zs, color = :green, linewidth = 1)
-            scatter!(ax1, line[1][end], line[3][end], color = :green, marker = :xcross)
+            lines!(ax1, xs, zs, color = :red, linewidth = 1)
+            scatter!(ax1, line[1][end], line[3][end], color = :red, marker = :xcross)
+        end
+        for ml in psr.open_lines
+            mask = [sqrt(ml[1][i]^2 + ml[2][i]^2 + ml[3][i]^2) <= clip_r for i in eachindex(ml[1])]
+            xs = ml[1][mask]
+            zs = ml[3][mask]
+            isempty(xs) && continue
+            lines!(ax1, xs, zs, color=:green, linewidth=1)
         end
         xlims!(ax1, -2.5 * psr.r, 2.5 * psr.r)
         ylims!(ax1, -0.5 * psr.r, 3.5 * psr.r)
@@ -1085,8 +1093,15 @@ module Plot
             ys = line[2][mask]
             zs = line[3][mask]
             isempty(ys) && continue
-            lines!(ax2, ys, zs, color = :green, linewidth = 1)
-            scatter!(ax2, line[2][end], line[3][end], color = :green, marker = :xcross)
+            lines!(ax2, ys, zs, color = :red, linewidth = 1)
+            scatter!(ax2, line[2][end], line[3][end], color = :red, marker = :xcross)
+        end
+        for ml in psr.open_lines
+            mask = [sqrt(ml[1][i]^2 + ml[2][i]^2 + ml[3][i]^2) <= clip_r for i in eachindex(ml[1])]
+            ys = ml[2][mask]
+            zs = ml[3][mask]
+            isempty(ys) && continue
+            lines!(ax2, ys, zs, color=:green, linewidth=1)
         end
         xlims!(ax2, -2.5 * psr.r, 2.5 * psr.r)
         ylims!(ax2, -0.5 * psr.r, 3.5 * psr.r)
