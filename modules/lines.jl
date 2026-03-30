@@ -79,6 +79,62 @@ module Lines
     end
 
 
+    """
+    generate_open!(psr; num=100)
+
+    Traces the last open magnetic field lines from height rmax (defined in psr.nsfield)
+    down to the stellar surface using the non-dipolar field (NSField).
+
+    At rmax the last-open-line polar angle is estimated from the dipole formula.
+    num uniformly spaced azimuthal points are placed on that circle and each line
+    is integrated inward. Results are appended to psr.open_lines[1].
+
+    # Arguments
+    - num: number of points (field lines) distributed around the circle at rmax
+    """
+    function generate_open!(psr; num=100)
+        nf = psr.nsfield
+        step = nf.rmax / nf.size
+
+        z_rmax = nf.rmax / psr.r  # rmax in stellar radii
+        theta_rmax = Functions.theta_max(z_rmax, psr)
+        phis = range(0, 2*pi, length=num+1)[1:num]
+
+        for phi in phis
+            pos = Functions.spherical2cartesian([nf.rmax, theta_rmax, phi])
+            pos_sph = Functions.cartesian2spherical(pos)
+
+            push!(psr.open_lines[1], [[pos[1]], [pos[2]], [pos[3]]])
+            ml = psr.open_lines[1][end]
+
+            while pos_sph[1] > psr.r
+                b_sph = NSField.BSph(nf, pos_sph[1]/psr.r, pos_sph[2], pos_sph[3])
+                b = Functions.vec_spherical2cartesian(pos_sph, [b_sph[1], b_sph[2], b_sph[3]])
+                st = -b / norm(b) * step
+                pos += st
+                pos_sph = Functions.cartesian2spherical(pos)
+                push!(ml[1], pos[1])
+                push!(ml[2], pos[2])
+                push!(ml[3], pos[3])
+            end
+
+            # Interpolate last point to the stellar surface
+            n = length(ml[1])
+            if n >= 2
+                pos_prev = [ml[1][n-1], ml[2][n-1], ml[3][n-1]]
+                pos_last = [ml[1][n],   ml[2][n],   ml[3][n]]
+                r_prev = norm(pos_prev)
+                r_last = norm(pos_last)
+                t = (r_prev - psr.r) / (r_prev - r_last)
+                pos_surface = pos_prev + t * (pos_last - pos_prev)
+                ml[1][n] = pos_surface[1]
+                ml[2][n] = pos_surface[2]
+                ml[3][n] = pos_surface[3]
+            end
+        end
+    end
+
+
     function init_line_of_sight(psr; num=100)
 
          # calculates line of sight
