@@ -222,8 +222,8 @@ module NoName
 
         #println(psr.nsfield)
 
-        #Plot.anomalies(psr)
-        Plot.anomalies2D(psr)
+        Plot.anomalies(psr)
+        #Plot.anomalies2D(psr)
 
        
     end
