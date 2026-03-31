@@ -212,7 +212,7 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        #generate_signal()
+        generate_signal()
 
         println("Bye")
     end
