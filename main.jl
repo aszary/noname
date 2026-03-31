@@ -2,12 +2,14 @@ module NoName
 
     using JSON3
     include("modules/functions.jl")
-    include("modules/plot.jl") 
+    include("modules/plot.jl")
     include("modules/field.jl")
+    include("modules/nsfield.jl")
     include("modules/lines.jl")
     include("modules/sparks.jl")
     include("modules/signal.jl")
     include("modules/lbc.jl")
+
 
     mutable struct Pulsar
         r # pulsar radius in [m]
@@ -18,6 +20,7 @@ module NoName
         alpha # inclination angle in [deg.]
         magnetic_axis # in spherical coordinates
         rotation_axis # in spherical coordinates
+        nsfield # non-dipolar magneitc field structure 
         fields # magnetic and electric fields
         polar_caps # two polar caps boundries (xs, ys, zs)
         pc # single polar cap
@@ -49,11 +52,12 @@ module NoName
             alpha = 30 # 30 deg by default
             magnetic_axis = (r, 0, 0)
             rotation_axis = (r, deg2rad(alpha), 0)
+            nsfield = NSField.Field()
             fields = Field.Test() # using test class for now
             fields.beq = Field.beq(p, pdot)
             polar_caps = nothing
             pc = nothing
-            open_lines = [[], []]
+            open_lines = []
             sparks = nothing
             grid = nothing
             potential = nothing
@@ -66,13 +70,13 @@ module NoName
             spark_radius = 20
             spark_radii = nothing
             line_of_sight = nothing
-            r_em = 500_000 # TODO 20 km for tests change it to 500km
+            r_em = 500_000  # 500 km
             beta = 4.0 # deg by default
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -91,11 +95,12 @@ module NoName
             r_lc = Functions.rlc(p)
             magnetic_axis = (r, 0, 0)
             rotation_axis = (r, deg2rad(alpha), 0)
+            nsfield = NSField.Field(d)
             fields = Field.Test() # using test class for now
             fields.beq = Field.beq(p, pdot)
             polar_caps = nothing
             pc = nothing
-            open_lines = [[], []]
+            open_lines = []
             sparks = nothing
             grid = nothing
             potential = nothing
@@ -110,7 +115,7 @@ module NoName
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
         end
     end
 
@@ -120,7 +125,7 @@ module NoName
         Field.calculate_dipole!(psr)
         Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
-        Lines.generate_open!(psr)
+        Lines.generate_open_obsolete!(psr)
 
         #Sparks.random_sparks!(psr) # cannot calculate potential (points beyond grid. do not use it, just for show) 
         Sparks.create_grid!(psr)
@@ -129,7 +134,7 @@ module NoName
         Sparks.calculate_potential!(psr)
 
         Lines.init_line_of_sight(psr)
-        Lines.calculate_line_of_sight(psr)
+        Lines.calculate_line_of_sight_dipole(psr)
         Plot.pulsar(psr)
         #Plot.potential2D(psr)
         #Plot.potential2Dv2(psr)
@@ -140,7 +145,7 @@ module NoName
         Field.calculate_dipole!(psr)
         Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
-        Lines.generate_open!(psr)
+        Lines.generate_open_obsolete!(psr)
 
         #Sparks.random_sparks!(psr) 
         Sparks.init_sparks1!(psr ;num=5)
@@ -162,11 +167,11 @@ module NoName
         #Field.calculate_dipole!(psr)
         #Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
-        #Lines.generate_open!(psr)
+        #Lines.generate_open_obsolete!(psr)
 
         #Sparks.random_sparks!(psr) 
-        #Sparks.init_sparks1!(psr ;num=5)
-        Sparks.init_sparks2!(psr ;num=5)
+        Sparks.init_sparks1!(psr ;num=5)
+        #Sparks.init_sparks2!(psr ;num=5)
         #Sparks.init_sparks3!(psr ;num=30, rfmax=0.7)
 
         #Sparks.generate_potentials # TODO
@@ -183,7 +188,7 @@ module NoName
         #Field.calculate_dipole!(psr)
 
         Lines.init_line_of_sight(psr, num=100)
-        Lines.calculate_line_of_sight(psr)
+        Lines.calculate_line_of_sight_dipole(psr)
 
         # TODO work on n_steps + save_every for single pulses
         #Sparks.init_sparks1!(psr ;num=5)
@@ -199,12 +204,31 @@ module NoName
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
         Signal.generate_pulses(psr, pulse_max=500)
         
-        #Plot.signal(psr)
-        Plot.pulses(psr, number=500)
+        Plot.signal(psr)
+        #Plot.pulses(psr, number=500)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
     end
+
+    function model_field()
+        psr = Pulsar("input/1.json")
+        #psr = Pulsar("input/2.json")
+
+        Lines.init_line_of_sight(psr, num=5)
+        Lines.calculate_line_of_sight(psr)
+
+        Lines.generate_open!(psr, num=10)
+
+        #println(psr.nsfield)
+
+        Plot.anomalies(psr)
+        #Plot.anomalies2D(psr)
+
+       
+    end
+
+
 
     function main()
 
@@ -212,7 +236,9 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        generate_signal()
+        #generate_signal()
+
+        model_field()
 
         println("Bye")
     end

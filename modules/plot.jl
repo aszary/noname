@@ -56,10 +56,8 @@ module Plot
         end
 
         # draw open lines
-        for i in eachindex(psr.open_lines)
-            for j in eachindex(psr.open_lines[i])
-                lines!(ax, psr.open_lines[i][j][1], psr.open_lines[i][j][2], psr.open_lines[i][j][3], color=:green)         
-            end
+        for ml in psr.open_lines
+            lines!(ax, ml[1], ml[2], ml[3], color=:green)
         end
 
 
@@ -179,10 +177,8 @@ module Plot
         end
 
         # draw open lines
-        for i in eachindex(psr.open_lines)
-            for j in eachindex(psr.open_lines[i])
-                lines!(ax, psr.open_lines[i][j][1], psr.open_lines[i][j][2], psr.open_lines[i][j][3], color=:green)         
-            end
+        for ml in psr.open_lines
+            lines!(ax, ml[1], ml[2], ml[3], color=:green)
         end
 
 
@@ -959,6 +955,163 @@ module Plot
         rowgap!(fig.layout, 0)
 
         return fig, Panels(left, nothing, nothing, bottom, center)
+
+    end
+
+
+
+    function anomalies(psr; delay=0.1)
+
+        # better accuracy for the sphere 
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+
+        # plot polar cap
+        #lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # magnetic field lines from line of sight
+        for line in psr.los_lines
+            lines!(ax, line[1], line[2], line[3], color=:blue, linewidth=1)
+            scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        # line of sight emission points (already in cartesian)
+        if !isnothing(psr.line_of_sight)
+            scatter!(ax, [p[1] for p in psr.line_of_sight], [p[2] for p in psr.line_of_sight], [p[3] for p in psr.line_of_sight], color=:green, markersize=8)
+        end
+
+        # draw open lines
+        for ml in psr.open_lines
+            lines!(ax, ml[1], ml[2], ml[3], color=:green)
+        end
+
+        # anomalies
+        for a in psr.nsfield.anomalies
+            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+            arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange)
+        end
+
+        cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
+
+        # Try accessing the scene's camera directly
+        println("Scene camera type: ", typeof(cam))
+        println("Scene camera fields: ", fieldnames(typeof(cam)))
+        println("Scene camera properties: ", propertynames(cam))
+
+        # Add a button to print camera state
+        #button = Button(f[7, 1], label = "Print Camera State")
+        button = Button(fig[1, 1], label = "Print", 
+               width = 80, height = 25,
+               halign = :right, valign = :top,
+               tellwidth = false, tellheight = false)
+
+        on(button.clicks) do n
+            println("\n--- Camera State (Click $n) ---")
+            println("Camera type: ", typeof(cam))
+            println("Eye position: ", cam.eyeposition[])
+            println("View direction: ", cam.lookat[])
+            println("Up vector: ", cam.upvector[])
+        end
+ 
+
+
+
+        display(fig)
+
+    end
+
+
+
+
+    function anomalies2D(psr)
+
+        fig = Figure(size = (1200, 600))
+
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+        theta_range = range(0, 2π, length=200)
+        clip_r = 5 * psr.r
+
+        # legend elements (shared)
+        rot_elem = [LineElement(color = :red, linewidth = 2, points = Point2f[(0.0, 0.5), (0.7, 0.5)]),
+                    MarkerElement(color = :red, marker = :rtriangle, markersize = 10, points = Point2f[(0.9, 0.5)])]
+        mag_elem = [LineElement(color = :blue, linewidth = 2, points = Point2f[(0.0, 0.5), (0.7, 0.5)]),
+                    MarkerElement(color = :blue, marker = :rtriangle, markersize = 10, points = Point2f[(0.9, 0.5)])]
+        los_elem = [LineElement(color = :red, linewidth = 1),
+                    MarkerElement(color = :red, marker = :xcross, markersize = 8)]
+
+        # --- left panel: x-z plane ---
+        ax1 = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x [m]", ylabel = "z [m]", title = "Anomalies (x-z plane)")
+        lines!(ax1, psr.r .* cos.(theta_range), psr.r .* sin.(theta_range), color = :black)
+        arrows2d!(ax1, [0.0], [0.0], [rot_vec[1]], [rot_vec[3]], color = :red)
+        arrows2d!(ax1, [0.0], [0.0], [mag_vec[1]], [mag_vec[3]], color = :blue)
+        for a in psr.nsfield.anomalies
+            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+            arrows2d!(ax1, [pos[1]], [pos[3]], [dir[1]], [dir[3]], color = :orange)
+            scatter!(ax1, pos[1], pos[3], color = :orange, marker = :circle)
+        end
+        for line in psr.los_lines
+            mask = [sqrt(line[1][i]^2 + line[2][i]^2 + line[3][i]^2) <= clip_r for i in eachindex(line[1])]
+            xs = line[1][mask]
+            zs = line[3][mask]
+            isempty(xs) && continue
+            lines!(ax1, xs, zs, color = :red, linewidth = 1)
+            scatter!(ax1, line[1][end], line[3][end], color = :red, marker = :xcross)
+        end
+        #=
+        for ml in psr.open_lines
+            mask = [sqrt(ml[1][i]^2 + ml[2][i]^2 + ml[3][i]^2) <= clip_r for i in eachindex(ml[1])]
+            xs = ml[1][mask]
+            zs = ml[3][mask]
+            isempty(xs) && continue
+            lines!(ax1, xs, zs, color=:green, linewidth=1)
+        end
+        =#
+        xlims!(ax1, -2.5 * psr.r, 2.5 * psr.r)
+        ylims!(ax1, -0.5 * psr.r, 3.5 * psr.r)
+
+        # --- right panel: y-z plane ---
+        ax2 = Axis(fig[1, 2], aspect = DataAspect(), xlabel = "y [m]", ylabel = "z [m]", title = "Anomalies (y-z plane)")
+        lines!(ax2, psr.r .* cos.(theta_range), psr.r .* sin.(theta_range), color = :black)
+        arrows2d!(ax2, [0.0], [0.0], [rot_vec[2]], [rot_vec[3]], color = :red)
+        arrows2d!(ax2, [0.0], [0.0], [mag_vec[2]], [mag_vec[3]], color = :blue)
+        for a in psr.nsfield.anomalies
+            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+            arrows2d!(ax2, [pos[2]], [pos[3]], [dir[2]], [dir[3]], color = :orange)
+            scatter!(ax2, pos[2], pos[3], color = :orange, marker = :circle)
+        end
+        for line in psr.los_lines
+            mask = [sqrt(line[1][i]^2 + line[2][i]^2 + line[3][i]^2) <= clip_r for i in eachindex(line[1])]
+            ys = line[2][mask]
+            zs = line[3][mask]
+            isempty(ys) && continue
+            lines!(ax2, ys, zs, color = :red, linewidth = 1)
+            scatter!(ax2, line[2][end], line[3][end], color = :red, marker = :xcross)
+        end
+        #=
+        for ml in psr.open_lines
+            mask = [sqrt(ml[1][i]^2 + ml[2][i]^2 + ml[3][i]^2) <= clip_r for i in eachindex(ml[1])]
+            ys = ml[2][mask]
+            zs = ml[3][mask]
+            isempty(ys) && continue
+            lines!(ax2, ys, zs, color=:green, linewidth=1)
+        end
+        =#
+        xlims!(ax2, -2.5 * psr.r, 2.5 * psr.r)
+        ylims!(ax2, -0.5 * psr.r, 3.5 * psr.r)
+
+        axislegend(ax2, [rot_elem, mag_elem, los_elem], ["rotation axis", "magnetic axis", "los field lines"])
+        display(fig)
 
     end
 

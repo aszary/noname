@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "psr": {
         "P0": 1,
         "R": 10000,
@@ -25,3 +26,62 @@
         "phi_m": "rotation of the anomaly around its Z axis"
     }
 }
+=======
+    "psr": 
+    {
+        "P0":1,
+        "R":10000,
+        "PDOT":1e-15,
+        "alpha":30,
+        "beta":4,
+        "R_em":500000,
+        "spark_radius":20
+	},
+
+    "field":
+    {
+        "rmax":500000,
+        "size":1000
+    },
+
+    "anomalies":[
+        {
+            "_r": "spherical coordiante r,  location of the anommaly [in stellar radius]",
+            "_theta_r": "spherical coordiante theta, location of the anommaly [deg]",
+            "_phi_r": "spherical coordiante phi, location of the anommaly [deg]",
+            "_m": "strength of the anomally with respect to the global dipol",
+            "_theta_m": "spherical coordiante theta, orientation of the anommaly [deg]",
+            "_phi_m,": "spherical coordiante phi, orientation of the anommaly [deg]",
+            "r": 0.95,
+            "theta": 3,
+            "phi": 0,
+            "m" : 0.1,
+            "theta_m": 45,
+            "phi_m": 0
+        },
+        {
+            "r": 0.95,
+            "theta": 11.0,
+            "phi": 180.0,
+            "m" : 0.2,
+            "theta_m": 0.0,
+            "phi_m": 0.0
+        },
+        {
+            "r": 0.95,
+            "theta": 5.0,
+            "phi": 90.0,
+            "m" : 0.3,
+            "theta_m": 0.0,
+            "phi_m": 0.0
+        }
+
+
+
+
+
+    ]
+
+
+}
+>>>>>>> 58b1c0947308ed90e11916d36bdb4bffb11eaf10
