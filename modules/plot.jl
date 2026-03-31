@@ -5,6 +5,7 @@ module Plot
     using GeometryBasics
     using Glob
     using Statistics
+    using LinearAlgebra
     include("functions.jl")
     include("sparks.jl")
     include("tools.jl")
@@ -712,7 +713,18 @@ module Plot
         lines!(ax_bottom, signal_obs , color=:black, linewidth=2)
 
 
-        cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
+        # Camera aimed at polar cap based on its location and size
+        pc_xs, pc_ys, pc_zs = psr.pc[1], psr.pc[2], psr.pc[3]
+        pc_center = [mean(pc_xs), mean(pc_ys), mean(pc_zs)]
+        pc_size = maximum(sqrt.((pc_xs .- pc_center[1]).^2 .+ (pc_ys .- pc_center[2]).^2 .+ (pc_zs .- pc_center[3]).^2))
+        pc_dir = pc_center / norm(pc_center)
+        cam_dist = psr.r * 0.1 + 2 * pc_size
+        eyepos = pc_center + pc_dir * cam_dist
+        view_dir_norm = -pc_dir
+        up_candidate = abs(dot(view_dir_norm, [0.0, 0.0, 1.0])) < 0.9 ? [0.0, 0.0, 1.0] : [1.0, 0.0, 0.0]
+        upvec = up_candidate - dot(up_candidate, view_dir_norm) * view_dir_norm
+        upvec = upvec / norm(upvec)
+        cam = cam3d!(ax.scene, eyeposition=eyepos, lookat=pc_center, upvector=upvec, center=false)
 
         # Try accessing the scene's camera directly
         println("Scene camera type: ", typeof(cam))
@@ -1113,6 +1125,103 @@ module Plot
         axislegend(ax2, [rot_elem, mag_elem, los_elem], ["rotation axis", "magnetic axis", "los field lines"])
         display(fig)
 
+    end
+
+
+
+    """
+    polar_cap2D(psr)
+
+    Top-down 2D view of the polar cap (looking along the magnetic axis / z-axis).
+    Plots the footprints of open field lines on the stellar surface, and marks
+    the magnetic axis, rotation axis, and anomaly positions.
+    """
+    function polar_cap2D(psr)
+
+        fig = Figure(size = (700, 700))
+        ax = Axis(fig[1, 1], aspect = DataAspect(),
+                  xlabel = "x [m]", ylabel = "y [m]",
+                  title = "Polar cap – top view (along magnetic axis)")
+
+        # --- open line footprints + ellipse fit (done first to get scale) ---
+        view_cx, view_cy, arrow_len, ef_a = 0.0, 0.0, 1.5 * psr.r_pc, psr.r_pc
+        has_ef = false
+        if !isempty(psr.open_lines)
+            xs = [ml[1][end] for ml in psr.open_lines]
+            ys = [ml[2][end] for ml in psr.open_lines]
+            zs = [ml[3][end] for ml in psr.open_lines]
+            scatter!(ax, xs, ys, color = :green, markersize = 6)
+
+            ef = Sparks.SolidBody.fit_ellipse([xs, ys, zs], psr.r)
+            has_ef = true
+
+            # draw ellipse
+            cx, cy = ef.center_local
+            el_xs = Float64[]
+            el_ys = Float64[]
+            for t in range(0, 2π, length=300)
+                u = cx + ef.a * cos(t) * cos(ef.θ) - ef.b * sin(t) * sin(ef.θ)
+                v = cy + ef.a * cos(t) * sin(ef.θ) + ef.b * sin(t) * cos(ef.θ)
+                p3 = ef.centroid + u * ef.x_hat + v * ef.y_hat
+                push!(el_xs, p3[1])
+                push!(el_ys, p3[2])
+            end
+            lines!(ax, el_xs, el_ys, color = :green, linewidth = 2)
+            text!(ax, ef.centroid[1], ef.centroid[2],
+                  text = "a=$(round(ef.a, digits=1)) b=$(round(ef.b, digits=1)) θ=$(round(rad2deg(ef.θ), digits=1))°",
+                  fontsize = 11, color = :darkgreen, align = (:center, :bottom))
+
+            # view centred on polar cap; arrows scaled to 2× semi-major axis
+            view_cx   = ef.centroid[1]
+            view_cy   = ef.centroid[2]
+            arrow_len = 2.0 * ef.a
+            ef_a      = ef.a
+        end
+
+        # --- magnetic axis: projects to origin in x-y top-down view ---
+        scatter!(ax, [0.0], [0.0], color = :blue, marker = :circle, markersize = 14)
+
+        # --- rotation axis: normalised arrow from origin ---
+        rot_vec  = Functions.spherical2cartesian(psr.rotation_axis)
+        rot_xy   = [rot_vec[1], rot_vec[2]]
+        rot_norm = sqrt(rot_xy[1]^2 + rot_xy[2]^2)
+        if rot_norm > 0
+            rot_dir = rot_xy ./ rot_norm .* arrow_len
+            arrows!(ax, [view_cx], [view_cy], [rot_dir[1]], [rot_dir[2]], color = :red, linewidth = 2)
+        end
+
+        # --- anomalies: x-y projection of position; moment arrow normalised ---
+        for a in psr.nsfield.anomalies
+            pos    = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+            dir    = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+            dir_xy = [dir[1], dir[2]]
+            d_norm = sqrt(dir_xy[1]^2 + dir_xy[2]^2)
+            if d_norm > 0
+                dir_scaled = dir_xy ./ d_norm .* arrow_len
+                arrows!(ax, [pos[1]], [pos[2]], [dir_scaled[1]], [dir_scaled[2]],
+                        color = :orange, linewidth = 2)
+            end
+            scatter!(ax, [pos[1]], [pos[2]], color = :orange, marker = :star5, markersize = 12)
+        end
+
+        # --- axis limits: centred on polar cap, 5× semi-major axis padding ---
+        pad = has_ef ? 5.0 * ef_a : 3.0 * psr.r_pc
+        xlims!(ax, view_cx - pad, view_cx + pad)
+        ylims!(ax, view_cy - pad, view_cy + pad)
+
+        # --- manual legend ---
+        legend_elems  = Any[MarkerElement(color = :green,  marker = :circle,    markersize = 8),
+                            LineElement(  color = :green,  linewidth = 2),
+                            MarkerElement(color = :blue,   marker = :circle,    markersize = 12),
+                            LineElement(  color = :red,    linewidth = 2)]
+        legend_labels = ["open line footprints", "ellipse fit", "magnetic axis", "rotation axis"]
+        if !isempty(psr.nsfield.anomalies)
+            push!(legend_elems,  MarkerElement(color = :orange, marker = :star5, markersize = 10))
+            push!(legend_labels, "anomaly")
+        end
+        Legend(fig[1, 2], legend_elems, legend_labels)
+
+        display(fig)
     end
 
 

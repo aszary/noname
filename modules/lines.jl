@@ -7,6 +7,7 @@ module Lines
     include("transformations.jl")
     include("signal.jl")
     include("geometry.jl")
+    include("solid_body.jl")
 
 
     """
@@ -125,6 +126,13 @@ module Lines
                 ml[3][n] = pos_surface[3]
             end
         end
+
+        # Fit ellipse to the last points of open lines (lying on the stellar surface)
+        xs = [ml[1][end] for ml in psr.open_lines]
+        ys = [ml[2][end] for ml in psr.open_lines]
+        zs = [ml[3][end] for ml in psr.open_lines]
+        psr.pc = [xs, ys, zs]
+        psr.ellipse_fit = SolidBody.fit_ellipse([xs, ys, zs], psr.r)
     end
 
 

@@ -3,9 +3,9 @@ module Sparks
     using PyCall
     using JLD2
     using FileIO
+    import ..Lines
     include("functions.jl")
     include("field.jl")
-    include("solid_body.jl")
     include("lbc.jl")
 
 
@@ -646,10 +646,23 @@ module Sparks
     Runs sparks simulation, for simple solidbody-like rotation 
     """
     function simulate_sparks_solidbody(psr; n_steps=100)
-        ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
+
+        if isnothing(psr.sparks)
+            println("Init sparks first: e.g. Sparks.init_sparks1!()...")
+            return
+        end
+
+        if isnothing(psr.ellipse_fit)
+            println("Generate open lines first: Lines.generate_open!()!")
+            return
+        end
+        ef = psr.ellipse_fit
+
+
+
 
         for i in 1:n_steps
-            SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(360/n_steps))
+            Lines.SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(360/n_steps))
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
 
@@ -661,7 +674,11 @@ module Sparks
     """
     function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1, save_every=1)
 
-        ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
+        if isnothing(psr.ellipse_fit)
+            println("Generate open lines first: Lines.generate_open!()!")
+            return
+        end
+        ef = psr.ellipse_fit
 
         println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
 
