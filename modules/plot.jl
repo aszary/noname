@@ -1152,7 +1152,7 @@ module Plot
             zs = [ml[3][end] for ml in psr.open_lines]
             scatter!(ax, xs, ys, color = :green, markersize = 6)
 
-            ef = Sparks.SolidBody.fit_ellipse([xs, ys, zs], psr.r)
+            ef = psr.ellipse_fit
             has_ef = true
 
             # draw ellipse

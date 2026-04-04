@@ -1,7 +1,8 @@
 module Field
     using LinearAlgebra
-
+    
     include("functions.jl")
+    include("nsfield.jl")
 
 
     mutable struct Test
@@ -146,7 +147,7 @@ module Field
     """
     dipolar component of magnetic field at the surface based on x, y components
     |B_d| = 2 at the pole
-    """
+    
     function bd(x, y, psr)
         d = sqrt(x ^ 2 + y ^ 2)
         theta = asin(d / psr.r)
@@ -154,6 +155,29 @@ module Field
         #println(dipole(1, 0))
         bd = Functions.spherical2cartesian(bd_sph)
         return bd
+    end
+    """
+
+    """
+    Magnetic field at the surface (dipole + anomalies) based on x, y components.
+    Uses the NSField module to get the true Cartesian B-vector.
+    """
+    function bd(x, y, psr)
+        d = sqrt(x ^ 2 + y ^ 2)
+        
+        # Clamp to prevent domain errors (asin( > 1.0 )) due to grid points 
+        # that might sit fractionally outside the star due to floating point math
+        d = min(d, psr.r) 
+        
+        # Calculate spherical angles
+        theta = asin(d / psr.r)
+        phi = atan(y, x) # atan(y, x) is Julia's atan2 equivalent
+        
+        # NSField.BVec computes the total field (Global Dipole + Anomalies)
+        # We evaluate it at the surface, so radial distance = 1.0 (stellar radii)
+        bx, by, bz = NSField.BVec(psr.nsfield, 1.0, theta, phi)
+        
+        return [bx, by, bz]
     end
 
 

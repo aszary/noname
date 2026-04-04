@@ -3,8 +3,9 @@ module NoName
     using JSON3
     include("modules/functions.jl")
     include("modules/plot.jl")
-    include("modules/field.jl")
     include("modules/nsfield.jl")
+
+    include("modules/field.jl")
     include("modules/lines.jl")
     include("modules/sparks.jl")
     include("modules/signal.jl")
@@ -223,7 +224,7 @@ module NoName
         Lines.init_line_of_sight(psr, num=100)
         Lines.calculate_line_of_sight(psr)
 
-        Lines.generate_open!(psr, num=20)
+        Lines.generate_open!(psr, num=200)
 
         # TODO work on init sparks for non-dipolar polar cap!
         #Sparks.init_sparks1!(psr ;num=5) # dipolar 
@@ -231,11 +232,14 @@ module NoName
         # TODO work on n_steps + save_every for single pulses
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        #Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
-        Sparks.save_sparks(psr; num=2)
+        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
+        Sparks.save_sparks(psr; num=4)
+        #2 json field 25000
+        #3 json field 5000
+        #4 json field 2000
 
         #Plot.sparks(psr)
-        Sparks.load_sparks(psr; num=2)
+        #Sparks.load_sparks(psr; num=2)
 
         #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
