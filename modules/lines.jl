@@ -10,33 +10,87 @@ module Lines
 
 
     """
-    Simple function assuming dipolar configuration of magnetic field at the surface. To be OBSOLETE.  
+    calculate_polarcaps!(psr; phi_num=100)
 
+    Calculates the polar cap boundaries by tracing the last open magnetic field lines 
+    from height rmax down to the stellar surface (r = psr.r), taking into account 
+    the influence of magnetic anomalies (NSField).
     """
     function calculate_polarcaps!(psr; phi_num=100)
-        theta = Functions.theta_max(1, psr)
-        phis = range(0, 2*pi, length=phi_num)
-        x = Array{Float64}(undef, phi_num)
-        y = Array{Float64}(undef, phi_num)
-        z = Array{Float64}(undef, phi_num)
-        x2 = Array{Float64}(undef, phi_num)
-        y2 = Array{Float64}(undef, phi_num)
-        z2 = Array{Float64}(undef, phi_num)
-    
-        for (i,ph) in enumerate(phis)
-            ca = Functions.spherical2cartesian([psr.r, theta, ph])
-            x[i] = ca[1]
-            y[i] = ca[2]
-            z[i] = ca[3]
-            ca2 = Functions.spherical2cartesian([psr.r, pi - theta, ph]) # south pole
-            x2[i] = ca2[1]
-            y2[i] = ca2[2]
-            z2[i] = ca2[3]
-        end
-        psr.polar_caps = [[x, y, z], [x2, y2, z2]]
-        psr.pc = [x, y, z]
-    end
+        nf = psr.nsfield
+        step = nf.rmax / nf.size
 
+        # Opening angle at maximum height (where the field is dipole-dominated)
+        z_rmax = nf.rmax / psr.r  
+        theta_rmax = Functions.theta_max(z_rmax, psr)
+        
+        # Generate azimuthal points
+        phis = range(0, 2*pi, length=phi_num+1)[1:phi_num]
+
+        # Arrays for coordinates of the northern and southern hemispheres
+        x_n, y_n, z_n = Float64[], Float64[], Float64[]
+        x_s, y_s, z_s = Float64[], Float64[], Float64[]
+
+        for phi in phis
+            # ==========================================
+            # NORTHERN HEMISPHERE
+            # ==========================================
+            pos_n = Functions.spherical2cartesian([nf.rmax, theta_rmax, phi])
+            pos_sph_n = Functions.cartesian2spherical(pos_n)
+
+            # Integrate the field line downwards to the surface
+            st_n = [0.0, 0.0, 0.0]
+            while pos_sph_n[1] > psr.r
+                b_sph_n = NSField.BSph(nf, pos_sph_n[1]/psr.r, pos_sph_n[2], pos_sph_n[3])
+                b_n = Functions.vec_spherical2cartesian(pos_sph_n, [b_sph_n[1], b_sph_n[2], b_sph_n[3]])
+                st_n = -b_n / norm(b_n) * step
+                pos_n += st_n
+                pos_sph_n = Functions.cartesian2spherical(pos_n)
+            end
+            
+            # Interpolate exactly to the surface r = psr.r (avoiding overshoot)
+            r_last_n = norm(pos_n)
+            pos_prev_n = pos_n - st_n
+            r_prev_n = norm(pos_prev_n)
+            t_n = (r_prev_n - psr.r) / (r_prev_n - r_last_n)
+            surf_n = pos_prev_n + t_n * (pos_n - pos_prev_n)
+
+            push!(x_n, surf_n[1])
+            push!(y_n, surf_n[2])
+            push!(z_n, surf_n[3])
+
+            # ==========================================
+            # SOUTHERN HEMISPHERE
+            # ==========================================
+            # Start from angle pi - theta_rmax
+            pos_s = Functions.spherical2cartesian([nf.rmax, pi - theta_rmax, phi])
+            pos_sph_s = Functions.cartesian2spherical(pos_s)
+
+            st_s = [0.0, 0.0, 0.0]
+            while pos_sph_s[1] > psr.r
+                b_sph_s = NSField.BSph(nf, pos_sph_s[1]/psr.r, pos_sph_s[2], pos_sph_s[3])
+                b_s = Functions.vec_spherical2cartesian(pos_sph_s, [b_sph_s[1], b_sph_s[2], b_sph_s[3]])
+                st_s = -b_s / norm(b_s) * step
+                pos_s += st_s
+                pos_sph_s = Functions.cartesian2spherical(pos_s)
+            end
+            
+            # Interpolate exactly to the surface r = psr.r
+            r_last_s = norm(pos_s)
+            pos_prev_s = pos_s - st_s
+            r_prev_s = norm(pos_prev_s)
+            t_s = (r_prev_s - psr.r) / (r_prev_s - r_last_s)
+            surf_s = pos_prev_s + t_s * (pos_s - pos_prev_s)
+
+            push!(x_s, surf_s[1])
+            push!(y_s, surf_s[2])
+            push!(z_s, surf_s[3])
+        end
+
+        # Assign the calculated anomalous shapes to the pulsar object
+        psr.polar_caps = [[x_n, y_n, z_n], [x_s, y_s, z_s]]
+        psr.pc = [x_n, y_n, z_n]  # Use the northern polar cap by default
+    end
 
     """
     

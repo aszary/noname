@@ -217,7 +217,7 @@ module NoName
 
         Lines.init_line_of_sight(psr, num=5)
         Lines.calculate_line_of_sight(psr)
-
+        Lines.calculate_polarcaps!(psr)
         Lines.generate_open!(psr, num=10)
 
         #println(psr.nsfield)
