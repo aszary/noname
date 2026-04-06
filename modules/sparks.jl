@@ -3,9 +3,9 @@ module Sparks
     using PyCall
     using JLD2
     using FileIO
+    import ..Lines
     include("functions.jl")
     include("field.jl")
-    include("solid_body.jl")
     include("lbc.jl")
 
 
@@ -369,6 +369,74 @@ module Sparks
 
     """
 
+    Initiate sparks at the elliptical polar cap defined by psr.ellipse_fit.
+    Same arc-length distance between sparks at the tracks (analogous to init_sparks1!).
+
+    # Arguments
+
+    - rfs: list of track radii as fractions of the polar cap semi-major axis
+    - num: number of sparks at the inner track
+
+    """
+    function init_sparks1_ellipse!(psr; rfs=[0.295, 0.5], num=3)
+        sp = Vector{Float64}[]
+        ef = psr.ellipse_fit
+
+        # Point on a scaled elliptical track in the tangent plane, projected onto the sphere
+        function ellipse_3d(t, rf)
+            # Ellipse in tangent plane (u, v) centered at center_local
+            u = ef.center_local[1] + rf * ef.a * cos(t) * cos(ef.θ) - rf * ef.b * sin(t) * sin(ef.θ)
+            v = ef.center_local[2] + rf * ef.a * cos(t) * sin(ef.θ) + rf * ef.b * sin(t) * cos(ef.θ)
+            # Map from tangent plane to 3D on sphere
+            p = ef.centroid + u * ef.x_hat + v * ef.y_hat
+            return p / norm(p) * psr.r
+        end
+
+        # Sample the track and compute cumulative 3D arc lengths
+        function track_arc_lengths(rf; n_samples=10000)
+            pts = [ellipse_3d(2pi * k / n_samples, rf) for k in 0:n_samples-1]
+            arcs = zeros(n_samples + 1)
+            for i in 1:n_samples-1
+                arcs[i+1] = arcs[i] + norm(pts[i+1] - pts[i])
+            end
+            arcs[end] = arcs[n_samples] + norm(pts[1] - pts[n_samples])
+            return pts, arcs
+        end
+
+        # Select n_sparks points at equal arc-length intervals
+        function place_equal_arc(pts, arcs, n_sparks)
+            n = length(pts)
+            total = arcs[end]
+            result = Vector{Float64}[]
+            for k in 0:(n_sparks-1)
+                target = total * k / n_sparks
+                idx = searchsortedfirst(view(arcs, 1:n), target)
+                push!(result, pts[clamp(idx, 1, n)])
+            end
+            return result
+        end
+
+        c1 = nothing
+        for (i, rf) in enumerate(rfs)
+            pts, arcs = track_arc_lengths(rf)
+            ci = arcs[end]
+            if i == 1
+                c1 = ci
+                num_new = num
+            else
+                num_new = convert(Int, ceil(ci / c1) * num)
+                println("Track no. $i: $num_new sparks (arc ratio $(round(ci/c1, digits=2)))")
+            end
+            append!(sp, place_equal_arc(pts, arcs, num_new))
+        end
+
+        psr.sparks = sp
+        println("Number of sparks added: ", length(sp))
+    end
+
+
+    """
+
     Initiate sparks at the polar cap (grids will be generated later!)
     Same number of sparks at all tracks
 
@@ -646,10 +714,23 @@ module Sparks
     Runs sparks simulation, for simple solidbody-like rotation 
     """
     function simulate_sparks_solidbody(psr; n_steps=100)
-        ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
+
+        if isnothing(psr.sparks)
+            println("Init sparks first: e.g. Sparks.init_sparks1!()...")
+            return
+        end
+
+        if isnothing(psr.ellipse_fit)
+            println("Generate open lines first: Lines.generate_open!()!")
+            return
+        end
+        ef = psr.ellipse_fit
+
+
+
 
         for i in 1:n_steps
-            SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(360/n_steps))
+            Lines.SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(360/n_steps))
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
 
@@ -661,7 +742,11 @@ module Sparks
     """
     function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1, save_every=1)
 
-        ef = SolidBody.fit_ellipse(psr.polar_caps[1], psr.r)
+        if isnothing(psr.ellipse_fit)
+            println("Generate open lines first: Lines.generate_open!()!")
+            return
+        end
+        ef = psr.ellipse_fit
 
         println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
 

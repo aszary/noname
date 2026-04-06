@@ -43,6 +43,7 @@ module NoName
         signal # radio intensity for continous signal
         pulses # single pulses generated from signal
         longitudes # single pulse longitudes
+        ellipse_fit # ellipse fit to the polar cap points
         function Pulsar()
             r = 10_000 # 10 km in merters
             p = 1 # period in seconds
@@ -76,7 +77,8 @@ module NoName
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            ellipse_fit = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -115,7 +117,8 @@ module NoName
             signal = nothing
             pulses = nothing
             longitudes = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes)
+            ellipse_fit = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit)
         end
     end
 
@@ -180,8 +183,8 @@ module NoName
     end
 
 
-    function generate_signal()
-        psr = Pulsar("input/1.json")
+    function generate_signal_dipole()
+        psr = Pulsar("input/1.json") # works only with no anomalies!!!
 
         Lines.calculate_polarcaps!(psr)
 
@@ -190,11 +193,13 @@ module NoName
         Lines.init_line_of_sight(psr, num=100)
         Lines.calculate_line_of_sight_dipole(psr)
 
+        Lines.generate_open!(psr, num=10)
+
         # TODO work on n_steps + save_every for single pulses
         #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.5, save_every=1)
+        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0, h_drft=0.5, save_every=1)
         Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
@@ -211,9 +216,43 @@ module NoName
         
     end
 
+
+    function generate_signal()
+        psr = Pulsar("input/3.json")
+
+        Lines.init_line_of_sight(psr, num=100)
+        Lines.calculate_line_of_sight(psr)
+
+        Lines.generate_open!(psr, num=20)
+
+        # TODO work on init sparks for non-dipolar polar cap!
+        #Sparks.init_sparks1!(psr ;num=5) # dipolar 
+        Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.9], num=5) # non-dipolar 
+        # TODO work on n_steps + save_every for single pulses
+        #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
+        #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
+        #Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
+        Sparks.save_sparks(psr; num=2)
+
+        #Plot.sparks(psr)
+        Sparks.load_sparks(psr; num=2)
+
+        #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
+        Signal.generate_signal_radii(psr; noise_level=0.05) # new
+        Signal.generate_pulses(psr, pulse_max=500)
+        
+        Plot.signal(psr)
+        #Plot.pulses(psr, number=500)
+        #Plot.pulses0(psr)
+        #Plot.pulses1(psr)
+        
+    end
+
+
     function model_field()
-        psr = Pulsar("input/1.json")
+        #psr = Pulsar("input/1.json")
         #psr = Pulsar("input/2.json")
+        psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=5)
         Lines.calculate_line_of_sight(psr)
@@ -222,8 +261,9 @@ module NoName
 
         #println(psr.nsfield)
 
-        Plot.anomalies(psr)
+        #Plot.anomalies(psr)
         #Plot.anomalies2D(psr)
+        Plot.polar_cap2D(psr)
 
        
     end
@@ -236,9 +276,10 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        #generate_signal()
+        #generate_signal_dipole()
+        generate_signal()
 
-        model_field()
+        #model_field()
 
         println("Bye")
     end
