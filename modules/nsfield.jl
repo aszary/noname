@@ -23,9 +23,19 @@ module NSField
         end
 
         function Field(json)
-            rmax = json.field.rmax
-            size = json.field.size
-            anomalies = [Anomaly(a) for a in json.anomalies]
+            # 1. Fallback in case the "field" section is missing - set default values
+            rmax = hasproperty(json, :field) ? json.field.rmax : 500_000
+            size = hasproperty(json, :field) ? json.field.size : 100
+            
+            anomalies = []
+            
+            # 2. Handle both "anomalies" (array) and "anomaly" (single object) keys
+            if hasproperty(json, :anomalies)
+                anomalies = [Anomaly(a) for a in json.anomalies]
+            elseif hasproperty(json, :anomaly)
+                push!(anomalies, Anomaly(json.anomaly))
+            end
+            
             new(rmax, size, anomalies)
         end
     end
@@ -180,5 +190,54 @@ module NSField
         Bz = cos(theta)*br          - sin(theta)*bθ
         return Bx, By, Bz
     end
+"""
+    Calculates full magnetic field vectors (dipole + anomalies) in spherical coordinates.
+    Uses NSField.BSph and restores real units [Tesla/Gauss] using psr.fields.beq.
+    """
+    function b_anomalous(pos_sph, psr)
+        # NSField module operates on radii in units of stellar radius
+        r_norm = pos_sph[1] / psr.r
+        theta = pos_sph[2]
+        phi = pos_sph[3]
+        
+        # Get the normalized field (Main.NoName is safe to use due to include order)
+        br_n, btheta_n, bphi_n = Main.NoName.NSField.BSph(psr.nsfield, r_norm, theta, phi)
+        
+        # Rescale to the real magnetic field strength
+        return (br_n * psr.fields.beq, btheta_n * psr.fields.beq, bphi_n * psr.fields.beq)
+    end
 
+    """
+    Finds the intersection points of open field lines with the stellar surface 
+    to create a new (distorted) polar cap, and then fits an ellipse to it.
+    """
+    function calculate_anomaly_polarcap!(psr)
+        xs = Float64[]
+        ys = Float64[]
+        zs = Float64[]
+        
+        for ml in psr.open_lines
+            # Check which end of the calculated line is attached to the stellar surface
+            r_start = sqrt(ml[1][1]^2 + ml[2][1]^2 + ml[3][1]^2)
+            r_end = sqrt(ml[1][end]^2 + ml[2][end]^2 + ml[3][end]^2)
+            
+            if abs(r_start - psr.r) < abs(r_end - psr.r)
+                push!(xs, ml[1][1])
+                push!(ys, ml[2][1])
+                push!(zs, ml[3][1])
+            else
+                push!(xs, ml[1][end])
+                push!(ys, ml[2][end])
+                push!(zs, ml[3][end])
+            end
+        end
+        
+        # Save the new footprints
+        psr.pc = [xs, ys, zs]
+        
+        # Fit the ellipse - using the algorithm implemented in the Sparks module
+        psr.ellipse_fit = Main.NoName.Lines.SolidBody.fit_ellipse([xs, ys, zs], psr.r)
+        
+        return psr.ellipse_fit
+    end
 end # module end

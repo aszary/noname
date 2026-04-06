@@ -972,54 +972,96 @@ module Plot
 
 
 
-    function anomalies(psr; delay=0.1)
+    function anomalies(psr; delay=0.1, show_anomalies=true)
 
         # better accuracy for the sphere 
         sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
-        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) # better camera control (Scene), but zlims does not work
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true) 
 
         # rotation axis
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
         # magnetic axis
         mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
 
-        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])#,  shaftradius = 0.01, tipradius = 0.01, tiplength=0.01)
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
 
-        # plot polar cap
-        #lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+        # ==========================================
+        # Exact boundary touching all open field lines (True Polar Cap)
+        # ==========================================
+        if hasproperty(psr, :pc) && !isnothing(psr.pc) && !isempty(psr.pc[1])
+            xs, ys, zs = psr.pc[1], psr.pc[2], psr.pc[3]
+            
+            closed_xs = vcat(xs, xs[1])
+            closed_ys = vcat(ys, ys[1])
+            closed_zs = vcat(zs, zs[1])
+            
+            lines!(ax, closed_xs, closed_ys, closed_zs, color = :magenta, linewidth = 5)
+            scatter!(ax, xs, ys, zs, color = :green, markersize = 10)
+        end
 
-        # magnetic field lines from line of sight
+        # ==========================================
+        # Mathematical Ellipse Fit
+        # ==========================================
+        if hasproperty(psr, :ellipse_fit) && !isnothing(psr.ellipse_fit) && !isnan(psr.ellipse_fit.a)
+            ef = psr.ellipse_fit
+            el_xs, el_ys, el_zs = Float64[], Float64[], Float64[]
+            cx, cy = ef.center_local
+            
+            for t in range(0, 2π, length=300)
+                u = cx + ef.a * cos(t) * cos(ef.θ) - ef.b * sin(t) * sin(ef.θ)
+                v = cy + ef.a * cos(t) * sin(ef.θ) + ef.b * sin(t) * cos(ef.θ)
+                
+                p3 = ef.centroid + u * ef.x_hat + v * ef.y_hat
+                p3_mag = norm(p3)
+                if p3_mag > 0
+                    p3_norm = p3 ./ p3_mag .* psr.r
+                    push!(el_xs, p3_norm[1])
+                    push!(el_ys, p3_norm[2])
+                    push!(el_zs, p3_norm[3])
+                end
+            end
+            
+            if !isempty(el_xs)
+                lines!(ax, el_xs, el_ys, el_zs, color = :red, linewidth = 2) 
+            end
+        end
+
         for line in psr.los_lines
             lines!(ax, line[1], line[2], line[3], color=:blue, linewidth=1)
             scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
         end
 
-        # line of sight emission points (already in cartesian)
         if !isnothing(psr.line_of_sight)
             scatter!(ax, [p[1] for p in psr.line_of_sight], [p[2] for p in psr.line_of_sight], [p[3] for p in psr.line_of_sight], color=:green, markersize=8)
         end
 
-        # draw open lines
         for ml in psr.open_lines
-            lines!(ax, ml[1], ml[2], ml[3], color=:green)
+             lines!(ax, ml[1], ml[2], ml[3], color=:green)
         end
 
-        # anomalies
-        for a in psr.nsfield.anomalies
-            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
-            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
-            arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange)
+        # ==========================================
+        # Anomalies - opcjonalne wyświetlanie na podstawie flagi show_anomalies
+        # ==========================================
+        if show_anomalies
+            if hasproperty(psr, :nsfield) && hasproperty(psr.nsfield, :anomalies)
+                for a in psr.nsfield.anomalies
+                    pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+                    dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+                    
+                    dir_mag = norm(dir)
+                    if dir_mag > 0
+                        dir_scaled = dir ./ dir_mag .* (0.5 * psr.r)
+                        arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]], 
+                                  color=:orange, shaftradius=0.02 * psr.r, tipradius=0.06 * psr.r, tiplength=0.15 * psr.r)
+                    end
+                end
+            end
         end
 
-        cam = cam3d!(ax.scene, eyeposition=[902.365098608735, 388.66374763125975, 10660.389838857573], lookat =[-90.40642962540288, 22.67516168954977, 10092.052717582405], upvector=[0.11471181283596832, 0.042288898277857076, 0.9924982866878566], center = false)
+        # SAFE CAMERA POSITION
+        eye_pos = [psr.r * 1.5, psr.r * 1.5, psr.r * 3.0]
+        cam = cam3d!(ax.scene, eyeposition=eye_pos, lookat=[0.0, 0.0, psr.r], upvector=[0.0, 0.0, 1.0], center = false)
 
-        # Try accessing the scene's camera directly
-        println("Scene camera type: ", typeof(cam))
-        println("Scene camera fields: ", fieldnames(typeof(cam)))
-        println("Scene camera properties: ", propertynames(cam))
-
-        # Add a button to print camera state
-        #button = Button(f[7, 1], label = "Print Camera State")
         button = Button(fig[1, 1], label = "Print", 
                width = 80, height = 25,
                halign = :right, valign = :top,
@@ -1033,9 +1075,6 @@ module Plot
             println("Up vector: ", cam.upvector[])
         end
  
-
-
-
         display(fig)
 
     end
@@ -1223,6 +1262,60 @@ module Plot
 
         display(fig)
     end
+"""
+    3D visualization of the pulsar surface with the new anomalous polar cap 
+    and the analytically calculated ellipse wrapped onto the sphere.
+    """
+    function plot_anomaly_polarcap_3D(psr)
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
+        
+        # 1. Actual field line traces - irregular polar cap
+        if psr.pc !== nothing
+            scatter!(ax, psr.pc[1], psr.pc[2], psr.pc[3], color = :green, markersize = 8)
+        end
+        
+        # 2. Draw the fitted ellipse on the curved surface
+        if psr.ellipse_fit !== nothing
+            ef = psr.ellipse_fit
+            el_xs, el_ys, el_zs = Float64[], Float64[], Float64[]
+            cx, cy = ef.center_local
+            
+            for t in range(0, 2π, length=300)
+                # Mapping in local ellipse coordinates
+                u = cx + ef.a * cos(t) * cos(ef.θ) - ef.b * sin(t) * sin(ef.θ)
+                v = cy + ef.a * cos(t) * sin(ef.θ) + ef.b * sin(t) * cos(ef.θ)
+                
+                # Transform to 3D on the tangent plane and project down onto the sphere (radius r)
+                p3 = ef.centroid + u * ef.x_hat + v * ef.y_hat
+                p3_norm = p3 ./ norm(p3) .* psr.r
+                
+                push!(el_xs, p3_norm[1])
+                push!(el_ys, p3_norm[2])
+                push!(el_zs, p3_norm[3])
+            end
+            
+            lines!(ax, el_xs, el_ys, el_zs, color = :red, linewidth = 4)
+        end
+        
+        # 3. Magnetic and rotation axes
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+        arrows3d!(ax, [0,], [0,], [0,], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
 
+        # 4. Vectors indicating the location and orientation of anomalies
+        if psr.nsfield !== nothing && psr.nsfield.anomalies !== nothing
+            for a in psr.nsfield.anomalies
+                pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+                arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange)
+            end
+        end
+        
+        # Set the camera looking slightly down at the magnetic pole
+        cam = cam3d!(ax.scene, eyeposition=mag_vec .* 3.0, lookat=[0, 0, 0], upvector=[0, 0, 1], center = false)
+        
+        display(fig)
+    end
 
 end # module end

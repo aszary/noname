@@ -1,24 +1,37 @@
 {
-    "psr": 
-    {
-        "P0":1,
-        "R":10000,
-        "PDOT":1e-15,
-        "alpha":30,
-        "beta":4,
-        "R_em":500000,
-        "spark_radius":20
-	},
-
-    "field":
-    {
-        "rmax":500000,
-        "size":1000
+    "psr": {
+        "P0": 1,
+        "R": 10000,
+        "PDOT": 1e-15,
+        "alpha": 30,
+        "beta": 4,
+        "R_em": 500000,
+        "spark_radius": 20
     },
-
-    "anomalies":[
-
-    ]
-
-
+    "anomalies": [
+        {
+            "r": 1.0,
+            "theta": 90.0,
+            "phi": 180.0,
+            "m": 0.5,
+            "theta_m": 45.0,
+            "phi_m": 0.0
+        },
+        {
+            "r": 0.9,
+            "theta": 1.2,
+            "phi": 0.0,
+            "m": 0.5,
+            "theta_m": 90.0,
+            "phi_m": 0.0
+        }
+    ],
+    "__metadata__": {
+        "m": "magnetization",
+        "r": "normalized radius, 1 at the surface",
+        "theta": "position coordinate, zero at the magnetic axis ! (0-90)",
+        "phi": "position azimuth on the cap, X axis is 0 (0-360)",
+        "theta_m": "inclination angle of the anomaly relative to its Z axis",
+        "phi_m": "rotation of the anomaly around its Z axis"
+    }
 }

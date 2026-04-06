@@ -81,10 +81,15 @@ module NoName
             return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit)
         end
         function Pulsar(json_file)
-            d = JSON3.read(json_file)
+            
+            json_data = read(json_file, String)
+            
+            d = JSON3.read(json_data)
+            
             #open("input/test.json", "w") do io
             #    JSON3.pretty(io, JSON3.write(d))
             #end
+            r = d.psr.R
             r = d.psr.R
             p = d.psr.P0
             pdot = d.psr.PDOT
@@ -218,7 +223,7 @@ module NoName
 
 
     function generate_signal()
-        psr = Pulsar("input/3.json")
+        psr = Pulsar("input/1.json")
 
         Lines.init_line_of_sight(psr, num=100)
         Lines.calculate_line_of_sight(psr)
@@ -250,24 +255,21 @@ module NoName
 
 
     function model_field()
-        #psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
-        psr = Pulsar("input/3.json")
+        
+        psr = Pulsar("input/1.json")
+        
+        Lines.init_line_of_sight(psr, num=100)
+        Lines.calculate_line_of_sight_anomalous!(psr)
+        
+        
+        Lines.generate_open_anomalous!(psr, num=10)
 
-        Lines.init_line_of_sight(psr, num=5)
-        Lines.calculate_line_of_sight(psr)
-        Lines.calculate_polarcaps!(psr)
-        Lines.generate_open!(psr, num=10)
+        
+        NSField.calculate_anomaly_polarcap!(psr)
 
-        #println(psr.nsfield)
-
-        #Plot.anomalies(psr)
-        #Plot.anomalies2D(psr)
-        Plot.polar_cap2D(psr)
-
-       
+        Plot.anomalies(psr, show_anomalies=false)
+        #Plot.plot_anomaly_polarcap_3D(psr)
     end
-
 
 
     function main()
@@ -277,9 +279,9 @@ module NoName
         #full_plus_smallgrids()
 
         #generate_signal_dipole()
-        generate_signal()
+        #generate_signal()
 
-        #model_field()
+        model_field()
 
         println("Bye")
     end

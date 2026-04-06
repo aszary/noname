@@ -328,6 +328,105 @@ module Lines
 
 
 
+"""
+    Traces the last open magnetic field lines using the full anomalous magnetic field 
+    (with proper scaling from Field.b_anomalous).
+    """
+    function generate_open_anomalous!(psr; num=100)
+        nf = psr.nsfield
+        step = nf.rmax / nf.size
 
+        z_rmax = nf.rmax / psr.r  # rmax in stellar radii
+        theta_rmax = Functions.theta_max(z_rmax, psr)
+        phis = range(0, 2*pi, length=num+1)[1:num]
 
+        for phi in phis
+            pos = Functions.spherical2cartesian([nf.rmax, theta_rmax, phi])
+            pos_sph = Functions.cartesian2spherical(pos)
+
+            push!(psr.open_lines, [[pos[1]], [pos[2]], [pos[3]]])
+            ml = psr.open_lines[end]
+
+            while pos_sph[1] > psr.r
+                # Using the dedicated anomaly function with real units
+                b_sph = NSField.b_anomalous(pos_sph, psr)
+                b = Functions.vec_spherical2cartesian(pos_sph, [b_sph[1], b_sph[2], b_sph[3]])
+                st = -b / norm(b) * step
+                pos += st
+                pos_sph = Functions.cartesian2spherical(pos)
+                
+                push!(ml[1], pos[1])
+                push!(ml[2], pos[2])
+                push!(ml[3], pos[3])
+            end
+
+            # Interpolate last point to the stellar surface
+            n = length(ml[1])
+            if n >= 2
+                pos_prev = [ml[1][n-1], ml[2][n-1], ml[3][n-1]]
+                pos_last = [ml[1][n],   ml[2][n],   ml[3][n]]
+                r_prev = norm(pos_prev)
+                r_last = norm(pos_last)
+                t = (r_prev - psr.r) / (r_prev - r_last)
+                pos_surface = pos_prev + t * (pos_last - pos_prev)
+                
+                ml[1][n] = pos_surface[1]
+                ml[2][n] = pos_surface[2]
+                ml[3][n] = pos_surface[3]
+            end
+        end
+    end
+
+    """
+    Calculates line of sight using the full anomalous magnetic field.
+    """
+    function calculate_line_of_sight_anomalous!(psr)
+        if isnothing(psr.line_of_sight)
+            println("Init line of sight first!")
+            return
+        end
+
+        nf = psr.nsfield
+        step = nf.rmax / nf.size
+
+        for point in psr.line_of_sight
+            pos = copy(point)
+            pos_sph = Functions.cartesian2spherical(pos)
+
+            push!(psr.los_lines, [Float64[], Float64[], Float64[]])
+            push!(psr.los_lines[end][1], pos[1]) 
+            push!(psr.los_lines[end][2], pos[2]) 
+            push!(psr.los_lines[end][3], pos[3]) 
+            
+            while (pos_sph[1] > psr.r) 
+                # Using the dedicated anomaly function with real units
+                b_sph = NSField.b_anomalous(pos_sph, psr)
+                b = Functions.vec_spherical2cartesian(pos_sph, [b_sph[1], b_sph[2], b_sph[3]])
+                st = - b / norm(b) * step 
+                pos += st 
+                pos_sph = Functions.cartesian2spherical(pos)
+                
+                push!(psr.los_lines[end][1], pos[1])
+                push!(psr.los_lines[end][2], pos[2])
+                push!(psr.los_lines[end][3], pos[3])
+            end
+           
+            # Correct last point - interpolate to surface
+            line = psr.los_lines[end]
+            n = length(line[1])
+            
+            pos_prev = [line[1][n-1], line[2][n-1], line[3][n-1]]
+            pos_last = [line[1][n], line[2][n], line[3][n]]
+            
+            r_prev = norm(pos_prev)
+            r_last = norm(pos_last)
+            
+            t = (r_prev - psr.r) / (r_prev - r_last)
+            pos_surface = pos_prev + t * (pos_last - pos_prev)
+            
+            line[1][n] = pos_surface[1]
+            line[2][n] = pos_surface[2]
+            line[3][n] = pos_surface[3]
+        end
+    end
 end # module end
