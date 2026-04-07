@@ -1,15 +1,24 @@
 module NoName
 
     using JSON3
+    
     include("modules/functions.jl")
-    include("modules/plot.jl")
+    include("modules/transformations.jl")
+    include("modules/geometry.jl")
+    include("modules/solid_body.jl")
+    include("modules/tools.jl")
+
+   
     include("modules/nsfield.jl")
 
     include("modules/field.jl")
     include("modules/lines.jl")
+    include("modules/lbc.jl")
     include("modules/sparks.jl")
     include("modules/signal.jl")
-    include("modules/lbc.jl")
+    
+    
+    include("modules/plot.jl")
 
 
     mutable struct Pulsar
@@ -230,13 +239,11 @@ module NoName
         #Sparks.init_sparks1!(psr ;num=5) # dipolar 
         Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.9], num=5) # non-dipolar 
         # TODO work on n_steps + save_every for single pulses
-        #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
+        Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
+        #Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
         Sparks.save_sparks(psr; num=4)
-        #2 json field 25000
-        #3 json field 5000
-        #4 json field 2000
+        
 
         #Plot.sparks(psr)
         #Sparks.load_sparks(psr; num=2)

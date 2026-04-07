@@ -1,8 +1,9 @@
 module Field
     using LinearAlgebra
+    import ..Functions
+    import ..NSField
     
-    include("functions.jl")
-    include("nsfield.jl")
+    
 
 
     mutable struct Test

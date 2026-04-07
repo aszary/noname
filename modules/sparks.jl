@@ -4,8 +4,8 @@ module Sparks
     using JLD2
     using FileIO
     import ..Lines
-    include("functions.jl")
-    include("field.jl")
+    import ..Functions
+    import ..Field
     include("lbc.jl")
 
 

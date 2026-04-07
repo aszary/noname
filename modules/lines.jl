@@ -1,13 +1,11 @@
 module Lines
     using LinearAlgebra
-    import ..NSField
-
-    include("field.jl")
-    include("functions.jl")
-    include("transformations.jl")
-    include("signal.jl")
-    include("geometry.jl")
-    include("solid_body.jl")
+    import Main.NoName.NSField
+    import Main.NoName.Field
+    import Main.NoName.Functions
+    import Main.NoName.Transformations
+    import Main.NoName.Geometry
+    import Main.NoName.SolidBody
 
 
     """

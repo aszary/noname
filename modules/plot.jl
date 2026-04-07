@@ -6,8 +6,8 @@ module Plot
     using Glob
     using Statistics
     using LinearAlgebra
-    include("functions.jl")
-    include("sparks.jl")
+    import Main.NoName.Functions
+    import Main.NoName.Sparks
     include("tools.jl")
 
 
