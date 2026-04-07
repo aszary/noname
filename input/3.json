@@ -1,0 +1,39 @@
+{
+    "psr": 
+    {
+        "P0":1,
+        "R":10000,
+        "PDOT":1e-15,
+        "alpha":30,
+        "beta":4,
+        "R_em":500000,
+        "spark_radius":3
+	},
+
+    "field":
+    {
+        "rmax":500000,
+        "size":10000
+    },
+
+    "anomalies":[
+        {
+            "_r": "spherical coordiante r,  location of the anommaly [in stellar radius]",
+            "_theta_r": "spherical coordiante theta, location of the anommaly [deg]",
+            "_phi_r": "spherical coordiante phi, location of the anommaly [deg]",
+            "_m": "strength of the anomally with respect to the global dipol",
+            "_theta_m": "spherical coordiante theta, orientation of the anommaly [deg]",
+            "_phi_m,": "spherical coordiante phi, orientation of the anommaly [deg]",
+            "r": 0.95,
+            "theta": 3,
+            "phi": 0,
+            "m" : 0.01,
+            "theta_m": 45,
+            "phi_m": 0
+        }
+
+
+    ]
+
+
+}
