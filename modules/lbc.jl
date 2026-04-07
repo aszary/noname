@@ -304,8 +304,8 @@ function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45
                                      co_angl, x_cent, y_cent, N_trk, trk_max)
             sparks_3d = Vector{Vector{Float64}}()
             for i in eachindex(sx)
-                dx =  (sx[i] - x_cent) * cos(th_cap) + (sy[i] - y_cent) * sin(th_cap)
-                dy = -(sx[i] - x_cent) * sin(th_cap) + (sy[i] - y_cent) * cos(th_cap)
+                dx = ef.center_local[1] + sx[i] - x_cent
+                dy = ef.center_local[2] + sy[i] - y_cent
                 p = ef.centroid + dx * ef.x_hat + dy * ef.y_hat
                 push!(sparks_3d, p / norm(p) * psr.r)
             end
