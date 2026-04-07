@@ -52,7 +52,7 @@ module Sparks
     function create_grid!(psr; size=50)
         r = psr.r # stellar radius in meters
 
-        pc = psr.polar_caps[1]
+        pc = psr.pc
 
         x_min, x_max = extrema(pc[1])
         y_min, y_max = extrema(pc[2])

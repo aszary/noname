@@ -218,6 +218,7 @@ module NoName
 
 
     function generate_signal()
+        #psr = Pulsar("input/1.json")
         psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=100)
@@ -227,11 +228,11 @@ module NoName
 
         # TODO work on init sparks for non-dipolar polar cap!
         #Sparks.init_sparks1!(psr ;num=5) # dipolar 
-        Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.9], num=5) # non-dipolar 
+        Sparks.init_sparks1_ellipse!(psr ;rfs=[0.2, 0.5, 0.79], num=3) # non-dipolar 
         # TODO work on n_steps + save_every for single pulses
-        #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
-        #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        #Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
+        #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=40, speedup=0.1)
+        Sparks.simulate_sparks_solidbody(psr; n_steps=500)
+        #Sparks.simulate_sparks_lbc(psr; n_steps=5000, co_angl=90.0, h_drft=0.1, save_every=10)
         Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
@@ -251,8 +252,8 @@ module NoName
 
     function model_field()
         #psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
-        psr = Pulsar("input/3.json")
+        psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=5)
         Lines.calculate_line_of_sight(psr)
@@ -277,9 +278,9 @@ module NoName
         #full_plus_smallgrids()
 
         #generate_signal_dipole()
-        generate_signal()
+        #generate_signal()
 
-        #model_field()
+        model_field()
 
         println("Bye")
     end
