@@ -284,7 +284,7 @@ module Plot
         fig, ax1, p = heatmap(x, y, v, interpolate=false) #, colorrange=[-155, -135])
         #hm = meshscatter!(ax1, x, y, ze; markersize=1.25, color=v, transparency=false)
         #arrows!(x, y, ex, ey, color=:white)
-        arrows!(x, y, vx, vy, color=:white)
+        arrows2d!(x, y, vx, vy, color=:white)
 
         display(fig)
     end
@@ -1143,15 +1143,17 @@ module Plot
                   xlabel = "x [m]", ylabel = "y [m]",
                   title = "Polar cap – top view (along magnetic axis)")
 
-        # --- open line footprints + ellipse fit (done first to get scale) ---
+        # --- open line footprints (done first to get scale) ---
         view_cx, view_cy, arrow_len, ef_a = 0.0, 0.0, 1.5 * psr.r_pc, psr.r_pc
         has_ef = false
         if !isempty(psr.open_lines)
             xs = [ml[1][end] for ml in psr.open_lines]
             ys = [ml[2][end] for ml in psr.open_lines]
-            zs = [ml[3][end] for ml in psr.open_lines]
             scatter!(ax, xs, ys, color = :green, markersize = 6)
+        end
 
+        # --- ellipse fit from psr.ellipse_fit ---
+        if !isnothing(psr.ellipse_fit)
             ef = psr.ellipse_fit
             has_ef = true
 
@@ -1187,7 +1189,7 @@ module Plot
         rot_norm = sqrt(rot_xy[1]^2 + rot_xy[2]^2)
         if rot_norm > 0
             rot_dir = rot_xy ./ rot_norm .* arrow_len
-            arrows!(ax, [view_cx], [view_cy], [rot_dir[1]], [rot_dir[2]], color = :red, linewidth = 2)
+            arrows2d!(ax, [0.0], [0.0], [rot_dir[1]], [rot_dir[2]], color = :red, shaftwidth = 2)
         end
 
         # --- anomalies: x-y projection of position; moment arrow normalised ---
@@ -1198,8 +1200,8 @@ module Plot
             d_norm = sqrt(dir_xy[1]^2 + dir_xy[2]^2)
             if d_norm > 0
                 dir_scaled = dir_xy ./ d_norm .* arrow_len
-                arrows!(ax, [pos[1]], [pos[2]], [dir_scaled[1]], [dir_scaled[2]],
-                        color = :orange, linewidth = 2)
+                arrows2d!(ax, [pos[1]], [pos[2]], [dir_scaled[1]], [dir_scaled[2]],
+                        color = :orange, shaftwidth = 2)
             end
             scatter!(ax, [pos[1]], [pos[2]], color = :orange, marker = :star5, markersize = 12)
         end
