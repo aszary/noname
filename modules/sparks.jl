@@ -764,6 +764,13 @@ module Sparks
         )
         =#
 
+        mean_outer_radius = 0.5 * (ef.a + (ef.a - 2 * psr.spark_radius))
+        physical_h_drft = (2 * pi / psr.p3) * mean_outer_radius
+
+        println("ph ", physical_h_drft)
+        println("hh ", h_drft)
+
+
         positions, sizes = LBC.generate_sparks(psr, ef;
             a_cap   = ef.a,
             b_cap   = ef.b,
@@ -771,6 +778,7 @@ module Sparks
             h_sprk  = psr.spark_radius,
             co_angl = co_angl,
             h_drft  = h_drft, 
+            #h_drft  = physical_h_drft, 
             n_steps=n_steps,
             save_every=save_every)
 

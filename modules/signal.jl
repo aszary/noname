@@ -55,17 +55,17 @@
         psr.signal .+= noise
     end
 
-    function generate_pulses(psr; pulse_max=100)
+    function generate_pulses(psr)
         # use skip_steps in simulate_sparks to have single pulses
 
         signal_number, bin_number = size(psr.signal)
-        psr.pulses = zeros(pulse_max, bin_number)
+        psr.pulses = zeros(psr.npulse, bin_number)
 
         for i in 1:signal_number
-            psr.pulses[i, :] = psr.signal[i, :]
-            if i == pulse_max
+            if i == psr.npulse 
                 break
             end
+            psr.pulses[i, :] = psr.signal[i, :]
         end
 
     end

@@ -45,6 +45,7 @@ module NoName
         longitudes # single pulse longitudes
         ellipse_fit # ellipse fit to the polar cap points
         p3 # drift repetation time
+        npulse # number of single pulses
         function Pulsar()
             r = 10_000 # 10 km in merters
             p = 1 # period in seconds
@@ -80,7 +81,8 @@ module NoName
             longitudes = nothing
             ellipse_fit = nothing
             p3 = 10
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3)
+            npulse = 500
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -121,7 +123,8 @@ module NoName
             longitudes = nothing
             ellipse_fit = nothing
             p3 = d.psr.P3
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3)
+            npulse = d.psr.npulse
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
         end
     end
 
@@ -232,12 +235,12 @@ module NoName
 
         #Sparks.init_sparks1!(psr ;num=5) # dipolar 
         # TODO add sparks generation parameters to json file
-        #Sparks.init_sparks1_ellipse!(psr; rfs=[0.2, 0.5, 0.79], num=3) # non-dipolar 
+        Sparks.init_sparks1_ellipse!(psr; rfs=[0.2, 0.5, 0.79], num=3) # non-dipolar 
         #Sparks.init_sparks1_ellipse!(psr; rfs=[0.33, 0.77], num=3) # non-dipolar 
         # TODO work on n_steps + save_every for single pulses
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=40, speedup=10.1)
-        #Sparks.simulate_sparks_solidbody(psr; n_steps=500)
-        Sparks.simulate_sparks_lbc(psr; n_steps=5000, co_angl=0.0, h_drft=0.1, save_every=10)
+        Sparks.simulate_sparks_solidbody(psr; n_steps=500)
+        #Sparks.simulate_sparks_lbc(psr; n_steps=5000, co_angl=0.0, h_drft=0.7, save_every=10)
         Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
@@ -245,10 +248,10 @@ module NoName
 
         #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
-        Signal.generate_pulses(psr, pulse_max=500)
+        Signal.generate_pulses(psr)
         
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=500)
+        #Plot.signal(psr)
+        Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
