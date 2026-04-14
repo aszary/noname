@@ -724,8 +724,9 @@ module Sparks
 
         sp_radii = [orbit_radius(s) for s in psr.sparks]
 
-        # group sparks into rings: sparks on the same ring have identical radius from initialisation
-        tol = psr.r_pc * 0.05
+        # group sparks into rings: sparks on the same ring have analytically identical radius
+        # use spark_radius as tolerance — rings must be further apart than one spark size
+        tol = psr.spark_radius
         ring_radii = Float64[]
         for r in sort(sp_radii)
             if isempty(ring_radii) || abs(r - ring_radii[end]) > tol
@@ -743,7 +744,7 @@ module Sparks
     """
     Runs sparks simulation, for simple solidbody-like rotation
     """
-    function simulate_sparks_solidbody(psr; n_steps=100)
+    function simulate_sparks_solidbody(psr)
 
         if isnothing(psr.sparks)
             println("Init sparks first: e.g. Sparks.init_sparks1!()...")
@@ -762,7 +763,7 @@ module Sparks
         angle_per_step = deg2rad(360.0 / (n_effective * psr.p3))
         println("Solidbody simulation: n_sparks_total=$(length(psr.sparks)), n_sparks_p3=$n_effective, P3=$(psr.p3), angle_per_step=$(round(rad2deg(angle_per_step), digits=3))°")
 
-        for i in 1:n_steps
+        for i in 1:psr.npulse
             Lines.SolidBody.rotate_sparks!(psr.sparks, ef, angle_per_step)
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end

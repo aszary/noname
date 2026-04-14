@@ -8,7 +8,7 @@
         "beta":4,
         "R_em":500000,
         "spark_radius":20,
-        "P3":10,
+        "P3":20,
         "npulse":100
 
 	},

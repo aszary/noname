@@ -9,7 +9,7 @@
         "R_em":500000,
         "spark_radius":3,
         "P3":10,
-        "npulse":500
+        "npulse":100
 	},
 
     "field":

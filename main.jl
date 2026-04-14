@@ -224,8 +224,8 @@ module NoName
 
 
     function generate_signal()
-        psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/3.json")
+        #psr = Pulsar("input/1.json")
+        psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
 
         Lines.init_line_of_sight(psr, num=100)
@@ -239,7 +239,7 @@ module NoName
         #Sparks.init_sparks1_ellipse!(psr; rfs=[0.5], num=4) # non-dipolar 
         # TODO work on n_steps + save_every for single pulses
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=40, speedup=10.1)
-        Sparks.simulate_sparks_solidbody(psr; n_steps=500)
+        Sparks.simulate_sparks_solidbody(psr)
         #Sparks.simulate_sparks_lbc(psr; n_steps=5000, co_angl=0.0, h_drft=0.7, save_every=10)
         Sparks.save_sparks(psr; num=2)
 
