@@ -711,7 +711,37 @@ module Sparks
 
 
     """
-    Runs sparks simulation, for simple solidbody-like rotation 
+    Returns the number of sparks on the carousel ring that the line of sight crosses.
+    Projects sparks and LOS points onto the polar cap tangent plane, groups sparks
+    by orbital radius, and returns the count on the ring closest to the LOS radius.
+    """
+    function count_sparks_on_los_track(psr)
+        ef = psr.ellipse_fit
+
+        orbit_radius(p) = sqrt(dot(p - ef.centroid, ef.x_hat)^2 + dot(p - ef.centroid, ef.y_hat)^2)
+
+        los_r = sum(orbit_radius([line[1][end], line[2][end], line[3][end]]) for line in psr.los_lines) / length(psr.los_lines)
+
+        sp_radii = [orbit_radius(s) for s in psr.sparks]
+
+        # group sparks into rings: sparks on the same ring have identical radius from initialisation
+        tol = psr.r_pc * 0.05
+        ring_radii = Float64[]
+        for r in sort(sp_radii)
+            if isempty(ring_radii) || abs(r - ring_radii[end]) > tol
+                push!(ring_radii, r)
+            end
+        end
+
+        closest_ring = ring_radii[argmin(abs.(ring_radii .- los_r))]
+        n = count(r -> abs(r - closest_ring) <= tol, sp_radii)
+        println("LOS orbit radius: $(round(los_r, digits=2)) m, closest ring radius: $(round(closest_ring, digits=2)) m, sparks on ring: $n")
+        return n
+    end
+
+
+    """
+    Runs sparks simulation, for simple solidbody-like rotation
     """
     function simulate_sparks_solidbody(psr; n_steps=100)
 
@@ -726,11 +756,14 @@ module Sparks
         end
         ef = psr.ellipse_fit
 
-
-
+        # apparent P3 = carousel_period / n_sparks_on_los_track
+        # => angle per step = 360° / (n_sparks_on_los_track * P3)
+        n_effective = count_sparks_on_los_track(psr)
+        angle_per_step = deg2rad(360.0 / (n_effective * psr.p3))
+        println("Solidbody simulation: n_sparks_total=$(length(psr.sparks)), n_sparks_p3=$n_effective, P3=$(psr.p3), angle_per_step=$(round(rad2deg(angle_per_step), digits=3))°")
 
         for i in 1:n_steps
-            Lines.SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(360/n_steps))
+            Lines.SolidBody.rotate_sparks!(psr.sparks, ef, angle_per_step)
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
 
