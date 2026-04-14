@@ -108,7 +108,6 @@ function sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
                 yi = trk_a * b_trk / a_trk * sin(half_gap - th_cap - co_angl)
                 xs, ys = coortrans(xi, yi, -th_cap)
                 xs += x_cent;  ys += y_cent
-                println("$xs, $ys, $xi, $yi, $x_cent, $y_cent")
             end
 
             push!(spark_x, xs);  push!(spark_y, ys);  push!(spark_size, a_s)
@@ -508,7 +507,10 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
     end
 end
 
-
+function animate(psr)
+        ef = psr.ellipse_fit
+        animate(; ntime=500, a_cap=ef.a, b_cap=ef.b, th_cap=rad2deg(ef.θ), h_sprk=psr.spark_radius, co_angl=0.0, h_drft=0.1)
+    end
 
 
 end # module LBC

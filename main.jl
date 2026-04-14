@@ -255,21 +255,31 @@ module NoName
 
 
     function model_field()
-        
-        psr = Pulsar("input/1.json")
-        
-        Lines.init_line_of_sight(psr, num=100)
-        Lines.calculate_line_of_sight_anomalous!(psr)
-        
-        
-        Lines.generate_open_anomalous!(psr, num=10)
+    psr = Pulsar("input/3.json")
+    
+    Lines.init_line_of_sight(psr, num=100)
+    Lines.calculate_line_of_sight_anomalous!(psr)
+    Lines.generate_open_anomalous!(psr, num=10)
+    
+    # Calculate the anomalous polar cap and fit an ellipse to it (required for the LBC model)
+    NSField.calculate_anomaly_polarcap!(psr)
 
-        
-        NSField.calculate_anomaly_polarcap!(psr)
+    # 1. Initialize sparks on the elliptical polar cap
+    Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.9], num=5)
+    
+    # 2. Simulate spark motion using the LBC model
+    Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
+    
+    # 3. Generate the continuous signal and single pulses (required for the animation in Plot.signal)
+    Signal.generate_signal_radii(psr; noise_level=0.05)
+    Signal.generate_pulses(psr, pulse_max=500)
 
-        Plot.anomalies(psr, show_anomalies=false)
-        #Plot.plot_anomaly_polarcap_3D(psr)
-    end
+    # 4. Draw static anomalies plot (optional, for verification)
+    #Plot.anomalies(psr, show_anomalies=false)
+    
+    # 5. Play the 3D animation of moving sparks and the generated 2D signal
+    Plot.signal(psr)
+end
 
 
     function main()

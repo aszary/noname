@@ -116,10 +116,6 @@ module Plot
 
         cam = cam3d!(ax.scene, eyeposition=[10000, 10000, 20000], lookat =[0, 0, 10000], upvector=[0,0,1], center = false)
 
-        # Try accessing the scene's camera directly
-        println("Scene camera type: ", typeof(cam))
-        println("Scene camera fields: ", fieldnames(typeof(cam)))
-        println("Scene camera properties: ", propertynames(cam))
 
         # Add a button to print camera state
         #button = Button(f[7, 1], label = "Print Camera State")
@@ -692,7 +688,7 @@ module Plot
         if isnothing(psr.spark_radii)
             meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
         else
-            spark_radii_obs = Observable(psr.spark_radii[1])
+            spark_radii_obs = Observable(psr.spark_radii[1]*0.01)
             meshscatter!(ax, spark_positions_obs, markersize=spark_radii_obs, color=:red)
         end
         #scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
