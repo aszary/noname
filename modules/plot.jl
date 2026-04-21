@@ -60,7 +60,10 @@ module Plot
         for ml in psr.open_lines
             lines!(ax, ml[1], ml[2], ml[3], color=:green)
         end
-
+        # draw closed lines
+        for cl in psr.closed_lines
+            lines!(ax, cl[1], cl[2], cl[3], color=:gray, linewidth=0.5)
+        end
 
         # plot sparks for random_sparks! function, not very useful
         #=
@@ -1034,7 +1037,10 @@ module Plot
         for ml in psr.open_lines
              lines!(ax, ml[1], ml[2], ml[3], color=:green)
         end
-
+        # draw closed lines
+        for cl in psr.closed_lines
+            lines!(ax, cl[1], cl[2], cl[3], color=:gray, linewidth=0.5)
+        end
         # ==========================================
         # Anomalies - opcjonalne wyświetlanie na podstawie flagi show_anomalies
         # ==========================================

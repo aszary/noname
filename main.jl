@@ -25,6 +25,7 @@ module NoName
         polar_caps # two polar caps boundries (xs, ys, zs)
         pc # single polar cap
         open_lines # magnetic lines at polar cap boundries
+        closed_lines # closed magnetic field lines
         sparks # sparks locations
         grid # grid at the polar cap to calculate potential # multiple grids for simulation
         potential
@@ -61,6 +62,7 @@ module NoName
             polar_caps = nothing
             pc = nothing
             open_lines = []
+            closed_lines = []
             sparks = nothing
             grid = nothing
             potential = nothing
@@ -82,7 +84,7 @@ module NoName
             ellipse_fit = nothing
             p3 = hasproperty(d.psr, :P3) ? d.psr.P3 : 10.0
             npulse = hasproperty(d.psr, :npulse) ? d.psr.npulse : 100
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, closed_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
         end
         function Pulsar(json_file)
             
@@ -112,6 +114,7 @@ module NoName
             polar_caps = nothing
             pc = nothing
             open_lines = []
+            closed_lines = []
             sparks = nothing
             grid = nothing
             potential = nothing
@@ -129,7 +132,7 @@ module NoName
             ellipse_fit = nothing
             p3 = hasproperty(d.psr, :P3) ? d.psr.P3 : 10.0
             npulse = hasproperty(d.psr, :npulse) ? d.psr.npulse : 100
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, closed_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
         end
     end
 
@@ -266,7 +269,7 @@ module NoName
     Lines.init_line_of_sight(psr, num=100)
     Lines.calculate_line_of_sight_anomalous!(psr)
     Lines.generate_open_anomalous!(psr, num=10)
-    
+    Lines.generate_closed_anomalous!(psr, shells=3, num_lines=15)
     # Calculate the anomalous polar cap and fit an ellipse to it (required for the LBC model)
     NSField.calculate_anomaly_polarcap!(psr)
 

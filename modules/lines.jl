@@ -429,4 +429,68 @@ module Lines
             line[3][n] = pos_surface[3]
         end
     end
+"""
+    generate_closed_anomalous!(psr; shells=3, num_lines=10, r_max_factor=3.0)
+
+    Generates closed magnetic field lines considering magnetic anomalies.
+    Saves the results directly into psr.closed_lines.
+    """
+    function generate_closed_anomalous!(psr; shells=3, num_lines=10, r_max_factor=3.0)
+        nf = psr.nsfield
+        psr.closed_lines = [] # Clear previous lines if any
+        step_val = nf.rmax / nf.size
+
+        # Starting points at the magnetic equator (theta = pi/2)
+        reqs = range(psr.r * 1.2, psr.r * r_max_factor, length=shells)
+        phis = range(0, 2pi, length=num_lines+1)[1:end-1]
+
+        for req in reqs
+            for phi in phis
+                pos_sph = [req, pi/2, phi]
+                pos = Functions.spherical2cartesian(pos_sph)
+
+                # --- 1. Integrate "along" the B vector (towards one pole) ---
+                pos1 = copy(pos)
+                pos_sph1 = copy(pos_sph)
+                line1 = [[pos1[1]], [pos1[2]], [pos1[3]]]
+
+                # Limit to 5000 points to prevent infinite loops
+                while pos_sph1[1] > psr.r && length(line1[1]) < 5000
+                    b_sph = NSField.BSph(nf, pos_sph1[1]/psr.r, pos_sph1[2], pos_sph1[3])
+                    b = Functions.vec_spherical2cartesian(pos_sph1, [b_sph[1], b_sph[2], b_sph[3]])
+                    st = b / norm(b) * step_val
+                    pos1 += st
+                    pos_sph1 = Functions.cartesian2spherical(pos1)
+                    
+                    push!(line1[1], pos1[1])
+                    push!(line1[2], pos1[2])
+                    push!(line1[3], pos1[3])
+                end
+
+                # --- 2. Integrate "against" the B vector (towards the other pole) ---
+                pos2 = copy(pos)
+                pos_sph2 = copy(pos_sph)
+                line2 = [Float64[], Float64[], Float64[]]
+
+                while pos_sph2[1] > psr.r && length(line2[1]) < 5000
+                    b_sph = NSField.BSph(nf, pos_sph2[1]/psr.r, pos_sph2[2], pos_sph2[3])
+                    b = Functions.vec_spherical2cartesian(pos_sph2, [b_sph[1], b_sph[2], b_sph[3]])
+                    st = -b / norm(b) * step_val # NEGATIVE step to go the other way
+                    pos2 += st
+                    pos_sph2 = Functions.cartesian2spherical(pos2)
+                    
+                    push!(line2[1], pos2[1])
+                    push!(line2[2], pos2[2])
+                    push!(line2[3], pos2[3])
+                end
+
+                # --- 3. Merge both halves into a single continuous line ---
+                xs = vcat(reverse(line2[1]), line1[1])
+                ys = vcat(reverse(line2[2]), line1[2])
+                zs = vcat(reverse(line2[3]), line1[3])
+                
+                push!(psr.closed_lines, [xs, ys, zs])
+            end
+        end
+    end
 end # module end
