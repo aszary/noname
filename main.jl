@@ -283,11 +283,13 @@ module NoName
     Signal.generate_signal_radii(psr; noise_level=0.05)
     Signal.generate_pulses(psr, pulse_max=psr.npulse)
 
+
+    Plot.pulsar(psr)
     # 4. Draw static anomalies plot (optional, for verification)
-    #Plot.anomalies(psr, show_anomalies=false)
+    Plot.anomalies(psr, show_anomalies=false)
     
     # 5. Play the 3D animation of moving sparks and the generated 2D signal
-    Plot.signal(psr)
+    #Plot.signal(psr)
     #Plot.pulses(psr, number=psr.npulse)
     #Plot.pulses0(psr)
     #Plot.pulses1(psr)
