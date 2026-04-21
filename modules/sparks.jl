@@ -745,6 +745,42 @@ module Sparks
 
 
     """
+    Calculates the correct azimuthal rotation angle (delta_phi) per step 
+    for the SolidBody model based on the P3 parameter and actual spark geometry.
+    """
+    function calculate_solidbody_drift_angle(psr, ef)
+        rfs = Float64[]
+        for s in psr.sparks
+            # Project 3D points onto the 2D tangent plane
+            k = dot(ef.centroid, ef.z_hat) / dot(s, ef.z_hat)
+            p_tangent = k .* s
+            
+            # Local coordinates in the tangent plane (u, v)
+            d = p_tangent - ef.centroid
+            u = dot(d, ef.x_hat)
+            v = dot(d, ef.y_hat)
+            
+            # Transform to the ellipse axis system (rotate by -θ)
+            du = u - ef.center_local[1]
+            dv = v - ef.center_local[2]
+            ue = du * cos(ef.θ) + dv * sin(ef.θ)
+            ve = -du * sin(ef.θ) + dv * cos(ef.θ)
+            
+            # Calculate the normalized "elliptical radius" (rf)
+            push!(rfs, sqrt((ue / ef.a)^2 + (ve / ef.b)^2))
+        end
+
+        # Find the outermost ring and count sparks on it
+        max_rf = maximum(rfs)
+        N_outer = count(rf -> abs(rf - max_rf) < 0.01 * max_rf, rfs)
+        
+        # Rotation angle per step (depends on P3 and N_outer)
+        return (2 * pi / N_outer) / psr.p3
+    end
+
+
+
+    """
     Runs sparks simulation, for simple solidbody-like rotation
     """
     function simulate_sparks_solidbody(psr)
@@ -762,9 +798,11 @@ module Sparks
 
         # apparent P3 = carousel_period / n_sparks_on_los_track
         # => angle per step = 360° / (n_sparks_on_los_track * P3)
-        n_effective = count_sparks_on_los_track(psr)
-        angle_per_step = deg2rad(360.0 / (n_effective * psr.p3))
-        println("Solidbody simulation: n_sparks_total=$(length(psr.sparks)), n_sparks_p3=$n_effective, P3=$(psr.p3), angle_per_step=$(round(rad2deg(angle_per_step), digits=3))°")
+        #n_effective = count_sparks_on_los_track(psr)
+        #angle_per_step = deg2rad(360.0 / (n_effective * psr.p3))
+        #println("Solidbody simulation: n_sparks_total=$(length(psr.sparks)), n_sparks_p3=$n_effective, P3=$(psr.p3), angle_per_step=$(round(rad2deg(angle_per_step), digits=3))°")
+        
+        angle_per_step = calculate_solidbody_drift_angle(psr, psr.ellipse_fit)
 
         for i in 1:psr.npulse
             Lines.SolidBody.rotate_sparks!(psr.sparks, ef, angle_per_step)
