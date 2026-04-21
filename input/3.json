@@ -15,7 +15,9 @@
     "field":
     {
         "rmax":500000,
-        "size":10000
+        "size":10000,
+        "nlos":100,
+        "nopen":50
     },
 
     "anomalies":[

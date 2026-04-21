@@ -712,39 +712,6 @@ module Sparks
 
 
     """
-    Returns the number of sparks on the outermost carousel ring.
-    Groups sparks by orbital radius using gap-based clustering and k-means refinement,
-    then returns the count on the ring with the largest mean radius.
-    """
-    function count_sparks_on_los_track(psr)
-        ef = psr.ellipse_fit
-        orbit_radius(p) = sqrt(dot(p - ef.centroid, ef.x_hat)^2 + dot(p - ef.centroid, ef.y_hat)^2)
-        sp_radii = [orbit_radius(s) for s in psr.sparks]
-
-        tol = psr.spark_radius
-        sorted_r = sort(sp_radii)
-        boundary_indices = findall(g -> g > tol / 2, diff(sorted_r))
-        seeds = Float64[]
-        prev = 1
-        for bi in [boundary_indices; length(sorted_r)]
-            push!(seeds, mean(sorted_r[prev:bi]))
-            prev = bi + 1
-        end
-        ring_radii = seeds
-        for _ in 1:10
-            assignments = [argmin(abs.(ring_radii .- r)) for r in sp_radii]
-            ring_radii = [mean(sp_radii[assignments .== i]) for i in eachindex(ring_radii)]
-        end
-        assignments = [argmin(abs.(ring_radii .- r)) for r in sp_radii]
-
-        outer_idx = argmax(ring_radii)
-        n = count(==(outer_idx), assignments)
-        println("Outermost ring radius: $(round(ring_radii[outer_idx], digits=2)) m, sparks on ring: $n")
-        return n
-    end
-
-
-    """
     Calculates the correct azimuthal rotation angle (delta_phi) per step 
     for the SolidBody model based on the P3 parameter and actual spark geometry.
     """
@@ -795,13 +762,7 @@ module Sparks
             return
         end
         ef = psr.ellipse_fit
-
-        # apparent P3 = carousel_period / n_sparks_on_los_track
-        # => angle per step = 360° / (n_sparks_on_los_track * P3)
-        #n_effective = count_sparks_on_los_track(psr)
-        #angle_per_step = deg2rad(360.0 / (n_effective * psr.p3))
-        #println("Solidbody simulation: n_sparks_total=$(length(psr.sparks)), n_sparks_p3=$n_effective, P3=$(psr.p3), angle_per_step=$(round(rad2deg(angle_per_step), digits=3))°")
-        
+       
         angle_per_step = calculate_solidbody_drift_angle(psr, psr.ellipse_fit)
 
         for i in 1:psr.npulse
@@ -813,9 +774,40 @@ module Sparks
 
 
     """
+    Analytically calculates the pseudo-distance (h_drft) required to force 
+    the LBC module to rotate at the correct angular velocity dictated by P3.
+    """
+    function calculate_lbc_drift_distance(psr, ef)
+        a_sprk = psr.spark_radius
+        b_sprk = a_sprk * ef.b / ef.a 
+        
+        a_o = ef.a
+        a_i = a_o - 2 * a_sprk
+        b_o = ef.b
+        b_i = b_o - 2 * b_sprk
+        
+        # Analytically predict the logic from inside the LBC module
+        # to find the number of sparks on the outermost ring
+        N_outer = floor(Int, 0.75 * (a_o*b_o - a_i*b_i) / (a_sprk*b_sprk))
+    
+
+        # Angular distance between sparks and drift angle per step
+        theta_sp1 = 2 * pi / N_outer
+        del_theta_drift = theta_sp1 / psr.p3
+        
+        # Average track radius for the outermost ring
+        mean_outer_radius = 0.5 * (ef.a + (ef.a - 2 * a_sprk))
+        
+        # Return the reconstructed h_drft parameter
+        return del_theta_drift * mean_outer_radius
+    end
+
+
+    """
     Runs sparks simulation, for LBC model 
     """
-    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1, save_every=1)
+    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, save_every=1)
+        # TODO remove save_every? now step based on P3 -> one step one pulse
 
         if isnothing(psr.ellipse_fit)
             println("Generate open lines first: Lines.generate_open!()!")
@@ -839,12 +831,9 @@ module Sparks
         )
         =#
 
-        mean_outer_radius = 0.5 * (ef.a + (ef.a - 2 * psr.spark_radius))
-        physical_h_drft = (2 * pi / psr.p3) * mean_outer_radius
+        h_drft_p3 = calculate_lbc_drift_distance(psr, psr.ellipse_fit)
 
-        println("ph ", physical_h_drft)
-        println("hh ", h_drft)
-
+        println("h_drft ", h_drft_p3)
 
         positions, sizes = LBC.generate_sparks(psr, ef;
             a_cap   = ef.a,
@@ -852,8 +841,7 @@ module Sparks
             th_cap  = rad2deg(ef.θ),
             h_sprk  = psr.spark_radius,
             co_angl = co_angl,
-            h_drft  = h_drft, 
-            #h_drft  = physical_h_drft, 
+            h_drft  = h_drft_p3, 
             n_steps=n_steps,
             save_every=save_every)
 

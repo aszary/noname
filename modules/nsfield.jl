@@ -13,22 +13,26 @@ module NSField
     mutable struct Field
         rmax # maximum radius for which we will calculate magnetic field lines
         size # number of points in a line
-        #nlos # number of 
+        nlos # number of magnetic lines connected to the line of sight
+        nopen # number of magnetic lines connected to the polar cap boundry (last open magnetic lines)
         anomalies # list of magnetic anomalies
 
         function Field()
             rmax = 500_000 # 500 km
-            size = 100
+            size = 1000
             nlos = 100
+            nopen = 50
             anomalies = []
-            new(rmax, size, anomalies)
+            new(rmax, size, nlos, nopen, anomalies)
         end
 
         function Field(json)
             rmax = json.field.rmax
             size = json.field.size
+            nlos = json.field.nlos
+            nopen = json.field.nopen
             anomalies = [Anomaly(a) for a in json.anomalies]
-            new(rmax, size, anomalies)
+            new(rmax, size, nlos, nopen, anomalies)
         end
     end
 
