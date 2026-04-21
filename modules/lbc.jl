@@ -507,10 +507,6 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
     end
 end
 
-function animate(psr)
-        ef = psr.ellipse_fit
-        animate(; ntime=500, a_cap=ef.a, b_cap=ef.b, th_cap=rad2deg(ef.θ), h_sprk=psr.spark_radius, co_angl=0.0, h_drft=0.1)
-    end
 
 
 end # module LBC

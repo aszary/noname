@@ -355,7 +355,7 @@ module Plot
 
 
 
-    function steps(psr; n_steps=500, skip_steps=10, speedup=10, delay=0.01)
+    function steps(psr; n_steps=psr.npulse, skip_steps=10, speedup=10, delay=0.01)
         sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
         fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
         
@@ -688,7 +688,7 @@ module Plot
         if isnothing(psr.spark_radii)
             meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
         else
-            spark_radii_obs = Observable(psr.spark_radii[1]*0.01)
+            spark_radii_obs = Observable(psr.spark_radii[1])
             meshscatter!(ax, spark_positions_obs, markersize=spark_radii_obs, color=:red)
         end
         #scatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
@@ -792,7 +792,7 @@ module Plot
     end
 
 
-    function pulses0(psr; start=1, number=100, norm=3.0, name_mod="PSR_NAME")
+    function pulses0(psr; start=1, number=psr.npulse, norm=3.0, name_mod="PSR_NAME")
 
         data = psr.pulses
 
@@ -840,7 +840,7 @@ module Plot
     end
 
 
-    function pulses1(psr; start=1, number=100, norm=3.0, name_mod="PSR_NAME")
+    function pulses1(psr; start=1, number=psr.npulse, norm=3.0, name_mod="PSR_NAME")
 
         data = psr.pulses
 
@@ -883,7 +883,7 @@ module Plot
 
 
 
-    function pulses(psr; start=1, number=100, times=1, cmap="viridis", darkness=0.5, name_mod="PSR_NAME", show_=false)
+    function pulses(psr; start=1, number=psr.npulse, times=1, cmap="viridis", darkness=0.5, name_mod="PSR_NAME", show_=false)
 
         data = psr.pulses
 

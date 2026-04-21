@@ -44,6 +44,8 @@ module NoName
         pulses # single pulses generated from signal
         longitudes # single pulse longitudes
         ellipse_fit # ellipse fit to the polar cap points
+        p3 # subpulse drift period in units of pulsar period
+        npulse # number of pulses to generate
         function Pulsar()
             r = 10_000 # 10 km in merters
             p = 1 # period in seconds
@@ -78,7 +80,9 @@ module NoName
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit)
+            p3 = hasproperty(d.psr, :P3) ? d.psr.P3 : 10.0
+            npulse = hasproperty(d.psr, :npulse) ? d.psr.npulse : 100
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
         end
         function Pulsar(json_file)
             
@@ -123,7 +127,9 @@ module NoName
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit)
+            p3 = hasproperty(d.psr, :P3) ? d.psr.P3 : 10.0
+            npulse = hasproperty(d.psr, :npulse) ? d.psr.npulse : 100
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
         end
     end
 
@@ -195,7 +201,7 @@ module NoName
 
         #Field.calculate_dipole!(psr)
 
-        Lines.init_line_of_sight(psr, num=100)
+        Lines.init_line_of_sight(psr, num=10)
         Lines.calculate_line_of_sight_dipole(psr)
 
         Lines.generate_open!(psr, num=10)
@@ -204,7 +210,7 @@ module NoName
         #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0, h_drft=0.5, save_every=1)
+        Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse  , co_angl=-90.0, h_drft=0.5, save_every=1)
         Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
@@ -212,7 +218,7 @@ module NoName
 
         #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
-        Signal.generate_pulses(psr, pulse_max=500)
+        Signal.generate_pulses(psr, pulse_max=psr.npulse)
         
         Plot.signal(psr)
         #Plot.pulses(psr, number=500)
@@ -232,22 +238,22 @@ module NoName
 
         # TODO work on init sparks for non-dipolar polar cap!
         #Sparks.init_sparks1!(psr ;num=5) # dipolar 
-        Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.9], num=5) # non-dipolar 
+        Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.5, 0.9], num=5) # non-dipolar 
         # TODO work on n_steps + save_every for single pulses
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
-        #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
+        Sparks.simulate_sparks_solidbody(psr; n_steps=psr.npulse)
         #Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
-        Sparks.save_sparks(psr; num=2)
+        #Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
-        Sparks.load_sparks(psr; num=2)
+        #Sparks.load_sparks(psr; num=2)
 
         #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
-        Signal.generate_pulses(psr, pulse_max=500)
+        Signal.generate_pulses(psr, pulse_max=psr.npulse)
         
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=500)
+        #Plot.signal(psr)
+        Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -255,7 +261,7 @@ module NoName
 
 
     function model_field()
-    psr = Pulsar("input/3.json")
+    psr = Pulsar("input/1.json")
     
     Lines.init_line_of_sight(psr, num=100)
     Lines.calculate_line_of_sight_anomalous!(psr)
@@ -268,17 +274,20 @@ module NoName
     Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.9], num=5)
     
     # 2. Simulate spark motion using the LBC model
-    Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=0.0, h_drft=0.1, save_every=1)
+    Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse, co_angl=0.0, save_every=1)
     
     # 3. Generate the continuous signal and single pulses (required for the animation in Plot.signal)
     Signal.generate_signal_radii(psr; noise_level=0.05)
-    Signal.generate_pulses(psr, pulse_max=500)
+    Signal.generate_pulses(psr, pulse_max=psr.npulse)
 
     # 4. Draw static anomalies plot (optional, for verification)
     #Plot.anomalies(psr, show_anomalies=false)
     
     # 5. Play the 3D animation of moving sparks and the generated 2D signal
     Plot.signal(psr)
+    #Plot.pulses(psr, number=psr.npulse)
+    #Plot.pulses0(psr)
+    #Plot.pulses1(psr)
 end
 
 

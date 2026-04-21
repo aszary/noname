@@ -7,7 +7,9 @@
         "alpha":30,
         "beta":4,
         "R_em":500000,
-        "spark_radius":20
+        "spark_radius":20,
+        "P3": 10.0,
+        "npulse":100
 	},
 
     "field":

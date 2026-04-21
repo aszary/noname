@@ -648,7 +648,7 @@ module Sparks
     """
     Runs MC model sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
     """
-    function simulate_sparks_mc(psr; n_steps=1000, save_every=10, speedup=10)
+    function simulate_sparks_mc(psr; n_steps=psr.npulse, save_every=10, speedup=10)
         for i in 1:n_steps
             save = (i % save_every == 0)
             # small grids around sparks
@@ -709,82 +709,119 @@ module Sparks
         #return - a * (r/150)^2 # solid-body like ?
     end
 
-
+"""
+    Runs sparks simulation, for simple solidbody-like rotation.
     """
-    Runs sparks simulation, for simple solidbody-like rotation 
-    """
-    function simulate_sparks_solidbody(psr; n_steps=100)
-
-        if isnothing(psr.sparks)
-            println("Init sparks first: e.g. Sparks.init_sparks1!()...")
+    function simulate_sparks_solidbody(psr; n_steps=psr.npulse)
+        if isnothing(psr.sparks) || isnothing(psr.ellipse_fit)
+            println("Initialize sparks and open lines first!")
             return
         end
 
-        if isnothing(psr.ellipse_fit)
-            println("Generate open lines first: Lines.generate_open!()!")
-            return
-        end
-        ef = psr.ellipse_fit
+        # Calculate the physical rotation angle using the helper function
+        delta_phi = calculate_solidbody_drift_angle(psr, psr.ellipse_fit)
 
-
-
-
+        # Perform the rotation and save locations
         for i in 1:n_steps
-            Lines.SolidBody.rotate_sparks!(psr.sparks, ef, deg2rad(360/n_steps))
+            Lines.SolidBody.rotate_sparks!(psr.sparks, psr.ellipse_fit, delta_phi)
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
-
     end
 
 
     """
-    Runs sparks simulation, for LBC model 
+    Runs sparks simulation for the LBC model.
     """
-    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, h_drft=0.1, save_every=1)
-
+    function simulate_sparks_lbc(psr; n_steps=psr.npulse, co_angl=30.0, save_every=1)
         if isnothing(psr.ellipse_fit)
-            println("Generate open lines first: Lines.generate_open!()!")
+            println("Generate open lines first!")
             return
         end
-        ef = psr.ellipse_fit
 
-        println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
+        # Calculate the pseudo drift distance using the helper function
+        fake_h_drft = calculate_lbc_drift_distance(psr, psr.ellipse_fit)
 
-        # animate in DISPLAY FRAME!
-
-        #=
-        LBC.animate(;
-            ntime   = n_steps,
-            a_cap   = ef.a,
-            b_cap   = ef.b*0.3,
-            th_cap  = rad2deg(ef.θ)+3.8,
-            h_sprk  = psr.spark_radius,
-            co_angl = co_angl+0.4,
-            h_drft  = h_drft,
-        )
-        =#
-
-        positions, sizes = LBC.generate_sparks(psr, ef;
-            a_cap   = ef.a,
-            b_cap   = ef.b,
-            th_cap  = rad2deg(ef.θ),
+        # Perform the rotation (run the LBC generator)
+        positions, sizes = LBC.generate_sparks(psr, psr.ellipse_fit;
+            a_cap   = psr.ellipse_fit.a,
+            b_cap   = psr.ellipse_fit.b,
+            th_cap  = rad2deg(psr.ellipse_fit.θ),
             h_sprk  = psr.spark_radius,
             co_angl = co_angl,
-            h_drft  = h_drft, 
-            n_steps=n_steps,
-            save_every=save_every)
+            h_drft  = fake_h_drft,  
+            n_steps = n_steps,
+            save_every = save_every)
 
+        # Save the results
+        psr.sparks = positions[1] 
+        psr.sparks_locations = positions
+        psr.spark_radii = sizes 
+    end
+"""
+    Calculates the correct azimuthal rotation angle (delta_phi) per step 
+    for the SolidBody model based on the P3 parameter and actual spark geometry.
+    """
+    function calculate_solidbody_drift_angle(psr, ef)
+        rfs = Float64[]
+        for s in psr.sparks
+            # Project 3D points onto the 2D tangent plane
+            k = dot(ef.centroid, ef.z_hat) / dot(s, ef.z_hat)
+            p_tangent = k .* s
+            
+            # Local coordinates in the tangent plane (u, v)
+            d = p_tangent - ef.centroid
+            u = dot(d, ef.x_hat)
+            v = dot(d, ef.y_hat)
+            
+            # Transform to the ellipse axis system (rotate by -θ)
+            du = u - ef.center_local[1]
+            dv = v - ef.center_local[2]
+            ue = du * cos(ef.θ) + dv * sin(ef.θ)
+            ve = -du * sin(ef.θ) + dv * cos(ef.θ)
+            
+            # Calculate the normalized "elliptical radius" (rf)
+            push!(rfs, sqrt((ue / ef.a)^2 + (ve / ef.b)^2))
+        end
 
-            psr.sparks = positions[1] # initial positions
-            psr.sparks_locations = positions
-            psr.spark_radii = sizes 
-            #println(length(positions))
-            #println(size(positions[1]))
-            #println(size(sizes[1]))
-
-
+        # Find the outermost ring and count sparks on it
+        max_rf = maximum(rfs)
+        N_outer = count(rf -> abs(rf - max_rf) < 0.01 * max_rf, rfs)
+        
+        
+        
+        # Rotation angle per step (depends on P3 and N_outer)
+        return (2 * pi / N_outer) / psr.p3
     end
 
+
+    """
+    Analytically calculates the pseudo-distance (h_drft) required to force 
+    the LBC module to rotate at the correct angular velocity dictated by P3.
+    """
+    function calculate_lbc_drift_distance(psr, ef)
+        a_sprk = psr.spark_radius
+        b_sprk = a_sprk * ef.b / ef.a 
+        
+        a_o = ef.a
+        a_i = a_o - 2 * a_sprk
+        b_o = ef.b
+        b_i = b_o - 2 * b_sprk
+        
+        # Analytically predict the logic from inside the LBC module
+        # to find the number of sparks on the outermost ring
+        N_outer = floor(Int, 0.75 * (a_o*b_o - a_i*b_i) / (a_sprk*b_sprk))
+    
+
+        # Angular distance between sparks and drift angle per step
+        theta_sp1 = 2 * pi / N_outer
+        del_theta_drift = theta_sp1 / psr.p3
+        
+        # Average track radius for the outermost ring
+        mean_outer_radius = 0.5 * (ef.a + (ef.a - 2 * a_sprk))
+        
+        # Return the reconstructed h_drft parameter
+        return del_theta_drift * mean_outer_radius
+    end
 
 
 end # module end

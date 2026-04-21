@@ -36,7 +36,7 @@ module NSField
                 push!(anomalies, Anomaly(json.anomaly))
             end
             
-            new(rmax, size, anomalies)
+            new(rmax, size, anomalies)      
         end
     end
 
