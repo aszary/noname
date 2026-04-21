@@ -13,11 +13,13 @@ module NSField
     mutable struct Field
         rmax # maximum radius for which we will calculate magnetic field lines
         size # number of points in a line
+        #nlos # number of 
         anomalies # list of magnetic anomalies
 
         function Field()
             rmax = 500_000 # 500 km
             size = 100
+            nlos = 100
             anomalies = []
             new(rmax, size, anomalies)
         end

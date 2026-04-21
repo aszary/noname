@@ -1,5 +1,6 @@
 module Sparks
     using LinearAlgebra
+    using Statistics
     using PyCall
     using JLD2
     using FileIO
@@ -711,32 +712,34 @@ module Sparks
 
 
     """
-    Returns the number of sparks on the carousel ring that the line of sight crosses.
-    Projects sparks and LOS points onto the polar cap tangent plane, groups sparks
-    by orbital radius, and returns the count on the ring closest to the LOS radius.
+    Returns the number of sparks on the outermost carousel ring.
+    Groups sparks by orbital radius using gap-based clustering and k-means refinement,
+    then returns the count on the ring with the largest mean radius.
     """
     function count_sparks_on_los_track(psr)
         ef = psr.ellipse_fit
-
         orbit_radius(p) = sqrt(dot(p - ef.centroid, ef.x_hat)^2 + dot(p - ef.centroid, ef.y_hat)^2)
-
-        los_r = sum(orbit_radius([line[1][end], line[2][end], line[3][end]]) for line in psr.los_lines) / length(psr.los_lines)
-
         sp_radii = [orbit_radius(s) for s in psr.sparks]
 
-        # group sparks into rings: sparks on the same ring have analytically identical radius
-        # use spark_radius as tolerance — rings must be further apart than one spark size
         tol = psr.spark_radius
-        ring_radii = Float64[]
-        for r in sort(sp_radii)
-            if isempty(ring_radii) || abs(r - ring_radii[end]) > tol
-                push!(ring_radii, r)
-            end
+        sorted_r = sort(sp_radii)
+        boundary_indices = findall(g -> g > tol / 2, diff(sorted_r))
+        seeds = Float64[]
+        prev = 1
+        for bi in [boundary_indices; length(sorted_r)]
+            push!(seeds, mean(sorted_r[prev:bi]))
+            prev = bi + 1
         end
+        ring_radii = seeds
+        for _ in 1:10
+            assignments = [argmin(abs.(ring_radii .- r)) for r in sp_radii]
+            ring_radii = [mean(sp_radii[assignments .== i]) for i in eachindex(ring_radii)]
+        end
+        assignments = [argmin(abs.(ring_radii .- r)) for r in sp_radii]
 
-        closest_ring = ring_radii[argmin(abs.(ring_radii .- los_r))]
-        n = count(r -> abs(r - closest_ring) <= tol, sp_radii)
-        println("LOS orbit radius: $(round(los_r, digits=2)) m, closest ring radius: $(round(closest_ring, digits=2)) m, sparks on ring: $n")
+        outer_idx = argmax(ring_radii)
+        n = count(==(outer_idx), assignments)
+        println("Outermost ring radius: $(round(ring_radii[outer_idx], digits=2)) m, sparks on ring: $n")
         return n
     end
 
