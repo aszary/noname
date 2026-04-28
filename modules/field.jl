@@ -181,6 +181,78 @@ module Field
         return [bx, by, bz]
     end
 
+    """
+    generate_full_lines!(psr; step=10, stepsnum=20000, phi=nothing)
+
+    Traces magnetic field lines starting from the stellar surface, 
+    accounting for both the global dipole and all defined anomalies.
+    """
+    function generate_full_lines!(psr; step=10, stepsnum=20000, phi=nothing)
+        fv = psr.fields
+
+        # Starting points on the stellar surface
+        r_start = psr.r
+        thetas = LinRange(0, pi, fv.size)
+        if phi === nothing
+            phis = LinRange(0, 2pi, fv.size+1)[1:end-1]
+        else
+            phis = [phi, phi+pi]
+        end
+
+        for i in 1:size(thetas)[1]
+            for j in 1:size(phis)[1]
+                # Initial position in spherical coordinates
+                pos_sph = [r_start, thetas[i], phis[j]]
+                
+                # Get the full field vector (Dipole + Anomalies) from NSField
+                # NSField expects radius in stellar units (r=1 at surface)
+                b_sph_raw = NSField.BSph(psr.nsfield, 1.0, thetas[i], phis[j])
+                
+                # Scale by the magnetic field strength constant beq
+                b_sph = (b_sph_raw[1] * fv.beq, b_sph_raw[2] * fv.beq, b_sph_raw[3] * fv.beq)
+                
+                # Convert to Cartesian for integration
+                pos = Functions.spherical2cartesian(pos_sph)                
+                b = Functions.vec_spherical2cartesian(pos_sph, b_sph)
+                
+                # Initialize the line storage
+                push!(fv.magnetic_lines, [[pos[1]], [pos[2]], [pos[3]]])
+                ml = fv.magnetic_lines[end]
+                posb = copy(pos)
+                current_step = abs(step) # Start with outward step
+                
+                for k in 1:stepsnum
+                    # Convert current Cartesian position to spherical for field calculation
+                    posb_sph = Functions.cartesian2spherical(posb)
+                    r_normalized = posb_sph[1] / psr.r
+                    
+                    # Boundary check: if line returns to star, decide to stop or reverse
+                    if posb_sph[1] < psr.r
+                        if size(ml[1], 1) > 2
+                            break # End line if it hits the surface after starting
+                        else
+                            current_step = -current_step # Reverse if starting in southern hemisphere
+                        end
+                    end
+
+                    # Calculate the full field at the current point
+                    b_sph_raw = NSField.BSph(psr.nsfield, r_normalized, posb_sph[2], posb_sph[3])
+                    b_sph = (b_sph_raw[1] * fv.beq, b_sph_raw[2] * fv.beq, b_sph_raw[3] * fv.beq)
+                    
+                    # Convert field vector to Cartesian and normalize for the next step
+                    b = Functions.vec_spherical2cartesian(posb_sph, b_sph)
+                    st = b / norm(b) * current_step
+                    
+                    # Update position
+                    posb += st 
+                    push!(ml[1], posb[1])
+                    push!(ml[2], posb[2])
+                    push!(ml[3], posb[3])
+                end
+            end
+        end
+    end
+
 
 
 

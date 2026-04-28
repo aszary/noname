@@ -8,13 +8,16 @@
         "beta":4,
         "R_em":500000,
         "spark_radius":3,
-        "P3":10
+        "P3":10,
+        "npulse":500
 	},
 
     "field":
     {
         "rmax":500000,
-        "size":10000
+        "size":10000,
+        "nlos":100,
+        "nopen":50
     },
 
     "anomalies":[

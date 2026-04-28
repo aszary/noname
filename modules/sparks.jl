@@ -1,5 +1,6 @@
 module Sparks
     using LinearAlgebra
+    using Statistics
     using PyCall
     using JLD2
     using FileIO
@@ -711,11 +712,46 @@ module Sparks
     end
 
 
-
-   """
-    Runs sparks simulation, for simple solidbody-like rotation 
     """
-    function simulate_sparks_solidbody(psr; n_pulses=500)
+    Calculates the correct azimuthal rotation angle (delta_phi) per step 
+    for the SolidBody model based on the P3 parameter and actual spark geometry.
+    """
+    function calculate_solidbody_drift_angle(psr, ef)
+        rfs = Float64[]
+        for s in psr.sparks
+            # Project 3D points onto the 2D tangent plane
+            k = dot(ef.centroid, ef.z_hat) / dot(s, ef.z_hat)
+            p_tangent = k .* s
+            
+            # Local coordinates in the tangent plane (u, v)
+            d = p_tangent - ef.centroid
+            u = dot(d, ef.x_hat)
+            v = dot(d, ef.y_hat)
+            
+            # Transform to the ellipse axis system (rotate by -θ)
+            du = u - ef.center_local[1]
+            dv = v - ef.center_local[2]
+            ue = du * cos(ef.θ) + dv * sin(ef.θ)
+            ve = -du * sin(ef.θ) + dv * cos(ef.θ)
+            
+            # Calculate the normalized "elliptical radius" (rf)
+            push!(rfs, sqrt((ue / ef.a)^2 + (ve / ef.b)^2))
+        end
+
+        # Find the outermost ring and count sparks on it
+        max_rf = maximum(rfs)
+        N_outer = count(rf -> abs(rf - max_rf) < 0.01 * max_rf, rfs)
+        
+        # Rotation angle per step (depends on P3 and N_outer)
+        return (2 * pi / N_outer) / psr.p3
+    end
+
+
+
+    """
+    Runs sparks simulation, for simple solidbody-like rotation
+    """
+    function simulate_sparks_solidbody(psr)
 
         if isnothing(psr.sparks) || isempty(psr.sparks)
             println("Init sparks first: e.g. Sparks.init_sparks1!()...")
@@ -727,92 +763,98 @@ module Sparks
             return
         end
         ef = psr.ellipse_fit
-        p3_val = psr.p3 !== nothing ? psr.p3 : 10.0
-        
-        # 1. Znajdujemy punkt linii widzenia najbliżej środka czapy
-        r_los_track = minimum([norm(pt - ef.centroid) for pt in psr.line_of_sight])
-        distances = [norm([s[1], s[2], s[3]] - ef.centroid) for s in psr.sparks]
-        best_r = distances[argmin([abs(d - r_los_track) for d in distances])]
-        
-        # 2. Izolujemy iskry leżące na obserwowanym pierścieniu
-        ring_sparks = [psr.sparks[i] for i in 1:length(psr.sparks) if abs(distances[i] - best_r) < 0.05 * psr.r]
-        
-        # 3. SZUKANIE PRAWDZIWEJ SYMETRII
-        angles = Float64[]
-        for s in ring_sparks
-            dp = [s[1], s[2], s[3]] - ef.centroid
-            u = dot(dp, ef.x_hat)
-            v = dot(dp, ef.y_hat)
-            push!(angles, atan(v, u))
-        end
-        sort!(angles)
-        
-        if length(angles) >= 2
-            gaps = diff(angles)
-            push!(gaps, 2*pi + angles[1] - angles[end]) 
-            
-            # NAPRAWA: Odrzucamy luki mniejsze niż 0.0001 radiana (duplikaty iskier)
-            valid_gaps = filter(x -> x > 1e-4, gaps)
-            
-            if !isempty(valid_gaps)
-                min_gap = minimum(valid_gaps)
-                N_true = round(Int, 2*pi / min_gap)
-            else
-                N_true = max(1, length(ring_sparks))
-            end
-        else
-            N_true = max(1, length(ring_sparks))
-        end
-        
-        angle_per_pulse_rad = 2 * pi / (N_true * p3_val)
+       
+        angle_per_step = calculate_solidbody_drift_angle(psr, psr.ellipse_fit)
 
-        psr.sparks_locations = []
-        push!(psr.sparks_locations, deepcopy(psr.sparks))
-
-        for i in 1:n_pulses
-            Lines.SolidBody.rotate_sparks!(psr.sparks, ef, angle_per_pulse_rad)
+        for i in 1:psr.npulse
+            Lines.SolidBody.rotate_sparks!(psr.sparks, ef, angle_per_step)
             push!(psr.sparks_locations, deepcopy(psr.sparks))
         end
 
     end
 
+
+    """
+    Analytically calculates the pseudo-distance (h_drft) required to force 
+    the LBC module to rotate at the correct angular velocity dictated by P3.
+    """
+    function calculate_lbc_drift_distance(psr, ef)
+        a_sprk = psr.spark_radius
+        b_sprk = a_sprk * ef.b / ef.a 
+        
+        a_o = ef.a
+        a_i = a_o - 2 * a_sprk
+        b_o = ef.b
+        b_i = b_o - 2 * b_sprk
+        
+        # Analytically predict the logic from inside the LBC module
+        # to find the number of sparks on the outermost ring
+        N_outer = floor(Int, 0.75 * (a_o*b_o - a_i*b_i) / (a_sprk*b_sprk))
+    
+
+        # Angular distance between sparks and drift angle per step
+        theta_sp1 = 2 * pi / N_outer
+        del_theta_drift = theta_sp1 / psr.p3
+        
+        # Average track radius for the outermost ring
+        mean_outer_radius = 0.5 * (ef.a + (ef.a - 2 * a_sprk))
+        
+        # Return the reconstructed h_drft parameter
+        return del_theta_drift * mean_outer_radius
+    end
+
+
     """
     Runs sparks simulation, for LBC model 
     """
-   
-    function simulate_sparks_lbc(psr; n_pulses=500, co_angl=0.0)
+    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, save_every=1)
+        # TODO remove save_every? now step based on P3 -> one step one pulse
+
         if isnothing(psr.ellipse_fit)
             println("Generate open lines first: Lines.generate_open!()!")
             return
         end
         ef = psr.ellipse_fit
 
-        N = length(psr.sparks)
-        if N == 0 return end
+        println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
 
-        # 1. P3 z pliku JSON bezpośrednio dyktuje prędkość dryfu (h_drft)
-        p3_val = psr.p3 !== nothing ? psr.p3 : 10.0
-        calculated_h_drft = 360.0 / (N * p3_val) 
+        # animate in DISPLAY FRAME!
 
-        h_spark = isnothing(psr.spark_radii) ? psr.spark_radius : psr.spark_radii[1][1]
-
-        # 2. Wywołujemy LBC TYLKO RAZ, dokładnie tak jak w Twoim starym kodzie.
-        # Ustawiamy save_every=1, aby 1 krok = 1 impuls na wykresie.
-        positions, sizes = LBC.generate_sparks(psr, ef;
-            a_cap      = ef.a,
-            b_cap      = ef.b,
-            th_cap     = rad2deg(ef.θ),
-            h_sprk     = h_spark,
-            co_angl    = co_angl,
-            h_drft     = calculated_h_drft, # LBC użyje teraz idealnej prędkości z P3!
-            n_steps    = n_pulses,          # Długość symulacji (domyślnie 500)
-            save_every = 1
+        #=
+        LBC.animate(;
+            ntime   = n_steps,
+            a_cap   = ef.a,
+            b_cap   = ef.b*0.3,
+            th_cap  = rad2deg(ef.θ)+3.8,
+            h_sprk  = psr.spark_radius,
+            co_angl = co_angl+0.4,
+            h_drft  = h_drft,
         )
+        =#
 
-        # 3. Przypisanie wyników do obiektu pulsara
-        psr.sparks = positions[1]
-        psr.sparks_locations = positions
-        psr.spark_radii = sizes
+        h_drft_p3 = calculate_lbc_drift_distance(psr, psr.ellipse_fit)
+
+        println("h_drft ", h_drft_p3)
+
+        positions, sizes = LBC.generate_sparks(psr, ef;
+            a_cap   = ef.a,
+            b_cap   = ef.b,
+            th_cap  = rad2deg(ef.θ),
+            h_sprk  = psr.spark_radius,
+            co_angl = co_angl,
+            h_drft  = h_drft_p3, 
+            n_steps=n_steps,
+            save_every=save_every)
+
+
+            psr.sparks = positions[1] # initial positions
+            psr.sparks_locations = positions
+            psr.spark_radii = sizes 
+            #println(length(positions))
+            #println(size(positions[1]))
+            #println(size(sizes[1]))
+
+
     end
 
 

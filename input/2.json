@@ -7,14 +7,17 @@
         "alpha":30,
         "beta":4,
         "R_em":500000,
-        "spark_radius":20,
-        "P3":10
+        "spark_radius":0.5,
+        "P3":10,
+        "npulse":100
 	},
 
     "field":
     {
         "rmax":500000,
-        "size":100000
+        "size":10000,
+        "nlos":100,
+        "nopen":50
     },
 
     "anomalies":[
