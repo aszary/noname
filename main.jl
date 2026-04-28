@@ -205,7 +205,7 @@ module NoName
         #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0, h_drft=0.5, save_every=1)
+        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0, save_every=1)
         Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
@@ -213,10 +213,10 @@ module NoName
 
         #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
-        Signal.generate_pulses(psr, pulse_max=500)
+        Signal.generate_pulses(psr)
         
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=500)
+        #Plot.signal(psr)
+        Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -224,8 +224,8 @@ module NoName
 
 
     function generate_signal()
-        #psr = Pulsar("input/1.json")
-        psr = Pulsar("input/2.json")
+        psr = Pulsar("input/1.json")
+        #psr = Pulsar("input/2.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
 
@@ -251,8 +251,8 @@ module NoName
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
         Signal.generate_pulses(psr)
         
-        #Plot.signal(psr)
-        Plot.pulses(psr, number=psr.npulse)
+        Plot.signal(psr)
+        #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -271,9 +271,9 @@ module NoName
 
         #println(psr.nsfield)
 
-        #Plot.anomalies(psr)
+        Plot.anomalies(psr)
         #Plot.anomalies2D(psr)
-        Plot.polar_cap2D(psr)
+        #Plot.polar_cap2D(psr)
 
        
     end
@@ -286,8 +286,8 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        #generate_signal_dipole()
-        generate_signal()
+        generate_signal_dipole()
+        #generate_signal()
 
         #model_field()
 
