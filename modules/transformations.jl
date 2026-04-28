@@ -2,6 +2,20 @@ module Transformations
 
     include("functions.jl")
 
+
+    """
+        rotation_matrix_3d_z(γ)
+
+    Create a 3D rotation matrix for a rotation by angle γ around the Z-axis.
+    """
+    function rotation_matrix_3d_z(γ)
+        return [
+            cos(γ)  -sin(γ)  0.0
+            sin(γ)   cos(γ)  0.0
+            0.0      0.0     1.0
+        ]
+    end
+
     """
         rotation_matrix_yx(α, β)
 

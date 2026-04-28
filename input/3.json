@@ -8,8 +8,10 @@
         "beta":4,
         "R_em":500000,
         "spark_radius":3,
-        "P3":10
+        "P3":40
 	},
+
+    
 
     "field":
     {
