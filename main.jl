@@ -261,8 +261,8 @@ module NoName
 
     function model_field()
         #psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
-        psr = Pulsar("input/3.json")
+        psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=5)
         Lines.calculate_line_of_sight(psr)
@@ -286,10 +286,10 @@ module NoName
         #small_grids()
         #full_plus_smallgrids()
 
-        generate_signal_dipole()
+        #generate_signal_dipole()
         #generate_signal()
 
-        #model_field()
+        model_field()
 
         println("Bye")
     end
