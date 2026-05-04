@@ -180,7 +180,7 @@ module NoName
     end
 
     function full_plus_smallgrids()
-        psr = Pulsar()
+        psr = Pulsar("input/1.json")
         #Field.calculate_dipole!(psr)
         #Field.generate_lines!(psr)
         Lines.calculate_polarcaps!(psr)
@@ -204,7 +204,7 @@ module NoName
 
         #Field.calculate_dipole!(psr)
 
-        Lines.init_line_of_sight(psr, num=10)
+        Lines.init_line_of_sight(psr, num=100)
         Lines.calculate_line_of_sight_dipole(psr)
 
         Lines.generate_open!(psr, num=10)
@@ -213,8 +213,8 @@ module NoName
         #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse  , co_angl=-90.0, h_drft=0.5, save_every=1)
-        Sparks.save_sparks(psr; num=2)
+        #Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse  , co_angl=-90.0, save_every=1)
+        #Sparks.save_sparks(psr; num=2)
 
         #Plot.sparks(psr)
         Sparks.load_sparks(psr; num=2)
@@ -223,8 +223,8 @@ module NoName
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
         Signal.generate_pulses(psr, pulse_max=psr.npulse)
         
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=500)
+        #Plot.signal(psr)
+        Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -255,8 +255,8 @@ module NoName
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
         Signal.generate_pulses(psr, pulse_max=psr.npulse)
         
-        #Plot.signal(psr)
-        Plot.pulses(psr, number=psr.npulse)
+        Plot.signal(psr)
+        #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -264,12 +264,11 @@ module NoName
 
 
     function model_field()
-    psr = Pulsar("input/1.json")
-    
+    psr = Pulsar("input/3.json")
+    Field.generate_full_lines!(psr; step=500, stepsnum=1000)
     Lines.init_line_of_sight(psr, num=100)
     Lines.calculate_line_of_sight_anomalous!(psr)
     Lines.generate_open_anomalous!(psr, num=10)
-    Lines.generate_closed_anomalous!(psr, shells=3, num_lines=15)
     # Calculate the anomalous polar cap and fit an ellipse to it (required for the LBC model)
     NSField.calculate_anomaly_polarcap!(psr)
 
@@ -281,14 +280,15 @@ module NoName
     
     # 3. Generate the continuous signal and single pulses (required for the animation in Plot.signal)
     Signal.generate_signal_radii(psr; noise_level=0.05)
-    Signal.generate_pulses(psr, pulse_max=psr.npulse)
+    Signal.generate_pulses(psr)
 
 
-    Plot.pulsar(psr)
+    #Plot.pulsar(psr)
     # 4. Draw static anomalies plot (optional, for verification)
-    Plot.anomalies(psr, show_anomalies=false)
+    #Plot.anomalies(psr, show_anomalies=false)
     
     # 5. Play the 3D animation of moving sparks and the generated 2D signal
+    Plot.plot_full_anomaly_field(psr)
     #Plot.signal(psr)
     #Plot.pulses(psr, number=psr.npulse)
     #Plot.pulses0(psr)

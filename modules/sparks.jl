@@ -648,7 +648,7 @@ module Sparks
     """
     Runs MC model sparks simulation, periodiclly saving results (for better accuracy) and performing full grid calculation
     """
-    function simulate_sparks_mc(psr; n_steps=psr.npulse, save_every=10, speedup=10)
+    function simulate_sparks_mc(psr; n_steps=500, save_every=10, speedup=10)
         for i in 1:n_steps
             save = (i % save_every == 0)
             # small grids around sparks
