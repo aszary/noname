@@ -8,8 +8,8 @@
         "beta":4,
         "R_em":500000,
         "spark_radius":3,
-        "P3":10,
-        "npulse":100,
+        "P3":50,
+        "npulse":150,
         "noise_level":0.05,
         "output_num":3
 	},

@@ -61,10 +61,7 @@
         signal_number, bin_number = size(psr.signal)
         psr.pulses = zeros(psr.npulse, bin_number)
 
-        for i in 1:signal_number
-            if i == psr.npulse 
-                break
-            end
+        for i in 1:min(signal_number, psr.npulse)
             psr.pulses[i, :] = psr.signal[i, :]
         end
 
