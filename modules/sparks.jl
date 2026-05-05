@@ -806,8 +806,7 @@ module Sparks
     """
     Runs sparks simulation, for LBC model 
     """
-    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0, save_every=1)
-        # TODO remove save_every? now step based on P3 -> one step one pulse
+    function simulate_sparks_lbc(psr; n_steps=100, co_angl=30.0)
 
         if isnothing(psr.ellipse_fit)
             println("Generate open lines first: Lines.generate_open!()!")
@@ -841,9 +840,8 @@ module Sparks
             th_cap  = rad2deg(ef.θ),
             h_sprk  = psr.spark_radius,
             co_angl = co_angl,
-            h_drft  = h_drft_p3, 
-            n_steps=n_steps,
-            save_every=save_every)
+            h_drft  = h_drft_p3,
+            n_steps=n_steps)
 
 
             psr.sparks = positions[1] # initial positions

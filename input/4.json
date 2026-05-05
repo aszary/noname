@@ -9,7 +9,9 @@
         "R_em":500000,
         "spark_radius":3,
         "P3":10,
-        "npulse":500
+        "npulse":500,
+        "noise_level":0.05,
+        "output_num":4
 	},
 
     "field":
