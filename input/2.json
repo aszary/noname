@@ -22,6 +22,13 @@
         "nopen":50
     },
 
+    "sparks":
+    {
+        "model": "lbc",
+        "mc":  { "n_steps": 2000, "save_every": 40, "speedup": 10.1 },
+        "lbc": { "co_angl": 0.0 }
+    },
+
     "anomalies":[
         {
             "_r": "spherical coordiante r,  location of the anommaly [in stellar radius]",
