@@ -5,7 +5,7 @@
         "R":10000,
         "PDOT":1e-15,
         "alpha":30,
-        "beta":4,
+        "beta":3,
         "R_em":500000,
         "spark_radius":20,
         "P3":10.0,

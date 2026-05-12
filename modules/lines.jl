@@ -211,6 +211,51 @@ module Lines
         #println(size(psr.los_lines))
     end
 
+    function init_line_of_sight_360(psr; num=300) 
+        α = deg2rad(psr.alpha)
+        β = deg2rad(psr.beta)
+        
+        P = psr.p 
+        
+        r_em = 500e3 
+        
+        phases = Geometry.generate_uniform_phase_array1(num, α, β, r_em, P)
+        
+        psr.longitudes = rad2deg.(phases)
+        psr.line_of_sight = []
+        for phi in phases
+            x = sin(α + β) * cos(phi)
+            y = sin(α + β) * sin(phi)
+            z = cos(α + β)
+            push!(psr.line_of_sight, [x * r_em, y * r_em, z * r_em])
+        end
+    end
+
+    function init_line_of_sight_360_normal(psr; num=300)
+        # Calculates line of sight for full 360 rotation using proper AR physics
+        psr.line_of_sight = []
+        psr.longitudes = zeros(num)
+
+        α = deg2rad(psr.alpha)
+        β = deg2rad(psr.beta)
+        
+        # 1. Zamiast ograniczonego okna, generujemy pełne 360 stopni 
+        # od -pi (-180 deg) do pi (180 deg)
+        φ_s = range(-pi, pi, length=num)
+        
+        # 2. Używamy DOKŁADNIE tej samej fizyki co w krótkiej wersji!
+        # Uwzględniamy Aberrację i Retardację (AR)
+        θ_array, ψ_array = Geometry.emission_points_with_ar(φ_s, α, β, psr.r_em, psr.p)
+
+        # 3. Zapisujemy punkty
+        for i in eachindex(θ_array)
+            ψ = ψ_array[i]
+            θ = θ_array[i]
+            push!(psr.line_of_sight, Functions.spherical2cartesian([psr.r_em, θ, ψ]))
+            psr.longitudes[i] = rad2deg(φ_s[i])
+        end
+    end
+
 
 
     function calculate_line_of_sight(psr)

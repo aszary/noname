@@ -795,6 +795,296 @@ module Plot
 
     end
 
+    function record_signal_mp4(psr; filename="pulsar_signal.mp4", framerate=15)
+        println("Setting up the scene for recording...")
+
+        # 1. Setup the Figure and Axes
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
+
+        # rotation axis
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        # magnetic axis
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+
+        arrows3d!(ax,[0,], [0,0], [0,0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
+
+        # plot polar cap
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+
+        # line of sight end points
+        for line in psr.los_lines
+            scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        # spark positions Observable
+        spark_positions_obs = Observable(Point3f.(psr.sparks_locations[1]))
+        if isnothing(psr.spark_radii)
+            meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        else
+            spark_radii_obs = Observable(psr.spark_radii[1])
+            meshscatter!(ax, spark_positions_obs, markersize=spark_radii_obs, color=:red)
+        end
+
+        # PULSAR SIGNAL BELOW
+        ax_bottom = Axis(fig[2, 1], xlabel="bins", ylabel="Intensity")
+        rowsize!(fig.layout, 2, Relative(0.25))  
+        
+        signal_max = maximum(psr.signal)
+        ylims!(ax_bottom, -0.1*signal_max, signal_max * 1.1) 
+
+        signal_obs = Observable(psr.signal[1, :])
+        lines!(ax_bottom, signal_obs , color=:black, linewidth=2)
+
+        # Camera aimed at polar cap
+        pc_xs, pc_ys, pc_zs = psr.pc[1], psr.pc[2], psr.pc[3]
+        pc_center = [mean(pc_xs), mean(pc_ys), mean(pc_zs)]
+        pc_size = maximum(sqrt.((pc_xs .- pc_center[1]).^2 .+ (pc_ys .- pc_center[2]).^2 .+ (pc_zs .- pc_center[3]).^2))
+        pc_dir = pc_center / norm(pc_center)
+        cam_dist = (psr.r * 0.1 + 2 * pc_size)/3
+        eyepos = pc_center + pc_dir * cam_dist
+        view_dir_norm = -pc_dir
+        up_candidate = abs(dot(view_dir_norm, [0.0, 0.0, 1.0])) < 0.9 ? [0.0, 0.0, 1.0] : [1.0, 0.0, 0.0]
+        upvec = up_candidate - dot(up_candidate, view_dir_norm) * view_dir_norm
+        upvec = upvec / norm(upvec)
+        cam = cam3d!(ax.scene, eyeposition=eyepos, lookat=pc_center, upvector=upvec, center=false)
+
+        # 2. RECORD THE VIDEO
+        n_steps = length(psr.sparks_locations)
+        println("Recording $n_steps frames to $filename ...")
+
+        # The record loop replaces the while loop and sleep()
+        record(fig, filename, 1:n_steps; framerate = framerate) do i
+            
+            # update spark positions
+            spark_positions_obs[] = psr.sparks_locations[i]
+            if !isnothing(psr.spark_radii)
+                spark_radii_obs[] = psr.spark_radii[i]
+            end
+
+            # update signal
+            signal_obs[] = psr.signal[i, :]
+            
+        end
+
+        println("Recording complete! Saved as $filename")
+    end
+
+    
+    function rotate_vector(v, k, theta)
+        k_unit = k / norm(k)
+        return v .* cos(theta) .+ cross(k_unit, v) .* sin(theta) .+ k_unit .* dot(k_unit, v) .* (1 - cos(theta))
+    end
+
+    function polarization_vector_study(psr; delay=0.05)
+        fig = Figure(size = (1400, 800))
+        
+        sphere_mesh_left = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
+        sphere_mesh_right = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
+        
+        axis_scale = 6.0
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) .* axis_scale
+        mag_vec_static = Functions.spherical2cartesian(psr.magnetic_axis) .* axis_scale
+
+        mid_idx = div(length(psr.line_of_sight), 2)
+        p_los_center = psr.line_of_sight[mid_idx]
+
+        norm_los = norm(p_los_center)
+        dir_los = [p_los_center[1]/norm_los, p_los_center[2]/norm_los, p_los_center[3]/norm_los]
+        p_obs_right_static = Point3f(dir_los[1] * psr.r * 4.5, dir_los[2] * psr.r * 4.5, dir_los[3] * psr.r * 4.5)
+
+        vec_len_left = psr.r * 10.0  
+        vec_len_right = psr.r * 2.0  
+        
+        # ==========================================
+        # PANEL 1 (Top Left): Rotating Frame
+        # ==========================================
+        ax1 = Axis3(fig[1, 1], title = "Rotating Frame (Telescope Orbits)")
+        mesh!(ax1, sphere_mesh_left, color = (:teal, 0.7), transparency = true)
+        
+        for line in psr.los_lines
+            lines!(ax1, line[1], line[2], line[3], color = (:grey, 0.15), linewidth = 1)
+        end
+
+        # Fixed arrow sizes for slim proportions
+        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(rot_vec...)], color = :red, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(mag_vec_static...)], color = :blue, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+        
+        active_line_obs_left = Observable(Point3f.(psr.los_lines[1][1], psr.los_lines[1][2], psr.los_lines[1][3]))
+        los_obs_left = Observable(Point3f(psr.los_lines[1][1][1], psr.los_lines[1][2][1], psr.los_lines[1][3][1]))
+        
+        pol_pos_left = Observable([Point3f(los_obs_left[])])
+        pol_dir_left = Observable([Vec3f(0,0,0)])
+        
+        lines!(ax1, active_line_obs_left, color = :blue, linewidth = 3)
+        scatter!(ax1, los_obs_left, color=:red, marker=:diamond, markersize=12)
+        
+        # Yellow polarization vector
+        arrows3d!(ax1, pol_pos_left, pol_dir_left, color = :yellow, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+
+        # ==========================================
+        # PANEL 2 (Top Right): Observer Frame
+        # ==========================================
+        ax2 = Axis3(fig[1, 2], aspect = :data, title = "Observer Frame (Star Rotates)")
+        mesh!(ax2, sphere_mesh_right, color = (:teal, 0.7), transparency = true)
+        
+        arrows3d!(ax2, [Point3f(0,0,0)], [Vec3f(rot_vec...)], color = :red, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
+        arrows3d!(ax2, [Point3f(0,0,0)], [Vec3f(p_obs_right_static...)], color = :green, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
+        scatter!(ax2, [p_obs_right_static], color=:red, marker=:diamond, markersize=12)
+        
+        mag_pos_right = Observable([Point3f(0,0,0)])
+        mag_dir_right = Observable([Vec3f(mag_vec_static...)])
+        
+        pol_pos_right = Observable([p_obs_right_static])
+        pol_dir_right = Observable([Vec3f(0,0,0)])
+        
+        arrows3d!(ax2, mag_pos_right, mag_dir_right, color = :blue, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
+        arrows3d!(ax2, pol_pos_right, pol_dir_right, color = :yellow, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+
+        lim = psr.r * 6.0
+        limits!(ax2, -lim, lim, -lim, lim, -lim, lim)
+
+        # ==========================================
+        # PANEL 3 (Bottom): RVM Curve
+        # ==========================================
+        ax_pa = Axis(fig[2, 1:2], xlabel = "Longitude [deg]", ylabel = "PA [deg]", title = "RVM Polarization Curve")
+        scatter!(ax_pa, psr.longitudes, psr.pa, color = (:grey, 0.5), markersize = 4)
+        
+        current_pa_obs = Observable(Point2f[Point2f(psr.longitudes[1], psr.pa[1])])
+        scatter!(ax_pa, current_pa_obs, color = :yellow, markersize = 12, strokewidth = 1, strokecolor = :black)
+
+        rowsize!(fig.layout, 1, Relative(0.65))
+        display(fig)
+
+        # ==========================================
+        # ANIMATION LOOP
+        # ==========================================
+        n_bins = length(psr.longitudes)
+        
+        while events(fig).window_open[]
+            for i in 1:n_bins
+                if !events(fig).window_open[] break end
+                
+                phi_rad = deg2rad(psr.longitudes[i])
+                pa_rad = deg2rad(psr.pa[i])
+                
+                # --- Update Left Panel ---
+                line_data = psr.los_lines[i]
+                active_line_obs_left[] = Point3f.(line_data[1], line_data[2], line_data[3])
+                
+                p_los_left = Point3f(line_data[1][1], line_data[2][1], line_data[3][1])
+                los_obs_left[] = p_los_left
+                
+                dx_left = vec_len_left * cos(pa_rad)
+                dy_left = vec_len_left * sin(pa_rad)
+                
+                pol_pos_left[] = [p_los_left]
+                pol_dir_left[] = [Vec3f(dx_left, dy_left, 0.0)]
+                
+                # --- Update Right Panel ---
+                mag_vec_rotated = rotate_vector(mag_vec_static, rot_vec, -phi_rad)
+                mag_dir_right[] = [Vec3f(mag_vec_rotated...)]
+                
+                dx_right = vec_len_right * cos(pa_rad)
+                dy_right = vec_len_right * sin(pa_rad)
+                
+                pol_dir_right[] = [Vec3f(dx_right, dy_right, 0.0)]
+                
+                # --- Update RVM Plot ---
+                current_pa_obs[] = [Point2f(psr.longitudes[i], psr.pa[i])]
+                
+                sleep(delay)
+            end
+        end
+    end
+
+
+  
+
+    function signal_polarized(psr; delay=0.1)
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
+
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
+        arrows3d!(ax, [0, 0], [0, 0], [0, 0], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
+        
+        lines!(ax, psr.pc[1], psr.pc[2], psr.pc[3])
+        for line in psr.los_lines
+            scatter!(ax, line[1][end], line[2][end], line[3][end], color=:blue, marker=:xcross)
+        end
+
+        spark_positions_obs = Observable(Point3f.(psr.sparks_locations[1]))
+        if isnothing(psr.spark_radii)
+            meshscatter!(ax, spark_positions_obs, markersize=psr.spark_radius, color=:red)
+        else
+            spark_radii_obs = Observable(psr.spark_radii[1])
+            meshscatter!(ax, spark_positions_obs, markersize=spark_radii_obs, color=:red)
+        end
+
+        # ==========================================
+        # 4. 2D Layout Setup (PA and Intensity)
+        # ==========================================
+        # Tworzymy GridLayout i rozciągamy go na całą szerokość (żeby nie był ściśnięty)
+        gl_bottom = fig[2, 1] = GridLayout()
+        
+        ax_pa = Axis(gl_bottom[1, 1], ylabel="PA [deg]", title="Pulsar Polarization Profile (Numerical RVM)")
+        ax_signal = Axis(gl_bottom[2, 1], xlabel="Longitude [deg]", ylabel="Intensity", title="Pulse Intensity Profile")
+        
+        linkxaxes!(ax_pa, ax_signal) 
+        rowsize!(fig.layout, 2, Relative(0.4)) 
+
+        # ==========================================
+        # 5. Plotting 2D Data
+        # ==========================================
+        signal_obs = Observable(psr.signal[1, :])
+        
+        # Rysujemy szare punkty i pod spodem cienką linię trendu - dokładnie tak jak w study!
+        scatter!(ax_pa, psr.longitudes, psr.pa, color = (:grey, 0.5), markersize = 4)
+        lines!(ax_pa, psr.longitudes, psr.pa, color = (:grey, 0.3), linewidth = 1)
+        
+        # Obserwator do animacji zółtej kropki na krzywej RVM (jak w study)
+        current_pa_obs = Observable(Point2f[Point2f(psr.longitudes[1], psr.pa[1])])
+        scatter!(ax_pa, current_pa_obs, color = :yellow, markersize = 12, strokewidth = 1, strokecolor = :black)
+
+        # Rysowanie czarnej linii profilu sygnału
+        lines!(ax_signal, psr.longitudes, signal_obs, color=:black, linewidth=2)
+
+        # Dynamiczne limity dla sygnału
+        signal_max = maximum(psr.signal)
+        ylims!(ax_signal, -0.1*signal_max, signal_max * 1.1)
+        
+        # KLUCZOWA ZMIANA: Brak sztywnego ylims dla PA, Makie dobierze je samo!
+        autolimits!(ax_pa) 
+
+        # Ustawienie kamery na czapę polarną (zostawiamy bez zmian)
+        pc_xs, pc_ys, pc_zs = psr.pc[1], psr.pc[2], psr.pc[3]
+        pc_center = [mean(pc_xs), mean(pc_ys), mean(pc_zs)]
+        pc_dir = pc_center / norm(pc_center)
+        eyepos = pc_center + pc_dir * (psr.r * 0.1 + 2 * psr.r_pc)
+        cam3d!(ax.scene, eyeposition=eyepos, lookat=pc_center, upvector=[0,0,1], center=false)
+
+        display(fig)
+
+
+        # 6. Pętla animacji (identyczna jak w Plot.signal)[cite: 4]
+        n_steps = length(psr.sparks_locations)
+        i = 1
+        while (i < n_steps)
+            spark_positions_obs[] = psr.sparks_locations[i]
+            if !isnothing(psr.spark_radii)
+                spark_radii_obs[] = psr.spark_radii[i]
+            end
+            signal_obs[] = psr.signal[i, :]
+            
+            sleep(delay)
+            i += 1
+            if i == n_steps - 1; i = 1; end # Pętla nieskończona[cite: 4]
+        end
+    end
+
+    
+
 
     function pulses0(psr; start=1, number=100, norm=3.0, name_mod="PSR_NAME")
 

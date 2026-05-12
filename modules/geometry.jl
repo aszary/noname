@@ -351,6 +351,18 @@ module Geometry
         return range(-φ_m, φ_m, length=n_points)
     end
 
+    function generate_uniform_phase_array1(n_points, α, β, r_em, P)
+        φ_m = φ_max(α, β, r_em, P)
+        
+        if φ_m === nothing
+            error("Line of sight does not intersect open field line region")
+        end
+        
+        # ORIGINAL: return range(-φ_m, φ_m, length=n_points)[cite: 3]
+        # CHANGE TO THIS for a full 360-degree rotation:
+        return range(-pi, pi, length=n_points) 
+    end
+
     # ============================================================================
     # Aberration and Retardation Corrections
     # ============================================================================
@@ -555,6 +567,25 @@ module Geometry
         end
         
         return θ_array, ψ_array
+    end
+
+    """
+    calculate_rvm_pa(phi, alpha, beta, phi0=0.0, psi0=0.0)
+
+    Calculates the Polarization Position Angle (PA) using the Rotating Vector Model.
+    All angles are in radians.
+    """
+    function calculate_rvm_pa(phi, alpha, beta, phi0=0.0, psi0=0.0)
+        zeta = alpha + beta
+        
+        numerator = sin(alpha) * sin(phi - phi0)
+        denominator = sin(zeta) * cos(alpha) - cos(zeta) * sin(alpha) * cos(phi - phi0)
+        
+        # atan2 is used to handle the full range of angles properly
+        pa = psi0 + atan(numerator, denominator)
+        
+        # Normalize PA to be within [-pi/2, pi/2] range
+        return atan(tan(pa)) 
     end
 
 
