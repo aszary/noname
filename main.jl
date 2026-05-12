@@ -15,6 +15,7 @@ module NoName
         model     = "solidbody",
         mc        = (n_steps = 2000, save_every = 40, speedup = 10.1),
         lbc       = (co_angl = 0.0,),
+        init      = (method = "ellipse", rfs = [0.2, 0.5, 0.79], num = 3),
     )
 
     mutable struct Pulsar
@@ -220,7 +221,7 @@ module NoName
         #Sparks.init_sparks1!(psr ;num=5)
         #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0, save_every=1)
+        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0)
         Sparks.save_sparks(psr; num=psr.output_num)
 
         #Plot.sparks(psr)
@@ -249,11 +250,17 @@ module NoName
 
         Lines.generate_open!(psr, num=psr.nsfield.nopen)
 
-        #Sparks.init_sparks1!(psr ;num=5) # dipolar
-        Sparks.init_sparks1_ellipse!(psr; rfs=[0.2, 0.5, 0.79], num=3) # non-dipolar
-        #Sparks.init_sparks1_ellipse!(psr; rfs=[0.5], num=4) # non-dipolar
-
         sc = psr.sparks_config
+        si = sc.init
+        if si.method == "ellipse"
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "dipolar"
+            Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "none"
+            # skip spark initialization
+        else
+            error("Unknown spark init method: $(si.method). Use \"ellipse\", \"dipolar\", or \"none\".")
+        end
         if sc.model == "mc"
             Sparks.simulate_sparks_mc(psr; n_steps=sc.mc.n_steps, save_every=sc.mc.save_every, speedup=sc.mc.speedup)
         elseif sc.model == "solidbody"
@@ -263,10 +270,11 @@ module NoName
         else
             error("Unknown spark model: $(sc.model). Use \"mc\", \"solidbody\", or \"lbc\".")
         end
-        Sparks.save_sparks(psr; num=psr.output_num)
 
+        #Sparks.save_sparks(psr; num=psr.output_num)
         #Plot.sparks(psr)
-        Sparks.load_sparks(psr; num=psr.output_num)
+        #Sparks.load_sparks(psr; num=psr.output_num)
+
 
         #Signal.generate_signal(psr; noise_level=psr.noise_level) # old same sizes!
         Signal.generate_signal_radii(psr; noise_level=psr.noise_level) # new
