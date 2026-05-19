@@ -48,6 +48,7 @@ module NoName
         beta # impact parameter in [deg.]
         los_lines # magnetic lines defined by the line of sight points
         signal # radio intensity for continous signal
+        pa # position angle
         pulses # single pulses generated from signal
         longitudes # single pulse longitudes
         ellipse_fit # ellipse fit to the polar cap points
@@ -87,6 +88,7 @@ module NoName
             beta = 4.0 # deg by default
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
+            pa = nothing
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
@@ -95,7 +97,7 @@ module NoName
             noise_level = 0.05
             output_num = 1
             sparks_config = DEFAULT_SPARKS_CONFIG
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -132,6 +134,7 @@ module NoName
             line_of_sight = nothing
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
+            pa = nothing
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
@@ -140,7 +143,7 @@ module NoName
             noise_level = d.psr.noise_level
             output_num = d.psr.output_num
             sparks_config = haskey(d, :sparks) ? d.sparks : DEFAULT_SPARKS_CONFIG
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
         end
     end
 

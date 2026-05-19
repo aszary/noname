@@ -53,6 +53,11 @@
         end
         noise = noise_level * randn(size(psr.signal))
         psr.signal .+= noise
+
+        # position angle calculation
+        psr.pa = zeros(bin_number)
+        # TUTAJ DODAĆ PA!
+
     end
 
     function generate_pulses(psr)
@@ -65,6 +70,38 @@
             psr.pulses[i, :] = psr.signal[i, :]
         end
 
+    end
+
+
+   """
+    calculate_numerical_pa(B_vec, los_vec, rot_vec)
+
+    Calculates the Polarization Angle (PA) directly from the local magnetic field.
+    Projects the B vector from the emission point onto the observer's Plane of the Sky.
+    """
+    function calculate_numerical_pa(B_vec, los_vec, rot_vec)
+        # 1. Ensure all vectors have a length of 1 (normalize)
+        n = normalize(los_vec)       # Line of Sight vector (towards the telescope)
+        omega = normalize(rot_vec)   # Rotation Axis vector (Red axis)
+        B = normalize(B_vec)         # Local magnetic field vector at the emission point
+        
+        # 2. Build a 2D coordinate system on the Plane of the Sky (as seen by the telescope)
+        # Y-axis on the sky (North) is the projection of the rotation axis onto the viewing plane
+        y_sky = omega .- dot(omega, n) .* n
+        y_sky = normalize(y_sky)
+        
+        # X-axis on the sky (East) is perpendicular to the Line of Sight and North
+        x_sky = cross(n, y_sky)
+        
+        # 3. Project our local magnetic field vector (B) onto this sky plane
+        B_x = dot(B, x_sky)
+        B_y = dot(B, y_sky)
+        
+        # 4. Calculate the angle using atan2 (yields a result from -pi to pi)
+        pa = atan(B_x, B_y)
+        
+        # Normalize the angle to the [-pi/2, pi/2] range, standard for RVM
+        return atan(tan(pa))
     end
 
 
