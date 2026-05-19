@@ -1227,4 +1227,128 @@ module Plot
     end
 
 
+    function polarization_vector_study(psr; delay=0.05)
+        fig = Figure(size = (1400, 800))
+        
+        sphere_mesh_left = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
+        sphere_mesh_right = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
+        
+        axis_scale = 6.0
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) .* axis_scale
+        mag_vec_static = Functions.spherical2cartesian(psr.magnetic_axis) .* axis_scale
+
+        mid_idx = div(length(psr.line_of_sight), 2)
+        p_los_center = psr.line_of_sight[mid_idx]
+
+        norm_los = norm(p_los_center)
+        dir_los = [p_los_center[1]/norm_los, p_los_center[2]/norm_los, p_los_center[3]/norm_los]
+        p_obs_right_static = Point3f(dir_los[1] * psr.r * 4.5, dir_los[2] * psr.r * 4.5, dir_los[3] * psr.r * 4.5)
+
+        vec_len_left = psr.r * 10.0  
+        vec_len_right = psr.r * 2.0  
+        
+        # ==========================================
+        # PANEL 1 (Top Left): Rotating Frame
+        # ==========================================
+        ax1 = Axis3(fig[1, 1], title = "Rotating Frame (Telescope Orbits)")
+        mesh!(ax1, sphere_mesh_left, color = (:teal, 0.7), transparency = true)
+        
+        for line in psr.los_lines
+            lines!(ax1, line[1], line[2], line[3], color = (:grey, 0.15), linewidth = 1)
+        end
+
+        # Fixed arrow sizes for slim proportions
+        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(rot_vec...)], color = :red, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(mag_vec_static...)], color = :blue, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+        
+        active_line_obs_left = Observable(Point3f.(psr.los_lines[1][1], psr.los_lines[1][2], psr.los_lines[1][3]))
+        los_obs_left = Observable(Point3f(psr.los_lines[1][1][1], psr.los_lines[1][2][1], psr.los_lines[1][3][1]))
+        
+        pol_pos_left = Observable([Point3f(los_obs_left[])])
+        pol_dir_left = Observable([Vec3f(0,0,0)])
+        
+        lines!(ax1, active_line_obs_left, color = :blue, linewidth = 3)
+        scatter!(ax1, los_obs_left, color=:red, marker=:diamond, markersize=12)
+        
+        # Yellow polarization vector
+        arrows3d!(ax1, pol_pos_left, pol_dir_left, color = :yellow, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+
+        # ==========================================
+        # PANEL 2 (Top Right): Observer Frame
+        # ==========================================
+        ax2 = Axis3(fig[1, 2], aspect = :data, title = "Observer Frame (Star Rotates)")
+        mesh!(ax2, sphere_mesh_right, color = (:teal, 0.7), transparency = true)
+        
+        arrows3d!(ax2, [Point3f(0,0,0)], [Vec3f(rot_vec...)], color = :red, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
+        arrows3d!(ax2, [Point3f(0,0,0)], [Vec3f(p_obs_right_static...)], color = :green, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
+        scatter!(ax2, [p_obs_right_static], color=:red, marker=:diamond, markersize=12)
+        
+        mag_pos_right = Observable([Point3f(0,0,0)])
+        mag_dir_right = Observable([Vec3f(mag_vec_static...)])
+        
+        pol_pos_right = Observable([p_obs_right_static])
+        pol_dir_right = Observable([Vec3f(0,0,0)])
+        
+        arrows3d!(ax2, mag_pos_right, mag_dir_right, color = :blue, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
+        arrows3d!(ax2, pol_pos_right, pol_dir_right, color = :yellow, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+
+        lim = psr.r * 6.0
+        limits!(ax2, -lim, lim, -lim, lim, -lim, lim)
+
+        # ==========================================
+        # PANEL 3 (Bottom): RVM Curve
+        # ==========================================
+        ax_pa = Axis(fig[2, 1:2], xlabel = "Longitude [deg]", ylabel = "PA [deg]", title = "RVM Polarization Curve")
+        scatter!(ax_pa, psr.longitudes, psr.pa, color = (:grey, 0.5), markersize = 4)
+        
+        current_pa_obs = Observable(Point2f[Point2f(psr.longitudes[1], psr.pa[1])])
+        scatter!(ax_pa, current_pa_obs, color = :yellow, markersize = 12, strokewidth = 1, strokecolor = :black)
+
+        rowsize!(fig.layout, 1, Relative(0.65))
+        display(fig)
+
+        # ==========================================
+        # ANIMATION LOOP
+        # ==========================================
+        n_bins = length(psr.longitudes)
+        
+        while events(fig).window_open[]
+            for i in 1:n_bins
+                if !events(fig).window_open[] break end
+                
+                phi_rad = deg2rad(psr.longitudes[i])
+                pa_rad = deg2rad(psr.pa[i])
+                
+                # --- Update Left Panel ---
+                line_data = psr.los_lines[i]
+                active_line_obs_left[] = Point3f.(line_data[1], line_data[2], line_data[3])
+                
+                p_los_left = Point3f(line_data[1][1], line_data[2][1], line_data[3][1])
+                los_obs_left[] = p_los_left
+                
+                dx_left = vec_len_left * cos(pa_rad)
+                dy_left = vec_len_left * sin(pa_rad)
+                
+                pol_pos_left[] = [p_los_left]
+                pol_dir_left[] = [Vec3f(dx_left, dy_left, 0.0)]
+                
+                # --- Update Right Panel ---
+                mag_vec_rotated = rotate_vector(mag_vec_static, rot_vec, -phi_rad)
+                mag_dir_right[] = [Vec3f(mag_vec_rotated...)]
+                
+                dx_right = vec_len_right * cos(pa_rad)
+                dy_right = vec_len_right * sin(pa_rad)
+                
+                pol_dir_right[] = [Vec3f(dx_right, dy_right, 0.0)]
+                
+                # --- Update RVM Plot ---
+                current_pa_obs[] = [Point2f(psr.longitudes[i], psr.pa[i])]
+                
+                sleep(delay)
+            end
+        end
+    end
+
+
+
 end # module end

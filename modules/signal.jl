@@ -56,7 +56,25 @@
 
         # position angle calculation
         psr.pa = zeros(bin_number)
-        # TUTAJ DODAĆ PA!
+        for i in 1:length(psr.longitudes)
+            # Get the field line assigned to this phase bin
+            line = psr.los_lines[i]
+
+            # Point 1 is the emission point (topmost), Point 2 is slightly lower on the same line
+            p1 = [line[1][1], line[2][1], line[3][1]]
+            p2 = [line[1][2], line[2][2], line[3][2]]
+
+            # Local magnetic field vector is the direction between these two consecutive line points
+            B_local = p1 .- p2
+
+            # Line of sight and rotation axis vectors for this bin
+            los_current = psr.line_of_sight[i]
+            rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+
+            # Calculate numerical PA in radians, then convert to degrees
+            pa_rad = calculate_numerical_pa(B_local, los_current, rot_vec)
+            psr.pa[i] = rad2deg(pa_rad)
+        end
 
     end
 
