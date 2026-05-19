@@ -1333,7 +1333,7 @@ module Plot
                 pol_dir_left[] = [Vec3f(dx_left, dy_left, 0.0)]
                 
                 # --- Update Right Panel ---
-                mag_vec_rotated = rotate_vector(mag_vec_static, rot_vec, -phi_rad)
+                mag_vec_rotated = Functions.rotate_vector(mag_vec_static, rot_vec, -phi_rad)
                 mag_dir_right[] = [Vec3f(mag_vec_rotated...)]
                 
                 dx_right = vec_len_right * cos(pa_rad)
