@@ -56,6 +56,9 @@
 
         # position angle calculation
         psr.pa = zeros(bin_number)
+        # psr.line_of_sight stores the A/R-corrected emission point (ψ shifted by -Δψ).
+        # For the LOS direction used in PA, we need the observed direction (before A/R shift).
+        Δψ_ar = 2 * psr.r_em / Functions.rlc(psr.p)
         for i in 1:length(psr.longitudes)
             # Get the field line assigned to this phase bin
             line = psr.los_lines[i]
@@ -67,8 +70,11 @@
             # Local magnetic field vector is the direction between these two consecutive line points
             B_local = p1 .- p2
 
-            # Line of sight and rotation axis vectors for this bin
-            los_current = psr.line_of_sight[i]
+            # Undo the A/R azimuthal shift to recover the true observed LOS direction
+            los_ar = psr.line_of_sight[i]
+            los_current = [los_ar[1]*cos(Δψ_ar) - los_ar[2]*sin(Δψ_ar),
+                           los_ar[1]*sin(Δψ_ar) + los_ar[2]*cos(Δψ_ar),
+                           los_ar[3]]
             rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
 
             # Calculate numerical PA in radians, then convert to degrees

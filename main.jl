@@ -279,13 +279,13 @@ module NoName
         #Sparks.load_sparks(psr; num=psr.output_num)
 
 
-        #Signal.generate_signal(psr; noise_level=psr.noise_level) # old same sizes!
+        #Signal.generate_signal(psr; noise_level=psr.noise_level) # old  obsolete same sizes! NO PA
         Signal.generate_signal_radii(psr; noise_level=psr.noise_level) # new
         Signal.generate_pulses(psr)
 
 
         #Plot.signal(psr)
-        #Plot.pulses(psr, number=psr.npulse)
+        Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         Plot.polarization_vector_study(psr)
