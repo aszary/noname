@@ -85,7 +85,6 @@
     end
 
     function generate_pulses(psr)
-        # use skip_steps in simulate_sparks to have single pulses
 
         signal_number, bin_number = size(psr.signal)
         psr.pulses = zeros(psr.npulse, bin_number)
