@@ -252,9 +252,9 @@ module NoName
 
 
     function generate_signal()
-        psr = Pulsar("input/1.json")
+        #psr = Pulsar("input/1.json")
         #psr = Pulsar("input/2.json")
-        #psr = Pulsar("input/3.json")
+        psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
