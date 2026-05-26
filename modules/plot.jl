@@ -1245,6 +1245,36 @@ module Plot
 
         scatter!(ax_pa, psr.longitudes, psr.pa, color=:black, markersize=3)
 
+        # Test 3 & 4: RVM overlay + slope comparison at actual inflection point
+        α = deg2rad(psr.alpha)
+        β = deg2rad(psr.beta)
+        ζ = α + β
+        φ = deg2rad.(psr.longitudes)
+        n = length(psr.longitudes)
+        dφ_deg = psr.longitudes[2] - psr.longitudes[1]
+        # numerical dPA/dφ at every bin (central difference, skip edges)
+        dpa = [(psr.pa[i+1] - psr.pa[i-1]) / (2 * dφ_deg) for i in 2:n-1]
+        # inflection point = steepest slope (max |dPA/dφ|)
+        infl = argmax(abs.(dpa)) + 1  # +1 because dpa is indexed from bin 2
+        pa0 = psr.pa[infl]
+        φ0  = φ[infl]
+        # RVM centred on the inflection longitude
+        rvm_raw = rad2deg.(atan.(sin.(α) .* sin.(φ .- φ0),
+                                 sin.(ζ) .* cos.(α) .- cos.(ζ) .* sin.(α) .* cos.(φ .- φ0)))
+        slope_numerical  = dpa[infl - 1]  # dpa is offset by 1
+        rvm_sign = sign(slope_numerical) != sign(sin(α) / sin(β)) ? -1.0 : 1.0
+        pa_rvm = pa0 .+ rvm_sign .* rvm_raw
+        slope_analytical = rvm_sign * sin(α) / sin(β)
+        lines!(ax_pa, psr.longitudes, pa_rvm, color=:orange, linewidth=1.5, label="RVM")
+        axislegend(ax_pa, position=:rt, framevisible=false, labelsize=8)
+
+        println("PA slope at inflection point (lon=$(round(psr.longitudes[infl], digits=2))°):")
+        println("  analytical  sin(α)/sin(β) = $(round(slope_analytical, digits=4)) deg/deg")
+        println("  numerical   dPA/dφ        = $(round(slope_numerical,  digits=4)) deg/deg")
+        println("  |difference|              = $(round(abs(slope_numerical - slope_analytical), digits=4)) deg/deg")
+        β_eff = rad2deg(asin(abs(sin(α) / slope_numerical)))
+        println("  effective β at r_em       = $(round(β_eff, digits=4))°  (input β = $(psr.beta)°)")
+
         lines!(ax_flux, psr.longitudes, avg_I, color=:black,  linewidth=1.5, label="I")
         lines!(ax_flux, psr.longitudes, avg_L, color=:red,    linewidth=1.5, label="L")
         lines!(ax_flux, psr.longitudes, avg_V, color=:blue,   linewidth=1.5, label="V")
