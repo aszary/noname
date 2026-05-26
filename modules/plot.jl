@@ -1252,6 +1252,8 @@ module Plot
         xlims!(ax_pa,   psr.longitudes[1], psr.longitudes[end])
         xlims!(ax_flux, psr.longitudes[1], psr.longitudes[end])
 
+        axislegend(ax_flux, position=:rt, framevisible=false, labelsize=8)
+
         rowsize!(fig.layout, 1, Relative(0.3))
         rowgap!(fig.layout, 3)
 

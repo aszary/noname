@@ -51,6 +51,7 @@
                 end
             end
         end
+        signal_clean = copy(psr.signal)  # save noise-free for polarization
         noise = noise_level * randn(size(psr.signal))
         psr.signal .+= noise
 
@@ -87,7 +88,7 @@
         psr.stokes_u = zeros(signal_number, bin_number)
         psr.stokes_v = zeros(signal_number, bin_number)
         for j in 1:signal_number
-            pulse = @view psr.signal[j, :]
+            pulse = @view signal_clean[j, :]
             # central differences for dI/dφ
             dI = zeros(bin_number)
             for k in 2:bin_number-1
