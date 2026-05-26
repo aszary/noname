@@ -1227,6 +1227,38 @@ module Plot
     end
 
 
+    function average_stokes(psr)
+        avg_I = vec(mean(psr.pulses, dims=1))
+        avg_Q = vec(mean(psr.stokes_q[1:psr.npulse, :], dims=1))
+        avg_U = vec(mean(psr.stokes_u[1:psr.npulse, :], dims=1))
+        avg_V = vec(mean(psr.stokes_v[1:psr.npulse, :], dims=1))
+        avg_L = sqrt.(avg_Q .^ 2 .+ avg_U .^ 2)
+
+        size_inches = (12 / 2.54, 16 / 2.54)
+        size_pt = 72 .* size_inches
+        fig = Figure(size=size_pt, fontsize=8, figure_padding=(4, 8, 4, 4))
+
+        ax_pa = Axis(fig[1, 1], ylabel="PA [deg]",
+                     xticklabelsvisible=false, xminorticksvisible=true, yminorticksvisible=true)
+        ax_flux = Axis(fig[2, 1], xlabel=L"Longitude ($^\circ$)", ylabel="Flux Density",
+                       xminorticksvisible=true, yminorticksvisible=true)
+
+        scatter!(ax_pa, psr.longitudes, psr.pa, color=:black, markersize=3)
+
+        lines!(ax_flux, psr.longitudes, avg_I, color=:black,  linewidth=1.5, label="I")
+        lines!(ax_flux, psr.longitudes, avg_L, color=:red,    linewidth=1.5, label="L")
+        lines!(ax_flux, psr.longitudes, avg_V, color=:blue,   linewidth=1.5, label="V")
+
+        xlims!(ax_pa,   psr.longitudes[1], psr.longitudes[end])
+        xlims!(ax_flux, psr.longitudes[1], psr.longitudes[end])
+
+        rowsize!(fig.layout, 1, Relative(0.3))
+        rowgap!(fig.layout, 3)
+
+        display(fig)
+    end
+
+
     function polarization_vector_study(psr; delay=0.05)
         fig = Figure(size = (1400, 800))
         

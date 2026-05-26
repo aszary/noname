@@ -49,6 +49,9 @@ module NoName
         los_lines # magnetic lines defined by the line of sight points
         signal # radio intensity for continous signal
         pa # position angle
+        stokes_q # Stokes Q [npulse × nbins], same shape as signal
+        stokes_u # Stokes U [npulse × nbins]
+        stokes_v # Stokes V [npulse × nbins], model: V ∝ dI/dφ per pulse
         pulses # single pulses generated from signal
         longitudes # single pulse longitudes
         ellipse_fit # ellipse fit to the polar cap points
@@ -89,6 +92,9 @@ module NoName
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
             pa = nothing
+            stokes_q = nothing
+            stokes_u = nothing
+            stokes_v = nothing
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
@@ -97,7 +103,7 @@ module NoName
             noise_level = 0.05
             output_num = 1
             sparks_config = DEFAULT_SPARKS_CONFIG
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -135,6 +141,9 @@ module NoName
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
             pa = nothing
+            stokes_q = nothing
+            stokes_u = nothing
+            stokes_v = nothing
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
@@ -143,7 +152,7 @@ module NoName
             noise_level = d.psr.noise_level
             output_num = d.psr.output_num
             sparks_config = haskey(d, :sparks) ? d.sparks : DEFAULT_SPARKS_CONFIG
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
         end
     end
 
@@ -280,15 +289,16 @@ module NoName
 
 
         #Signal.generate_signal(psr; noise_level=psr.noise_level) # old  obsolete same sizes! NO PA
-        Signal.generate_signal_radii(psr; noise_level=psr.noise_level) # new
+        Signal.generate_signal_radii(psr; noise_level=psr.noise_level, v_scale=0.3) # new
         Signal.generate_pulses(psr)
 
 
         #Plot.signal(psr)
-        Plot.pulses(psr, number=psr.npulse)
+        #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
-        Plot.polarization_vector_study(psr)
+        Plot.average_stokes(psr)
+        #Plot.polarization_vector_study(psr)
         
     end
 

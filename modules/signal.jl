@@ -30,7 +30,7 @@
 
     end
 
-    function generate_signal_radii(psr; noise_level=0.1)
+    function generate_signal_radii(psr; noise_level=0.1, v_scale=0.3)
         los_points = []
         for line in psr.los_lines
             push!(los_points, [line[1][end], line[2][end], line[3][end]])
@@ -78,8 +78,33 @@
             rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
 
             # Calculate numerical PA in radians, then convert to degrees
-            pa_rad = calculate_numerical_pa(B_local, los_current, rot_vec)
-            psr.pa[i] = rad2deg(pa_rad)
+            psr.pa[i] = rad2deg(calculate_numerical_pa(B_local, los_current, rot_vec))
+        end
+
+        # Full Stokes: Q, U, V per pulse
+        # V(φ) ∝ dI/dφ per pulse; L² + V² = I² (100% total polarization)
+        psr.stokes_q = zeros(signal_number, bin_number)
+        psr.stokes_u = zeros(signal_number, bin_number)
+        psr.stokes_v = zeros(signal_number, bin_number)
+        for j in 1:signal_number
+            pulse = @view psr.signal[j, :]
+            # central differences for dI/dφ
+            dI = zeros(bin_number)
+            for k in 2:bin_number-1
+                dI[k] = (pulse[k+1] - pulse[k-1]) / 2
+            end
+            dI[1]   = pulse[2] - pulse[1]
+            dI[end] = pulse[end] - pulse[end-1]
+            # scale V so max|V| = v_scale * max|I|
+            max_dI = maximum(abs.(dI))
+            max_I  = maximum(abs.(pulse))
+            V = (max_dI > 0 && max_I > 0) ? v_scale * max_I * dI / max_dI : zeros(bin_number)
+            # clamp so |V| ≤ |I| everywhere, then L from remainder
+            V = clamp.(V, -abs.(pulse), abs.(pulse))
+            L = sqrt.(max.(0.0, pulse .^ 2 .- V .^ 2))
+            psr.stokes_v[j, :] = V
+            psr.stokes_q[j, :] = L .* cos.(2 .* deg2rad.(psr.pa))
+            psr.stokes_u[j, :] = L .* sin.(2 .* deg2rad.(psr.pa))
         end
 
     end
