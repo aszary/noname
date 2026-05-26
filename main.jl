@@ -255,8 +255,8 @@ module NoName
         Signal.generate_signal_radii(psr; noise_level=0.05) # new
         Signal.generate_pulses(psr, pulse_max=psr.npulse)
         
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=psr.npulse)
+        #Plot.signal(psr)
+        Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -265,13 +265,13 @@ module NoName
 
     function model_field()
     psr = Pulsar("input/3.json")
-    Field.generate_full_lines!(psr; step=500, stepsnum=1000)
+    
     Lines.init_line_of_sight(psr, num=100)
     Lines.calculate_line_of_sight_anomalous!(psr)
     Lines.generate_open_anomalous!(psr, num=10)
     # Calculate the anomalous polar cap and fit an ellipse to it (required for the LBC model)
     NSField.calculate_anomaly_polarcap!(psr)
-
+    Field.generate_full_lines!(psr)
     # 1. Initialize sparks on the elliptical polar cap
     Sparks.init_sparks1_ellipse!(psr ;rfs=[0.3, 0.9], num=5)
     

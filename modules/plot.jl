@@ -246,7 +246,7 @@ module Plot
         fv = psr.fields
         for line in fv.magnetic_lines
             xs, ys, zs = line[1], line[2], line[3]
-            lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
+            lines!(ax, xs, ys, zs, color=:blue, linewidth=1,fxaa=true)
         end
     end
 
@@ -1303,14 +1303,14 @@ module Plot
         # 3. Magnetic and rotation axes
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
         mag_vec = Functions.spherical2cartesian(psr.magnetic_axis)
-        arrows3d!(ax, [0,], [0,], [0,], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
+        arrows!(ax, [0,], [0,], [0,], [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], color = [:red, :blue])
 
         # 4. Vectors indicating the location and orientation of anomalies
         if psr.nsfield !== nothing && psr.nsfield.anomalies !== nothing
             for a in psr.nsfield.anomalies
                 pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
                 dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
-                arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange)
+                arrows!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange)
             end
         end
         
@@ -1335,20 +1335,38 @@ module Plot
         sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
         fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
 
-        # 2. Draw rotation (red) and magnetic (blue) axes
         rot_vec = Functions.spherical2cartesian(psr.rotation_axis) 
         mag_vec = Functions.spherical2cartesian(psr.magnetic_axis) 
-        arrows3d!(ax, [0, 0], [0, 0], [0, 0], 
-                  [rot_vec[1], mag_vec[1]], [rot_vec[2], mag_vec[2]], [rot_vec[3], mag_vec[3]], 
-                  color = [:red, :blue]) 
+        
 
-        # 3. Draw the local anomalies (orange arrows)
-        # These represent the non-dipolar seeds defined in your JSON
-        for a in psr.nsfield.anomalies 
-            pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
-            dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m]) 
-            arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]], [dir[1]], [dir[2]], [dir[3]], color=:orange) 
-        end # <--- End of anomalies loop
+        rot_scaled = rot_vec .* 0.85
+        mag_scaled = mag_vec .* 0.85
+
+        arrows!(ax, [0, 0], [0, 0], [0, 0], 
+                [rot_scaled[1], mag_scaled[1]], 
+                [rot_scaled[2], mag_scaled[2]], 
+                [rot_scaled[3], mag_scaled[3]], 
+                color = [:red, :blue],
+                linewidth = 0.05 * psr.r, arrowsize = 0.15 * psr.r)
+        #drawing anomalies
+        if hasproperty(psr, :nsfield) && hasproperty(psr.nsfield, :anomalies)
+            for a in psr.nsfield.anomalies 
+                pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m]) 
+                
+                dir_mag = norm(dir)
+                if dir_mag > 0
+                    
+                    dir_scaled = dir ./ dir_mag .* (psr.r * a.m)
+                    
+                    
+                    arrows!(ax, [pos[1]], [pos[2]], [pos[3]], 
+                            [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]], 
+                            color=:orange, 
+                            linewidth = 0.05 * psr.r, arrowsize = 0.1 * psr.r)
+                end
+            end
+        end
 
         # 4. Draw anomaly-aware general field lines (blue)
         # These are stored in psr.fields.magnetic_lines 
@@ -1357,14 +1375,14 @@ module Plot
         # 5. Draw open field lines (green)
         if !isnothing(psr.open_lines)
             for ml in psr.open_lines 
-                lines!(ax, ml[1], ml[2], ml[3], color=:green, linewidth=2) 
+                lines!(ax, ml[1], ml[2], ml[3], color=:green, linewidth=2,fxaa=true) 
             end # <--- End of open lines loop
         end # <--- End of if block
 
         # 6. Draw line-of-sight magnetic field lines (red)
         if !isnothing(psr.los_lines) 
             for line in psr.los_lines
-                lines!(ax, line[1], line[2], line[3], color=:red, linewidth=1.5) 
+                lines!(ax, line[1], line[2], line[3], color=:red, linewidth=1.5,fxaa=true) 
                 # Mark the specific emission point/cross at the end of the trace
                 scatter!(ax, line[1][end], line[2][end], line[3][end], color=:red, marker=:xcross)
             end # <--- End of LOS lines loop

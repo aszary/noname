@@ -12,17 +12,14 @@
         "npulse":100
 	},
 
-    "field":
+     "field":
     {
         "rmax":500000,
-        "size":1000,
+        "size":10000,
         "nlos": 100,
-        "nopen": 50
-    },
-
-    "anomalies":[
-
-    ]
+        "nopen": 50,
+        "nclosed": 10
+    }
 
 
 }

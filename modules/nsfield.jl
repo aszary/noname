@@ -14,7 +14,8 @@ module NSField
         rmax # maximum radius for which we will calculate magnetic field lines
         size # number of points in a line
         nlos # number of magnetic lines connected to the line of sight
-        nopen # number of magnetic lines connected to the polar cap boundry (last open magnetic lines)
+        nopen # number of magnetic lines connected to the polar cap boundry
+        nclosed # number of closed magnetic lines
         anomalies # list of magnetic anomalies
 
         function Field()
@@ -22,27 +23,26 @@ module NSField
             size = 100
             nlos = 100
             nopen = 50
+            nclosed = 10 
             anomalies = []
-            new(rmax, size, nlos, nopen, anomalies)
+            new(rmax, size, nlos, nopen, nclosed, anomalies) 
         end
 
         function Field(json)
-            # 1. Fallback in case the "field" section is missing - set default values
             rmax = hasproperty(json, :field) ? json.field.rmax : 500_000
             size = hasproperty(json, :field) ? json.field.size : 100
             nlos = hasproperty(json, :field) && hasproperty(json.field, :nlos) ? json.field.nlos : 100
             nopen = hasproperty(json, :field) && hasproperty(json.field, :nopen) ? json.field.nopen : 50
+            nclosed = hasproperty(json, :field) && hasproperty(json.field, :nclosed) ? json.field.nclosed : 10
             
             anomalies = []
-            
-            # 2. Handle both "anomalies" (array) and "anomaly" (single object) keys
             if hasproperty(json, :anomalies)
                 anomalies = [Anomaly(a) for a in json.anomalies]
             elseif hasproperty(json, :anomaly)
                 push!(anomalies, Anomaly(json.anomaly))
             end
             
-            new(rmax, size, nlos, nopen, anomalies)      
+            new(rmax, size, nlos, nopen, nclosed, anomalies)      
         end
     end
 
