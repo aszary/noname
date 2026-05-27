@@ -56,29 +56,23 @@
         psr.signal .+= noise
 
         # position angle calculation
+        # psr.los_lines[i] is traced from the A/R-corrected emission point (at φ_em = φ_obs - Δφ_AR),
+        # giving the correct local B field at the time of emission.
+        # The sky plane for PA projection uses the LOS direction at the OBSERVED phase φ_obs,
+        # computed directly from the RVM geometry.
         psr.pa = zeros(bin_number)
-        # psr.line_of_sight stores the A/R-corrected emission point (ψ shifted by -Δψ).
-        # For the LOS direction used in PA, we need the observed direction (before A/R shift).
-        Δψ_ar = 2 * psr.r_em / Functions.rlc(psr.p)
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
         for i in 1:length(psr.longitudes)
-            # Get the field line assigned to this phase bin
             line = psr.los_lines[i]
-
-            # Point 1 is the emission point (topmost), Point 2 is slightly lower on the same line
             p1 = [line[1][1], line[2][1], line[3][1]]
             p2 = [line[1][2], line[2][2], line[3][2]]
-
-            # Local magnetic field vector is the direction between these two consecutive line points
             B_local = p1 .- p2
 
-            # Undo the A/R azimuthal shift to recover the true observed LOS direction
-            los_ar = psr.line_of_sight[i]
-            los_current = [los_ar[1]*cos(Δψ_ar) - los_ar[2]*sin(Δψ_ar),
-                           los_ar[1]*sin(Δψ_ar) + los_ar[2]*cos(Δψ_ar),
-                           los_ar[3]]
-            rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+            # LOS direction at emission phase (sky plane for PA projection).
+            # psr.line_of_sight[i] is already at φ_em = φ_obs - Δφ_AR after the geometry fix,
+            # so using it directly gives PA_RVM(φ_em) — a pure Δφ_AR shift of the PA curve.
+            los_current = psr.line_of_sight[i]
 
-            # Calculate numerical PA in radians, then convert to degrees
             psr.pa[i] = rad2deg(calculate_numerical_pa(B_local, los_current, rot_vec))
         end
 

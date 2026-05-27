@@ -541,19 +541,19 @@ module Geometry
             Δφ_ab = 0.0
         end
         
-        Δψ_total = Δφ_ret + Δφ_ab
-        
+        Δφ_AR = Δφ_ret + Δφ_ab
+
         for i in 1:n
-            φ_obs = φ_array[i]
-            
-            # Geometry from observed phase
-            ρ = ρ_from_φ(φ_obs, α, β)
+            # A/R shifts the emission phase: at observed longitude φ_obs, the photon
+            # was emitted when the pulsar was at phase φ_em = φ_obs - Δφ_AR.
+            # We sample the field line geometry at the emission phase, not the observed phase.
+            φ_em = φ_array[i] - Δφ_AR
+
+            ρ = ρ_from_φ(φ_em, α, β)
             θ_array[i] = θ_from_ρ(ρ)
-            
-            # ψ with A/R correction (shifted backward)
-            ψ_array[i] = ψ_from_φ(φ_obs, α, β) - Δψ_total
+            ψ_array[i] = ψ_from_φ(φ_em, α, β)
         end
-        
+
         return θ_array, ψ_array
     end
 
