@@ -1266,6 +1266,8 @@ module Plot
         pa_rvm = pa0 .+ rvm_sign .* rvm_raw
         slope_analytical = rvm_sign * sin(α) / sin(β)
         lines!(ax_pa, psr.longitudes, pa_rvm, color=:orange, linewidth=1.5, label="RVM")
+        vlines!(ax_pa, [psr.longitudes[infl]], color=:blue, linewidth=1, linestyle=:dash)
+        scatter!(ax_pa, [psr.longitudes[infl]], [pa0], color=:blue, markersize=7, marker=:diamond, label="inflection")
         axislegend(ax_pa, position=:rt, framevisible=false, labelsize=8)
 
         println("PA slope at inflection point (lon=$(round(psr.longitudes[infl], digits=2))°):")
