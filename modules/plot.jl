@@ -1439,31 +1439,26 @@ module Plot
         mag_vec = Functions.spherical2cartesian(psr.magnetic_axis) 
         
 
-        rot_scaled = rot_vec .* 0.85
-        mag_scaled = mag_vec .* 0.85
+        rot_scaled = rot_vec .* 0.99
+        mag_scaled = mag_vec .* 0.99
 
-        arrows!(ax, [0, 0], [0, 0], [0, 0], 
-                [rot_scaled[1], mag_scaled[1]], 
-                [rot_scaled[2], mag_scaled[2]], 
-                [rot_scaled[3], mag_scaled[3]], 
-                color = [:red, :blue],
-                linewidth = 0.05 * psr.r, arrowsize = 0.15 * psr.r)
+        arrows3d!(ax, [0, 0], [0, 0], [0, 0],
+                [rot_scaled[1], mag_scaled[1]],
+                [rot_scaled[2], mag_scaled[2]],
+                [rot_scaled[3], mag_scaled[3]],
+                color = [:red, :blue])
         #drawing anomalies
         if hasproperty(psr, :nsfield) && hasproperty(psr.nsfield, :anomalies)
-            for a in psr.nsfield.anomalies 
+            for a in psr.nsfield.anomalies
                 pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
-                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m]) 
-                
+                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+
                 dir_mag = norm(dir)
                 if dir_mag > 0
-                    
-                    dir_scaled = dir ./ dir_mag .* (psr.r * a.m)
-                    
-                    
-                    arrows!(ax, [pos[1]], [pos[2]], [pos[3]], 
-                            [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]], 
-                            color=:orange, 
-                            linewidth = 0.05 * psr.r, arrowsize = 0.1 * psr.r)
+                    dir_scaled = dir ./ dir_mag .* (psr.r * a.m * 10)
+                    arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]],
+                            [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]],
+                            color=:orange)
                 end
             end
         end
