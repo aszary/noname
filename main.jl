@@ -308,10 +308,10 @@ module NoName
         #psr = Pulsar("input/2.json")
         psr = Pulsar("input/3.json")
 
-        Lines.init_line_of_sight(psr, num=5)
+        Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
 
-        Lines.generate_open!(psr, num=10)
+        Lines.generate_open!(psr, num=psr.nsfield.nopen)
 
         Lines.generate_closed!(psr)
 
