@@ -1417,4 +1417,86 @@ module Plot
 
 
 
+
+
+    """
+    closed_lines(psr)
+
+    Visualizes the pulsar magnetosphere with:
+    - Stellar surface (teal sphere) 
+    - Rotation axis (red) and Magnetic axis (blue)
+    - Anomalous dipole moments (orange arrows)
+    - General/Closed anomaly-aware field lines (blue) 
+    - Open field lines (green) 
+    - Line-of-sight paths (red) 
+    """
+    function closed_lines(psr)
+        # 1. Draw the stellar surface
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
+
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) 
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis) 
+        
+
+        rot_scaled = rot_vec .* 0.85
+        mag_scaled = mag_vec .* 0.85
+
+        arrows!(ax, [0, 0], [0, 0], [0, 0], 
+                [rot_scaled[1], mag_scaled[1]], 
+                [rot_scaled[2], mag_scaled[2]], 
+                [rot_scaled[3], mag_scaled[3]], 
+                color = [:red, :blue],
+                linewidth = 0.05 * psr.r, arrowsize = 0.15 * psr.r)
+        #drawing anomalies
+        if hasproperty(psr, :nsfield) && hasproperty(psr.nsfield, :anomalies)
+            for a in psr.nsfield.anomalies 
+                pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m]) 
+                
+                dir_mag = norm(dir)
+                if dir_mag > 0
+                    
+                    dir_scaled = dir ./ dir_mag .* (psr.r * a.m)
+                    
+                    
+                    arrows!(ax, [pos[1]], [pos[2]], [pos[3]], 
+                            [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]], 
+                            color=:orange, 
+                            linewidth = 0.05 * psr.r, arrowsize = 0.1 * psr.r)
+                end
+            end
+        end
+
+        # 4. Draw anomaly-aware general field lines (blue)
+        # These are stored in psr.fields.magnetic_lines 
+        magnetic_lines!(ax, psr)
+
+        # 5. Draw open field lines (green)
+        if !isnothing(psr.open_lines)
+            for ml in psr.open_lines 
+                lines!(ax, ml[1], ml[2], ml[3], color=:green, linewidth=2,fxaa=true) 
+            end # <--- End of open lines loop
+        end # <--- End of if block
+
+        # 6. Draw line-of-sight magnetic field lines (red)
+        if !isnothing(psr.los_lines) 
+            for line in psr.los_lines
+                lines!(ax, line[1], line[2], line[3], color=:red, linewidth=1.5,fxaa=true) 
+                # Mark the specific emission point/cross at the end of the trace
+                scatter!(ax, line[1][end], line[2][end], line[3][end], color=:red, marker=:xcross)
+            end # <--- End of LOS lines loop
+        end # <--- End of if block
+
+        # Adjust camera for a close 3D view of the surface and anomalies
+        cam3d!(ax.scene, eyeposition=[psr.r*2.5, psr.r*2.5, psr.r*2.5], 
+               lookat=[0, 0, 0], upvector=[0,0,1], center=false)
+
+        display(fig) 
+    end
+
+
+
+
+
 end # module end

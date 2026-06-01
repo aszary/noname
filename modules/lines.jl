@@ -272,7 +272,105 @@ module Lines
     end
 
 
+    """
+    generate_closed!(psr; phi=nothing)
 
+    Traces magnetic field lines starting from the stellar surface, 
+    accounting for both the global dipole and all defined anomalies.
+    Lines are traced outward until they naturally return to the stellar surface
+    or reach the simulation boundary (rmax).
+    """
+    function generate_closed!(psr)
+        fv = psr.fields
+        nf = psr.nsfield
+
+        step = nf.rmax / nf.size
+
+        num_th = nf.nclosed
+        num_ph = nf.nclosed
+
+        r_start = psr.r
+
+        # Start exactly from the pole (0.0)
+        thetas = LinRange(0.0, pi/2, num_th)
+        phis = LinRange(0, 2pi, num_ph+1)[1:end-1]
+
+
+        for i in 1:size(thetas)[1]
+            for j in 1:size(phis)[1]
+                
+                # --- KEY CONDITION FOR THETA = 0.0 ---
+                # If we are exactly at the pole (theta == 0.0), 
+                # we only need one line. We ignore the remaining phi angles 
+                # to avoid drawing multiple lines from the exact same physical point.
+                if thetas[i] == 0.0 && j > 1
+                    continue
+                end
+                # --------------------------------
+
+                pos_sph = [r_start, thetas[i], phis[j]]
+                pos = Functions.spherical2cartesian(pos_sph)            
+                
+                # --- CHECK: Skip points inside the open field line region (polar cap) ---
+                if !isnothing(psr.ellipse_fit)
+                    ef = psr.ellipse_fit
+                    
+                    k_proj = dot(ef.centroid, ef.z_hat) / dot(pos, ef.z_hat)
+                    if k_proj > 0 # Check only the same hemisphere
+                        p_tangent = k_proj .* pos
+                        d_vec = p_tangent - ef.centroid
+                        u = dot(d_vec, ef.x_hat)
+                        v = dot(d_vec, ef.y_hat)
+                        
+                        du = u - ef.center_local[1]
+                        dv = v - ef.center_local[2]
+                        ue = du * cos(ef.θ) + dv * sin(ef.θ)
+                        ve = -du * sin(ef.θ) + dv * cos(ef.θ)
+                        
+                        # A margin of 1.1 prevents overlapping of open and closed lines
+                        if (ue / ef.a)^2 + (ve / ef.b)^2 <= 1.1
+                            continue # Skip and go to the next point on the sphere
+                        end
+                    end
+                end
+                # -------------------------------------------------------------
+
+                b_sph_raw = Main.NoName.NSField.BSph(psr.nsfield, 1.0, thetas[i], phis[j])
+                current_step = b_sph_raw[1] >= 0 ? abs(step) : -abs(step)
+
+                push!(fv.magnetic_lines, [[pos[1]], [pos[2]], [pos[3]]])
+                ml = fv.magnetic_lines[end]
+           
+                posb = copy(pos)
+                posb_sph = Functions.cartesian2spherical(posb)
+                
+                steps_count = 0
+                
+                # Integrate with a step limit (safeguard against infinite loops in anomalies)
+                while posb_sph[1] >= psr.r * 0.999 && posb_sph[1] <= nf.rmax 
+                    
+                    b_sph_raw = Main.NoName.NSField.BSph(psr.nsfield, posb_sph[1] / psr.r, posb_sph[2], posb_sph[3])
+                    b_sph = (b_sph_raw[1] * fv.beq, b_sph_raw[2] * fv.beq, b_sph_raw[3] * fv.beq)
+                    b = Functions.vec_spherical2cartesian(posb_sph, b_sph)
+                    
+                    norm_b = norm(b)
+                    if norm_b == 0.0
+                        break
+                    end
+                    
+                    st = b / norm_b * current_step
+                    posb += st 
+                    posb_sph = Functions.cartesian2spherical(posb)
+                    
+                    push!(ml[1], posb[1])
+                    push!(ml[2], posb[2])
+                    push!(ml[3], posb[3])
+                    
+                    steps_count += 1
+                end
+            end
+        end
+    end
 
 
 

@@ -19,7 +19,8 @@
         "rmax":500000,
         "size":10000,
         "nlos":100,
-        "nopen":50
+        "nopen":50,
+        "nclosed":10
     },
 
     "sparks":

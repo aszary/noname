@@ -157,6 +157,4 @@ module Field
     end
 
 
-
-
 end # module end

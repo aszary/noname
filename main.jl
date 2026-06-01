@@ -305,17 +305,20 @@ module NoName
 
     function model_field()
         #psr = Pulsar("input/1.json")
-        psr = Pulsar("input/2.json")
-        #psr = Pulsar("input/3.json")
+        #psr = Pulsar("input/2.json")
+        psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=5)
         Lines.calculate_line_of_sight(psr)
 
         Lines.generate_open!(psr, num=10)
 
+        Lines.generate_closed!(psr)
+
         #println(psr.nsfield)
 
-        Plot.anomalies(psr)
+        Plot.closed_lines(psr)
+        #Plot.anomalies(psr)
         #Plot.anomalies2D(psr)
         #Plot.polar_cap2D(psr)
 
@@ -331,9 +334,9 @@ module NoName
         #full_plus_smallgrids()
 
         #generate_signal_dipole()
-        generate_signal()
+        #generate_signal()
 
-        #model_field()
+        model_field()
 
         println("Bye")
     end
