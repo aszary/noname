@@ -15,8 +15,9 @@ module NSField
         size # number of points in a line
         nlos # number of magnetic lines connected to the line of sight
         nopen # number of magnetic lines connected to the polar cap boundry (last open magnetic lines)
-        nclosed # number of closed magnetic lines  
+        nclosed # number of closed magnetic lines
         anomalies # list of magnetic anomalies
+        magnetic_lines # closed magnetic field lines
 
         function Field()
             rmax = 500_000 # 500 km
@@ -24,7 +25,7 @@ module NSField
             nlos = 100
             nopen = 50
             anomalies = []
-            new(rmax, size, nlos, nopen, nclosed, anomalies)
+            new(rmax, size, nlos, nopen, nclosed, anomalies, [])
         end
 
         function Field(json)
@@ -34,7 +35,7 @@ module NSField
             nopen = json.field.nopen
             nclosed = json.field.nclosed
             anomalies = [Anomaly(a) for a in json.anomalies]
-            new(rmax, size, nlos, nopen, nclosed, anomalies)
+            new(rmax, size, nlos, nopen, nclosed, anomalies, [])
         end
     end
 

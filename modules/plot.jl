@@ -247,7 +247,7 @@ module Plot
         fv = psr.fields
         for line in fv.magnetic_lines
             xs, ys, zs = line[1], line[2], line[3]
-            lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
+            lines!(ax, xs, ys, zs, color=:blue, linewidth=1,fxaa=true)
         end
     end
 
@@ -1468,9 +1468,10 @@ module Plot
             end
         end
 
-        # 4. Draw anomaly-aware general field lines (blue)
-        # These are stored in psr.fields.magnetic_lines 
-        magnetic_lines!(ax, psr)
+        # 4. Draw closed field lines (blue)
+        for line in psr.nsfield.magnetic_lines
+            lines!(ax, line[1], line[2], line[3], color=:blue, linewidth=1, fxaa=true )
+        end
 
         # 5. Draw open field lines (green)
         if !isnothing(psr.open_lines)
