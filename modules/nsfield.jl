@@ -25,7 +25,8 @@ module NSField
             nlos = 100
             nopen = 50
             anomalies = []
-            new(rmax, size, nlos, nopen, nclosed, anomalies, [])
+            magnetic_lines = []
+            new(rmax, size, nlos, nopen, nclosed, anomalies, magnetic_lines)
         end
 
         function Field(json)
@@ -35,7 +36,8 @@ module NSField
             nopen = json.field.nopen
             nclosed = json.field.nclosed
             anomalies = [Anomaly(a) for a in json.anomalies]
-            new(rmax, size, nlos, nopen, nclosed, anomalies, [])
+            magnetic_lines = []
+            new(rmax, size, nlos, nopen, nclosed, anomalies, magnetic_lines)
         end
     end
 
