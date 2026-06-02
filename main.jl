@@ -253,8 +253,8 @@ module NoName
 
     function generate_signal()
         #psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
-        psr = Pulsar("input/3.json")
+        psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
@@ -293,11 +293,11 @@ module NoName
         Signal.generate_pulses(psr)
 
 
-        #Plot.signal(psr)
+        Plot.signal(psr)
         #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
-        Plot.average_stokes(psr)
+        #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
         
     end
@@ -305,8 +305,8 @@ module NoName
 
     function model_field()
         #psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
-        psr = Pulsar("input/3.json")
+        psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
@@ -334,9 +334,9 @@ module NoName
         #full_plus_smallgrids()
 
         #generate_signal_dipole()
-        #generate_signal()
+        generate_signal()
 
-        model_field()
+        #model_field()
 
         println("Bye")
     end
