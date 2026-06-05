@@ -1,11 +1,12 @@
  module Signal
     using LinearAlgebra
+    using Statistics
 
     include("functions.jl")
     import ..Geometry
     
 
-    function generate_signal(psr; noise_level=0.1)
+    function generate_signal(psr; noise_level=0.0)
         # line of sight points at the polar cap
         los_points = []
 
@@ -80,6 +81,110 @@
 
     end
 
+   """
+        generate_signal_solid_body(psr; noise_level=0.1)
+
+    Generates a signal using discrete frozen sparks. It preserves the classic 
+    Gaussian peaks but deforms each spark into an ellipse proportional to the 
+    actual simulated polar cap boundary (psr.pc).
+    """
+    function generate_signal_solid_body(psr; noise_level=0.0)
+        los_points = []
+        for line in psr.los_lines
+            push!(los_points, [line[1][end], line[2][end], line[3][end]])
+        end
+        signal_number = size(psr.sparks_locations)[1]
+        bin_number = length(los_points)
+        psr.signal = zeros(signal_number, bin_number)
+
+        #Calculate the geometric center of the polar cap based on its true boundaries.
+        pc_x, pc_y, pc_z = psr.pc[1], psr.pc[2], psr.pc[3]
+        cx, cy, cz = sum(pc_x)/length(pc_x), sum(pc_y)/length(pc_y), sum(pc_z)/length(pc_z)
+        center = [cx, cy, cz]
+
+        # Push the center exactly onto the spherical surface of the star
+        center = (center ./ norm(center)) .* psr.r 
+        
+        # Group boundary points into 3D vectors for easier math
+        pc_boundary = [[pc_x[i], pc_y[i], pc_z[i]] for i in 1:length(pc_x)]
+
+        # Calculate the average internal radius of this specific polar cap.
+        # This makes the function completely immune to scale mismatches between theoretical dipole radii and the actual simulated NSField dimensions.
+        radii_list = [norm(b .- center) for b in pc_boundary]
+        avg_pc_radius = sum(radii_list) / length(radii_list)
+
+        for (i, p) in enumerate(los_points)
+            for (j, sparks) in enumerate(psr.sparks_locations)
+                for (k, s) in enumerate(sparks)
+                    # Base standard deviation (sigma) for a perfectly circular spark# Baza - idealne koło
+                    if isnothing(psr.spark_radii)
+                        base_sigma = psr.spark_radius / 3.72 
+                    else
+                        base_sigma = psr.spark_radii[j][k] / 3.72
+                    end
+                    
+                    # Vector pointing from the spark center directly to the telescope's current position
+                    vec_ps = p .- s
+                    dist_ps = norm(vec_ps)
+                    
+                    # Default stretch factor (assumes a perfect circle)
+                    ellipse_stretch = 1.0
+                    
+                    # If the telescope isn't exactly dead-center on the spark, calculate the shape distortion
+                    if dist_ps > 1e-6
+                        dir_ps = vec_ps ./ dist_ps
+                        best_cos = -1.0
+                        dist_edge = avg_pc_radius # Fallback to average radius
+                        
+                        # Find the exact distance to the polar cap boundary in the specific direction the telescope is currently slicing through.
+                        for b in pc_boundary
+                            vec_cb = b .- center
+                            norm_cb = norm(vec_cb)
+                            if norm_cb > 1e-6
+                                dir_cb = vec_cb ./ norm_cb
+                                cos_angle = dot(dir_ps, dir_cb)
+                                # Maximize the dot product to find the boundary point lying perfectly on this ray
+                                if cos_angle > best_cos
+                                    best_cos = cos_angle
+                                    dist_edge = norm_cb # This is the length of the ellipse's "arm" in this direction
+                                end
+                            end
+                        end
+                        
+                        # Calculate stretch: Length of the ellipse arm in this direction / Average polar cap radius
+                        # e.g., if the ellipse is stretched by 20% in this direction, the stretch factor = 1.2
+                        ellipse_stretch = dist_edge / avg_pc_radius
+                    end
+                    
+                    # Apply the polar cap's elliptical stretch directly to the individual spark's width
+                    local_sigma = base_sigma * ellipse_stretch
+                    
+                    # Calculate the classic Gaussian intensity using the newly deformed local_sigma
+                    psr.signal[j, i] += exp(-dist_ps^2 / (2 * local_sigma^2))
+                end
+            end
+        end
+
+        # Add noise
+        noise = noise_level * randn(size(psr.signal))
+        psr.signal .+= noise
+
+        #  Position angle calculation
+        psr.pa = zeros(bin_number)
+        for i in 1:length(psr.longitudes)
+            line = psr.los_lines[i]
+            p1 = [line[1][1], line[2][1], line[3][1]]
+            p2 = [line[1][2], line[2][2], line[3][2]]
+            B_local = p1 .- p2
+            
+            los_current = psr.line_of_sight[i]
+            rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+            
+            pa_rad = calculate_numerical_pa(B_local, los_current, rot_vec)
+            psr.pa[i] = rad2deg(pa_rad)
+        end
+    end
+    
    """
     calculate_numerical_pa(B_vec, los_vec, rot_vec)
 

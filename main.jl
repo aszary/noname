@@ -1,6 +1,7 @@
 module NoName
 
     using JSON3
+    using GLMakie
     
     include("modules/functions.jl")
     include("modules/transformations.jl")
@@ -292,15 +293,19 @@ module NoName
 
 
         #Signal.generate_signal(psr; noise_level=psr.noise_level) # old same sizes!
-        Signal.generate_signal_radii(psr; noise_level=psr.noise_level) # new
+        if psr.sparks_config.model == "a"
+            Signal.generate_signal_solid_body(psr; noise_level=0)
+        else
+            Signal.generate_signal_radii(psr; noise_level=0)
+        end
         Signal.generate_pulses(psr)
 
 
-        #Plot.signal(psr)
+        Plot.signal(psr)
         #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
-        Plot.polarization_vector_study(psr)
+        #Plot.polarization_vector_study(psr)
         
     end
 
@@ -324,7 +329,130 @@ module NoName
        
     end
 
+    function compare_signals()
+        psr = Pulsar("input/3.json")
 
+        Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
+        Lines.calculate_line_of_sight(psr)
+        Lines.generate_open!(psr, num=psr.nsfield.nopen)
+
+        si = psr.sparks_config.init
+        if si.method == "ellipse"
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "dipolar"
+            Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
+        end
+
+        Sparks.simulate_sparks_solidbody(psr)
+
+        # ==========================================
+        # GENEROWANIE I ZAPISANIE OBU SYGNAŁÓW
+        # ==========================================
+        
+        # Test A: Stary model 
+        Signal.generate_signal_radii(psr; noise_level=0.0)
+        # Kopiujemy pierwszy rząd sygnału (pierwszy puls)
+        signal_old = copy(psr.signal[1, :]) 
+
+        # Test B: Nowy model 
+        Signal.generate_signal_solid_body(psr; noise_level=0.0)
+        # Kopiujemy ten sam pierwszy rząd
+        signal_new = copy(psr.signal[3, :]) 
+
+        # ==========================================
+        # TWORZENIE WYKRESU PORÓWNAWCZEGO W MAKIE
+        # ==========================================
+        fig = Figure(size = (800, 400))
+        ax = Axis(fig[1, 1], 
+            title="Porównanie: Okrągłe Iskry (Radii) vs Eliptyczne (Solid Body)", 
+            xlabel="Biny (Faza obrotu)", 
+            ylabel="Intensywność sygnału"
+        )
+
+        # Rysujemy stary sygnał (niebieska linia)
+        lines!(ax, signal_old, label="Radii (Okrągłe)", color=:blue, linewidth=2)
+        
+        # Rysujemy nowy sygnał (czerwona przerywana linia)
+        lines!(ax, signal_new, label="Solid Body (Eliptyczne)", color=:red, linewidth=2, linestyle=:dash)
+
+        axislegend(ax, position=:rt) # Legenda w prawym górnym rogu
+        screen = display(fig)
+        wait(screen)
+    end
+
+   
+    function animate_signals()
+        psr = Pulsar("input/3.json")
+
+        Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
+        Lines.calculate_line_of_sight(psr)
+        Lines.generate_open!(psr, num=psr.nsfield.nopen)
+
+
+        si = psr.sparks_config.init
+        if si.method == "ellipse"
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "dipolar"
+            Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
+        end
+
+        Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse, co_angl=0)
+        
+        Signal.generate_signal_radii(psr; noise_level=0.0)
+        matrix_old = copy(psr.signal) # Macierz np. 500 x 100
+
+        Signal.generate_signal_solid_body(psr; noise_level=0.0)
+        matrix_new = copy(psr.signal)
+
+        signal_num = size(matrix_old)[1] # Ilość klatek (impulsów)
+
+        # ==========================================
+        # KONFIGURACJA ANIMACJI MAKIE
+        # ==========================================
+        # Observable przechowują dane TYLKO dla aktualnej klatki
+        obs_old = Observable(matrix_old[1, :])
+        obs_new = Observable(matrix_new[1, :])
+
+        fig = Figure(size = (800, 400))
+        ax = Axis(fig[1, 1], 
+            title="Animacja na żywo: Tańczące iskry vs. Czasza elipsy", 
+            xlabel="Biny (Faza obrotu)", 
+            ylabel="Intensywność sygnału"
+        )
+        
+        # BARDZO WAŻNE: Blokujemy osie na stałe!
+        # Gdybyśmy tego nie zrobili, wykres skakałby góra/dół przy każdej klatce.
+        ylims!(ax, -0.1, 1.2) 
+
+        # Podpinamy nasze Observable do linii
+        lines!(ax, obs_old, label="Radii (Poruszające się iskry)", color=:blue, linewidth=2)
+        lines!(ax, obs_new, label="Solid Body (Stała granica)", color=:red, linewidth=2, linestyle=:dash)
+
+        axislegend(ax, position=:rt)
+        
+        # Wyświetlamy okno
+        screen = display(fig)
+
+        # ==========================================
+        # PĘTLA ANIMACJI W TLE
+        # ==========================================
+        @async begin
+            for i in 1:signal_num
+                # Zmiana wartości w Observable automatycznie aktualizuje wykres!
+                obs_old[] = matrix_old[i, :]
+                obs_new[] = matrix_new[i, :]
+                
+                sleep(0.08) # Czekamy 0.03 sekundy (ok. 30 klatek na sekundę)
+                
+                # Zabezpieczenie: jeśli zamkniesz okno krzyżykiem, pętla się zatrzyma
+                if !isopen(screen)
+                    break
+                end
+            end
+        end
+        
+        wait(screen)
+    end
 
     function main()
 
@@ -334,7 +462,8 @@ module NoName
 
         #generate_signal_dipole()
         #generate_signal()
-        generate_polarized_signal()
+        animate_signals()
+        #generate_polarized_signal()
 
         #model_field()
 
