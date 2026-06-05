@@ -207,14 +207,13 @@ end
 #
 # Same parameters as animate(), plus:
 #   n_steps    : total number of drift steps to simulate
-#   save_every : save a snapshot every save_every steps
 #
-# Returns two vectors, one entry per saved snapshot:
+# Returns two vectors, one entry per step:
 #   positions  : Vector of (spark_x, spark_y) tuples
 #   sizes      : Vector of spark_size arrays
 # -----------------------------------------------------------------------------
 function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0,
-                          h_sprk=2.6, h_drft=0.1, n_steps=100, save_every=1)
+                          h_sprk=2.6, h_drft=0.1, n_steps=100)
 
     th_cap  = deg2rad(th_cap)
     co_angl = deg2rad(co_angl)
@@ -297,21 +296,18 @@ function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45
             end
         end
 
-        # save snapshot every save_every steps
-        if step  % save_every == 0
-            sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
-                                     h_sprk, h_drft, a_cap, b_cap, th_cap,
-                                     co_angl, x_cent, y_cent, N_trk, trk_max)
-            sparks_3d = Vector{Vector{Float64}}()
-            for i in eachindex(sx)
-                dx = ef.center_local[1] + sx[i] - x_cent
-                dy = ef.center_local[2] + sy[i] - y_cent
-                p = ef.centroid + dx * ef.x_hat + dy * ef.y_hat
-                push!(sparks_3d, p / norm(p) * psr.r)
-            end
-            push!(positions, sparks_3d)
-            push!(sizes, ss)
+        sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
+                                 h_sprk, h_drft, a_cap, b_cap, th_cap,
+                                 co_angl, x_cent, y_cent, N_trk, trk_max)
+        sparks_3d = Vector{Vector{Float64}}()
+        for i in eachindex(sx)
+            dx = ef.center_local[1] + sx[i] - x_cent
+            dy = ef.center_local[2] + sy[i] - y_cent
+            p = ef.centroid + dx * ef.x_hat + dy * ef.y_hat
+            push!(sparks_3d, p / norm(p) * psr.r)
         end
+        push!(positions, sparks_3d)
+        push!(sizes, ss)
     end
 
     return positions, sizes

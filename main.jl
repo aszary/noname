@@ -21,6 +21,13 @@ module NoName
     include("modules/plot.jl")
 
 
+    const DEFAULT_SPARKS_CONFIG = (
+        model     = "solidbody",
+        mc        = (n_steps = 2000, save_every = 40, speedup = 10.1),
+        lbc       = (co_angl = 0.0,),
+        init      = (method = "ellipse", rfs = [0.2, 0.5, 0.79], num = 3),
+    )
+
     mutable struct Pulsar
         r # pulsar radius in [m]
         p # pulsar period in [s]
@@ -51,12 +58,15 @@ module NoName
         beta # impact parameter in [deg.]
         los_lines # magnetic lines defined by the line of sight points
         signal # radio intensity for continous signal
+        pa # position angle
         pulses # single pulses generated from signal
         longitudes # single pulse longitudes
         ellipse_fit # ellipse fit to the polar cap points
         p3 # drift repetation time
         npulse # number of single pulses
-        pa # RVM curve
+        noise_level # noise level in single pulses
+        output_num # output directory number for save_sparks/load_sparks
+        sparks_config # spark simulation model and its parameters
         function Pulsar()
             r = 10_000 # 10 km in merters
             p = 1 # period in seconds
@@ -88,13 +98,16 @@ module NoName
             beta = 4.0 # deg by default
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
+            pa = nothing
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
             p3 = 10
             npulse = 500
-            pa = nothing
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse, pa)
+            noise_level = 0.05
+            output_num = 1
+            sparks_config = DEFAULT_SPARKS_CONFIG
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
         end
         function Pulsar(json_file)
             d = JSON3.read(json_file)
@@ -131,12 +144,16 @@ module NoName
             line_of_sight = nothing
             los_lines = Vector{Vector{Vector{Float64}}}() # instead [], faster
             signal = nothing
+            pa = nothing
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
             p3 = d.psr.P3
             npulse = d.psr.npulse
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pulses, longitudes, ellipse_fit, p3, npulse)
+            noise_level = d.psr.noise_level
+            output_num = d.psr.output_num
+            sparks_config = haskey(d, :sparks) ? d.sparks : DEFAULT_SPARKS_CONFIG
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
         end
     end
 
@@ -218,19 +235,18 @@ module NoName
         Sparks.init_sparks1!(psr ;num=13)
         Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=20, speedup=10)
         #Sparks.simulate_sparks_solidbody(psr; n_steps=100)
-        #Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0, h_drft=0.5, save_every=1)
-        Sparks.save_sparks(psr; num=2)
+        Sparks.simulate_sparks_lbc(psr; n_steps=500, co_angl=-90.0)
+        Sparks.save_sparks(psr; num=psr.output_num)
 
         #Plot.sparks(psr)
-        Sparks.load_sparks(psr; num=2)
+        Sparks.load_sparks(psr; num=psr.output_num)
 
-        #Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
-        Signal.generate_signal_radii(psr; noise_level=0.05) # new
-        #Signal.generate_pulses(psr, pulse_max=500)
+        #Signal.generate_signal(psr; noise_level=psr.noise_level) # old same sizes!
+        Signal.generate_signal_radii(psr; noise_level=psr.noise_level) # new
+        Signal.generate_pulses(psr)
         
-        Plot.record_signal_mp4(psr)
         #Plot.signal(psr)
-        #Plot.pulses(psr, number=500)
+        Plot.pulses(psr)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         
@@ -249,55 +265,50 @@ module NoName
 
         Lines.generate_open!(psr, num=psr.nsfield.nopen)
 
-        #Sparks.init_sparks1!(psr ;num=5) # dipolar 
-        # TODO add sparks generation parameters to json file
-        #Sparks.init_sparks1_ellipse!(psr; rfs=[0.2, 0.5, 0.79], num=3) # non-dipolar 
-        #Sparks.init_sparks1_ellipse!(psr; rfs=[0.5], num=4) # non-dipolar 
-        # TODO work on n_steps + save_every for single pulses
-        #Sparks.simulate_sparks_mc(psr; n_steps=2000, save_every=40, speedup=10.1)
-        #Sparks.simulate_sparks_solidbody(psr)
-        Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse, co_angl=0.0)
-        Sparks.save_sparks(psr; num=2)
+        sc = psr.sparks_config
+        si = sc.init
+        if si.method == "ellipse"
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "dipolar"
+            Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "none"
+            # skip spark initialization
+        else
+            error("Unknown spark init method: $(si.method). Use \"ellipse\", \"dipolar\", or \"none\".")
+        end
+        if sc.model == "mc"
+            Sparks.simulate_sparks_mc(psr; n_steps=sc.mc.n_steps, save_every=sc.mc.save_every, speedup=sc.mc.speedup)
+        elseif sc.model == "solidbody"
+            Sparks.simulate_sparks_solidbody(psr)
+        elseif sc.model == "lbc"
+            Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse, co_angl=sc.lbc.co_angl)
+        else
+            error("Unknown spark model: $(sc.model). Use \"mc\", \"solidbody\", or \"lbc\".")
+        end
 
+        #Sparks.save_sparks(psr; num=psr.output_num)
         #Plot.sparks(psr)
-        #Sparks.load_sparks(psr; num=2)
+        #Sparks.load_sparks(psr; num=psr.output_num)
 
-        Signal.generate_signal(psr; noise_level=0.05) # old same sizes!
-        #Signal.generate_signal_radii(psr; noise_level=0.05) # new
-        #Signal.generate_pulses(psr)
-        
-        Plot.record_signal_mp4(psr)
+
+        #Signal.generate_signal(psr; noise_level=psr.noise_level) # old same sizes!
+        Signal.generate_signal_radii(psr; noise_level=psr.noise_level) # new
+        Signal.generate_pulses(psr)
+
+
         #Plot.signal(psr)
         #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
-        
-    end
-
-    function generate_polarized_signal()
-        psr = Pulsar("input/1.json")
-
-        Lines.init_line_of_sight_360(psr, num=psr.nsfield.nlos)
-        #Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
-        Lines.calculate_line_of_sight(psr)
-        Lines.generate_open!(psr, num=psr.nsfield.nopen)
-
-        Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse, co_angl=0.0)
-
-        Signal.generate_signal_with_polarization(psr; noise_level=0.05)
-        #Signal.generate_pulses(psr)
-        
         Plot.polarization_vector_study(psr)
-        #Plot.signal_polarized(psr)
+        
     end
 
 
     function model_field()
         #psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
-        psr = Pulsar("input/3.json")
-
-        Field.generate_full_lines!(psr; step=500, stepsnum=1000)
+        psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=5)
         Lines.calculate_line_of_sight(psr)
@@ -306,8 +317,7 @@ module NoName
 
         #println(psr.nsfield)
 
-        Plot.plot_full_anomaly_field(psr)
-        #Plot.anomalies(psr)
+        Plot.anomalies(psr)
         #Plot.anomalies2D(psr)
         #Plot.polar_cap2D(psr)
 

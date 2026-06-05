@@ -55,6 +55,29 @@
         end
         noise = noise_level * randn(size(psr.signal))
         psr.signal .+= noise
+
+        # position angle calculation
+        psr.pa = zeros(bin_number)
+        for i in 1:length(psr.longitudes)
+            # Get the field line assigned to this phase bin
+            line = psr.los_lines[i]
+
+            # Point 1 is the emission point (topmost), Point 2 is slightly lower on the same line
+            p1 = [line[1][1], line[2][1], line[3][1]]
+            p2 = [line[1][2], line[2][2], line[3][2]]
+
+            # Local magnetic field vector is the direction between these two consecutive line points
+            B_local = p1 .- p2
+
+            # Line of sight and rotation axis vectors for this bin
+            los_current = psr.line_of_sight[i]
+            rot_vec = Functions.spherical2cartesian(psr.rotation_axis)
+
+            # Calculate numerical PA in radians, then convert to degrees
+            pa_rad = calculate_numerical_pa(B_local, los_current, rot_vec)
+            psr.pa[i] = rad2deg(pa_rad)
+        end
+
     end
 
    """
@@ -154,13 +177,42 @@
         signal_number, bin_number = size(psr.signal)
         psr.pulses = zeros(psr.npulse, bin_number)
 
-        for i in 1:signal_number
-            if i == psr.npulse 
-                break
-            end
+        for i in 1:min(signal_number, psr.npulse)
             psr.pulses[i, :] = psr.signal[i, :]
         end
 
+    end
+
+
+   """
+    calculate_numerical_pa(B_vec, los_vec, rot_vec)
+
+    Calculates the Polarization Angle (PA) directly from the local magnetic field.
+    Projects the B vector from the emission point onto the observer's Plane of the Sky.
+    """
+    function calculate_numerical_pa(B_vec, los_vec, rot_vec)
+        # 1. Ensure all vectors have a length of 1 (normalize)
+        n = normalize(los_vec)       # Line of Sight vector (towards the telescope)
+        omega = normalize(rot_vec)   # Rotation Axis vector (Red axis)
+        B = normalize(B_vec)         # Local magnetic field vector at the emission point
+        
+        # 2. Build a 2D coordinate system on the Plane of the Sky (as seen by the telescope)
+        # Y-axis on the sky (North) is the projection of the rotation axis onto the viewing plane
+        y_sky = omega .- dot(omega, n) .* n
+        y_sky = normalize(y_sky)
+        
+        # X-axis on the sky (East) is perpendicular to the Line of Sight and North
+        x_sky = cross(n, y_sky)
+        
+        # 3. Project our local magnetic field vector (B) onto this sky plane
+        B_x = dot(B, x_sky)
+        B_y = dot(B, y_sky)
+        
+        # 4. Calculate the angle using atan2 (yields a result from -pi to pi)
+        pa = atan(B_x, B_y)
+        
+        # Normalize the angle to the [-pi/2, pi/2] range, standard for RVM
+        return atan(tan(pa))
     end
 
 

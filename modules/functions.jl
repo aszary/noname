@@ -171,5 +171,12 @@ module Functions
     end
 
 
+    # Rodrigues' rotation formula: rotate vector v around unit axis k by angle θ
+    function rotate_vector(v, k, θ)
+        k = normalize(k)
+        return v .* cos(θ) .+ cross(k, v) .* sin(θ) .+ k .* dot(k, v) .* (1 - cos(θ))
+    end
+
+
 end # module end
 
