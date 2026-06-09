@@ -330,7 +330,7 @@ module NoName
     end
 
     function compare_signals()
-        psr = Pulsar("input/3.json")
+        psr = Pulsar("input/1.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
@@ -382,6 +382,7 @@ module NoName
 
    
     function animate_signals()
+        #psr = Pulsar("input/1.json")
         psr = Pulsar("input/3.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
@@ -399,9 +400,11 @@ module NoName
         Sparks.simulate_sparks_lbc(psr; n_steps=psr.npulse, co_angl=0)
         
         Signal.generate_signal_radii(psr; noise_level=0.0)
+        #Signal.generate_signal_solid_body(psr; noise_level=0.0)
         matrix_old = copy(psr.signal) # Macierz np. 500 x 100
 
-        Signal.generate_signal_solid_body(psr; noise_level=0.0)
+        #Signal.generate_signal_solid_body(psr; noise_level=0.0)
+        Signal.generate_signal_new(psr; noise_level=0.0)
         matrix_new = copy(psr.signal)
 
         signal_num = size(matrix_old)[1] # Ilość klatek (impulsów)

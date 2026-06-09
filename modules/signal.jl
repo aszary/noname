@@ -184,7 +184,91 @@
             psr.pa[i] = rad2deg(pa_rad)
         end
     end
-    
+
+    """
+        generate_signal_new(psr; noise_level=0.0)
+
+    Generates a pulsar signal with polar-cap-shaped spark envelopes using the
+    analytical ellipse fit stored in `psr.ellipse_fit`.
+
+    For each (LOS point, spark) pair the displacement vector is projected onto
+    the polar cap tangent plane and rotated into the ellipse-aligned frame.
+    The ellipse arm length in that direction is computed analytically:
+
+        r(φ) = a·b / sqrt((b·cosφ)² + (a·sinφ)²)
+
+    and used to stretch the Gaussian sigma proportionally to the cap shape.
+    No boundary-point scan is required — the cost per inner iteration is O(1).
+    """
+    function generate_signal_new(psr; noise_level=0.0)
+        @assert !isnothing(psr.ellipse_fit) "psr.ellipse_fit must be set before calling generate_signal_new"
+
+        ef = psr.ellipse_fit
+        los_points = [[line[1][end], line[2][end], line[3][end]] for line in psr.los_lines]
+
+        signal_number = size(psr.sparks_locations, 1)
+        bin_number    = length(los_points)
+        psr.signal    = zeros(signal_number, bin_number)
+
+        # Reference radius: geometric mean of semi-axes (equals the radius for a circle)
+        r_avg = sqrt(ef.a * ef.b)
+
+        # Rotation into ellipse-aligned frame (precomputed scalars)
+        cosθ = cos(ef.θ)
+        sinθ = sin(ef.θ)
+
+        # Per-spark base sigmas: radius / 3.72 → 0.1 % Gaussian threshold
+        base_sigmas = [
+            [isnothing(psr.spark_radii) ? psr.spark_radius / 3.72 : psr.spark_radii[j][k] / 3.72
+             for k in eachindex(sparks)]
+            for (j, sparks) in enumerate(psr.sparks_locations)
+        ]
+
+        for (i, p) in enumerate(los_points)
+            for (j, sparks) in enumerate(psr.sparks_locations)
+                for (k, s) in enumerate(sparks)
+                    vec_ps  = p .- s
+                    dist_ps = norm(vec_ps)
+
+                    if dist_ps < 1e-6
+                        psr.signal[j, i] += 1.0
+                        continue
+                    end
+
+                    # Project displacement onto the polar cap tangent plane
+                    u = dot(vec_ps, ef.x_hat)
+                    v = dot(vec_ps, ef.y_hat)
+
+                    # Rotate to ellipse-aligned frame
+                    ue =  u * cosθ + v * sinθ
+                    ve = -u * sinθ + v * cosθ
+
+                    # 2-D norm in the tangent plane
+                    r_2d = hypot(ue, ve)
+
+                    local_sigma = if r_2d < 1e-10
+                        # vec_ps is nearly normal to the tangent plane — no deformation
+                        base_sigmas[j][k]
+                    else
+                        # Unit direction in the ellipse frame
+                        cosφ = ue / r_2d
+                        sinφ = ve / r_2d
+
+                        # Analytical arm length of the ellipse in direction φ
+                        r_dir = ef.a * ef.b / hypot(ef.b * cosφ, ef.a * sinφ)
+
+                        base_sigmas[j][k] * (r_dir / r_avg)
+                    end
+
+                    psr.signal[j, i] += exp(-dist_ps^2 / (2 * local_sigma^2))
+                end
+            end
+        end
+
+        noise_level > 0.0 && (psr.signal .+= noise_level .* randn(size(psr.signal)))
+    end
+
+
    """
     calculate_numerical_pa(B_vec, los_vec, rot_vec)
 
