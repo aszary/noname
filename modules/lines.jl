@@ -133,6 +133,9 @@ module Lines
         zs = [ml[3][end] for ml in psr.open_lines]
         psr.pc = [xs, ys, zs]
         psr.ellipse_fit = SolidBody.fit_ellipse([xs, ys, zs], psr.r)
+        ef = psr.ellipse_fit
+        println("Polar cap ellipse: a=$(ef.a) b=$(ef.b) θ=$(rad2deg(ef.θ))°")
+
     end
 
 
@@ -145,7 +148,10 @@ module Lines
         α = deg2rad(psr.alpha)
         β = deg2rad(psr.beta)
 
-        φ_s = Geometry.generate_uniform_phase_array(num, α ,β , psr.r_em, psr.p)
+        # Generate geometric phase range, then shift to observed phases so that
+        # emission_points_with_ar subtracts Δφ_AR back into [-φ_max, +φ_max].
+        Δφ_AR = Geometry.aberration_retardation_shift(psr.r_em, psr.p)
+        φ_s = Geometry.generate_uniform_phase_array(num, α, β, psr.r_em, psr.p) .+ Δφ_AR
         #θ_array, ψ_array = Geometry.emission_points_from_phase(φ_s, α, β, psr.r_em, psr.p)
         θ_array, ψ_array = Geometry.emission_points_with_ar(φ_s, α, β, psr.r_em, psr.p)
 

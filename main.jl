@@ -252,8 +252,8 @@ module NoName
 
 
     function generate_signal()
-        #psr = Pulsar("input/1.json")
-        psr = Pulsar("input/2.json")
+        psr = Pulsar("input/1.json")
+        #psr = Pulsar("input/2.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
 
@@ -289,15 +289,17 @@ module NoName
 
 
         #Signal.generate_signal(psr; noise_level=psr.noise_level) # old  obsolete same sizes! NO PA
-        Signal.generate_signal_radii(psr; noise_level=psr.noise_level, v_scale=0.3) # new
+        #Signal.generate_signal_radii(psr; noise_level=psr.noise_level, v_scale=0.3) # new with full Stokes and radii
+        #Signal.generate_signal_ola(psr; noise_level=psr.noise_level, v_scale=0.3) # new with full Stokes and elliptical sparks
+        Signal.generate_signal_new(psr; noise_level=psr.noise_level, v_scale=0.3) # new with full Stokes and elliptical sparks based on ellipse fit
         Signal.generate_pulses(psr)
 
 
-        Plot.signal(psr)
+        #Plot.signal(psr)
         #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
-        #Plot.average_stokes(psr)
+        Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
         
     end
