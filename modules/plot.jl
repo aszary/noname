@@ -1245,10 +1245,9 @@ module Plot
 
         scatter!(ax_pa, psr.longitudes, psr.pa, color=:black, markersize=3)
 
-        # Test 3 & 4: RVM overlay + slope comparison at actual inflection point
+        # RVM overlay + slope comparison at actual inflection point
         α = deg2rad(psr.alpha)
         β = deg2rad(psr.beta)
-        ζ = α + β
         φ = deg2rad.(psr.longitudes)
         n = length(psr.longitudes)
         dφ_deg = psr.longitudes[2] - psr.longitudes[1]
@@ -1258,24 +1257,45 @@ module Plot
         infl = argmax(abs.(dpa)) + 1  # +1 because dpa is indexed from bin 2
         pa0 = psr.pa[infl]
         φ0  = φ[infl]
-        # RVM centred on the inflection longitude
-        rvm_raw = rad2deg.(atan.(sin.(α) .* sin.(φ .- φ0),
-                                 sin.(ζ) .* cos.(α) .- cos.(ζ) .* sin.(α) .* cos.(φ .- φ0)))
         slope_numerical  = dpa[infl - 1]  # dpa is offset by 1
         rvm_sign = sign(slope_numerical) != sign(sin(α) / sin(β)) ? -1.0 : 1.0
-        pa_rvm = pa0 .+ rvm_sign .* rvm_raw
         slope_analytical = rvm_sign * sin(α) / sin(β)
-        lines!(ax_pa, psr.longitudes, pa_rvm, color=:orange, linewidth=1.5, label="RVM")
+        β_eff_slope = rad2deg(asin(clamp(abs(sin(α) / slope_numerical), 0.0, 1.0)))
+
+        # Chi-square fit: scan β_eff to minimise sum((pa_data - pa_rvm_wrapped)^2)
+        # β is already in radians, so boundaries must stay in radians
+        β_fit_lo = max(deg2rad(0.01), abs(β) * 0.2)
+        β_fit_hi = abs(β) * 6.0
+        chi2_min = Inf
+        β_eff_fit = deg2rad(β_eff_slope)
+        for β_test in LinRange(β_fit_lo, β_fit_hi, 3000)
+            ζ_t = α + sign(β) * β_test
+            raw_t = rad2deg.(atan.(sin(α) .* sin.(φ .- φ0),
+                                   sin(ζ_t) .* cos(α) .- cos(ζ_t) .* sin(α) .* cos.(φ .- φ0)))
+            pa_t = rad2deg.(atan.(tan.(deg2rad.(pa0 .+ rvm_sign .* raw_t))))
+            chi2 = sum((psr.pa .- pa_t) .^ 2)
+            if isfinite(chi2) && chi2 < chi2_min
+                chi2_min = chi2
+                β_eff_fit = β_test
+            end
+        end
+        β_eff = rad2deg(β_eff_fit)
+        ζ_eff = α + sign(β) * β_eff_fit
+        rvm_raw = rad2deg.(atan.(sin(α) .* sin.(φ .- φ0),
+                                 sin(ζ_eff) .* cos(α) .- cos(ζ_eff) .* sin(α) .* cos.(φ .- φ0)))
+        # wrap to (-90°, 90°] to match the PA data normalisation
+        pa_rvm = rad2deg.(atan.(tan.(deg2rad.(pa0 .+ rvm_sign .* rvm_raw))))
+        lines!(ax_pa, psr.longitudes, pa_rvm, color=:orange, linewidth=1.5, label="RVM (fit)")
         vlines!(ax_pa, [psr.longitudes[infl]], color=:blue, linewidth=1, linestyle=:dash)
         scatter!(ax_pa, [psr.longitudes[infl]], [pa0], color=:blue, markersize=7, marker=:diamond, label="inflection")
         axislegend(ax_pa, position=:rt, framevisible=false, labelsize=8)
 
         println("PA slope at inflection point (lon=$(round(psr.longitudes[infl], digits=2))°):")
-        println("  analytical  sin(α)/sin(β) = $(round(slope_analytical, digits=4)) deg/deg")
-        println("  numerical   dPA/dφ        = $(round(slope_numerical,  digits=4)) deg/deg")
-        println("  |difference|              = $(round(abs(slope_numerical - slope_analytical), digits=4)) deg/deg")
-        β_eff = rad2deg(asin(abs(sin(α) / slope_numerical)))
-        println("  effective β at r_em       = $(round(β_eff, digits=4))°  (input β = $(psr.beta)°)")
+        println("  analytical  sin(α)/sin(β)      = $(round(slope_analytical, digits=4)) deg/deg")
+        println("  numerical   dPA/dφ             = $(round(slope_numerical,  digits=4)) deg/deg")
+        println("  |difference|                   = $(round(abs(slope_numerical - slope_analytical), digits=4)) deg/deg")
+        println("  β_eff from slope               = $(round(β_eff_slope, digits=4))°  (input β = $(psr.beta)°)")
+        println("  β_eff from χ²-fit (full curve) = $(round(β_eff, digits=4))°")
 
         lines!(ax_flux, psr.longitudes, avg_I, color=:black,  linewidth=1.5, label="I")
         lines!(ax_flux, psr.longitudes, avg_L, color=:red,    linewidth=1.5, label="L")
