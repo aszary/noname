@@ -252,8 +252,8 @@ module NoName
 
 
     function generate_signal()
-        #psr = Pulsar("input/1.json")
-        psr = Pulsar("input/2.json")
+        psr = Pulsar("input/1.json")
+        #psr = Pulsar("input/6.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
 
@@ -292,8 +292,8 @@ module NoName
         Signal.generate_signal_radii(psr; noise_level=psr.noise_level, v_scale=0.3) # new
         Signal.generate_pulses(psr)
 
-
-        Plot.signal(psr)
+        Plot.lrfsv2(psr)
+        #Plot.signal(psr)
         #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
