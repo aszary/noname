@@ -295,11 +295,11 @@ module NoName
         Signal.generate_pulses(psr)
 
 
-        #Plot.signal(psr)
+        Plot.signal(psr)
         #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
-        Plot.average_stokes(psr)
+        #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
         
     end
