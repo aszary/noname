@@ -6,6 +6,7 @@ module Plot
     using Glob
     using Statistics
     using LinearAlgebra
+    using FFTW
     include("functions.jl")
     include("sparks.jl")
     include("tools.jl")
@@ -1492,6 +1493,120 @@ module Plot
     end
 
 
+    function lrfs(psr; start=1, number=nothing, darkness=1.0)
+        data = psr.pulses
+        
+        num_total, bins = size(data)
+        if isnothing(number)
+            number = num_total - start + 1
+        end
+        
+        # Extract the relevant block of single pulses
+        da = data[start:start+number-1, :]
+        n_pulses, n_bins = size(da)
+        
+        # Step 1: Calculate the average profile for the bottom panel
+        avg_profile = vec(mean(da, dims=1))
+        
+        # Step 2: Subtract the mean from each phase bin 
+        # This removes the dominant DC component (at frequency f=0)
+        da_mean_sub = da .- avg_profile'
+        
+        # Step 3: Fourier Transform along the time (pulse) axis using FFTW
+        # We use rfft since the input data is strictly real.
+        # Dimension 1 means we perform FFT for each column (longitude bin) separately.
+        fft_complex = rfft(da_mean_sub, 1)
+        
+        # Calculate the power spectrum (squared amplitude)
+        lrfs_power = abs.(fft_complex).^2
+        
+        # Step 4: Integrated fluctuation spectrum (sum along the longitude axis)
+        int_spectrum = vec(sum(lrfs_power, dims=2))
+        
+        # Create the frequency axis (Y-axis) - Nyquist limit is always 0.5 c/P
+        n_freq = size(lrfs_power, 1)
+        freqs = range(0.0, 0.5, length=n_freq)
+        
+        # -----------------------------------------------------
+        # CALCULATIONS FOR THE TOP PANEL (FLUCTUATION PHASE)
+        # -----------------------------------------------------
+        # Find the index of the dominant frequency 
+        # (ignoring f=0, which is index 1, so we search from index 2 onwards)
+        peak_idx = argmax(int_spectrum[2:end]) + 1
+        
+        # Extract complex numbers for this specific frequency across all longitudes
+        peak_complex = fft_complex[peak_idx, :]
+        
+        # Calculate the phase (angle) in degrees
+        # Note: Advanced analysis often uses phase unwrapping algorithms here 
+        # to smooth out sudden jumps between 180 and -180 degrees.
+        fluctuation_phase = angle.(peak_complex) .* (180 / pi)
+        # -----------------------------------------------------
+        
+        
+        # --- PLOTTING WITH MAKIE (4-panel layout) ---
+        
+        # Size modeled after the typical 8cm x 13cm layout used in publications
+        size_inches = (8 / 2.54, 13 / 2.54) 
+        dpi = 150
+        size_pt = dpi .* size_inches
+        
+        fig = Figure(size=size_pt, fontsize=8)
+        
+        # Left Panel: Integrated fluctuation spectrum
+        # Placed on the grid (rows 2:5, column 1)
+        ax_left = Axis(fig[2:5, 1], ylabel=L"Frequency ($c/P$)", xlabel="Power",
+                       xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_left, int_spectrum, freqs, color=:gray50, linewidth=1.5)
+        ylims!(ax_left, 0.0, 0.5)
+        ax_left.xreversed = true # Reverse X-axis to "stick" it to the heatmap
+        
+        # Main Panel: LRFS Heatmap
+        # Placed on the grid (rows 2:5, columns 2:4)
+        vmax = darkness * maximum(lrfs_power)
+        ax_main = Axis(fig[2:5, 2:4], yticklabelsvisible=false,
+                       xminorticksvisible=true, yminorticksvisible=true)
+        heatmap!(ax_main, psr.longitudes, freqs, transpose(lrfs_power), colormap=:viridis, colorrange=(0, vmax))
+        xlims!(ax_main, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_main, 0.0, 0.5)
+        
+        # Bottom Panel: Average pulsar profile
+        # Placed on the grid (row 6, columns 2:4)
+        norm_avg_profile = (avg_profile .- minimum(avg_profile)) ./ maximum(avg_profile .- minimum(avg_profile))
+        ax_bottom = Axis(fig[6, 2:4], xlabel=L"Longitude ($^\circ$)", ylabel="Intensity",
+                         xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_bottom, psr.longitudes, norm_avg_profile, color=:gray50, linewidth=1.5)
+        xlims!(ax_bottom, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_bottom, 0.0, 1.1)
+
+        # Top Panel: Fluctuation phase
+        # Placed on the grid (row 1, columns 2:4)
+        ax_top = Axis(fig[1, 2:4], ylabel="Phase\n(deg)", xaxisposition=:top,
+                      xminorticksvisible=true, yminorticksvisible=true)
+        scatter!(ax_top, psr.longitudes, fluctuation_phase, color=:red, markersize=4)
+        xlims!(ax_top, psr.longitudes[1], psr.longitudes[end])
+        
+        # Synchronize axes so zooming/panning works across all relevant panels
+        linkyaxes!(ax_main, ax_left)
+        linkxaxes!(ax_main, ax_bottom, ax_top)
+        
+        hideydecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_top, ticks=false, minorticks=false, grid=false)
+   
+        hidespines!(ax_main, :l, :b) 
+        hidespines!(ax_left, :r)   
+        hidespines!(ax_bottom, :t)  
+        hidespines!(ax_top, :b)    
+        
+        # Adjust gaps between panels
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+        
+        display(fig)
+        readline(stdin; keep=false)
+        GLMakie.closeall()
+    end
 
 
 

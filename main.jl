@@ -268,10 +268,12 @@ module NoName
             Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num)
         elseif si.method == "dipolar"
             Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "dipolar2"
+            Sparks.init_sparks2!(psr; rfs=collect(si.rfs), num=si.num)
         elseif si.method == "none"
             # skip spark initialization
         else
-            error("Unknown spark init method: $(si.method). Use \"ellipse\", \"dipolar\", or \"none\".")
+            error("Unknown spark init method: $(si.method). Use \"ellipse\", \"dipolar\", \"dipolar2\", or \"none\".")
         end
         if sc.model == "mc"
             Sparks.simulate_sparks_mc(psr; n_steps=sc.mc.n_steps, save_every=sc.mc.save_every, speedup=sc.mc.speedup)
@@ -295,13 +297,13 @@ module NoName
         Signal.generate_pulses(psr)
 
 
-        Plot.signal(psr)
+        #Plot.signal(psr)
         #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        
+        Plot.lrfs(psr, darkness=0.01)
     end
 
 
