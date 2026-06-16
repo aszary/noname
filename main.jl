@@ -298,12 +298,12 @@ module NoName
 
 
         #Plot.signal(psr)
-        #Plot.pulses(psr, number=psr.npulse)
+        Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        Plot.lrfs(psr, darkness=0.01)
+        Plot.lrfs(psr, darkness=0.5)
     end
 
 
@@ -321,9 +321,9 @@ module NoName
 
         #println(psr.nsfield)
 
-        Plot.closed_lines(psr)
-        #Plot.anomalies(psr)
-        #Plot.anomalies2D(psr)
+        #Plot.closed_lines(psr)
+        Plot.anomalies(psr)
+        Plot.anomalies2D(psr)
         #Plot.polar_cap2D(psr)
 
        
