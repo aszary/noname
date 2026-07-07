@@ -252,8 +252,8 @@ module NoName
 
 
     function generate_signal()
-        psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/1.json")
+        psr = Pulsar("input/2.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
 
@@ -297,13 +297,13 @@ module NoName
         Signal.generate_pulses(psr)
 
 
-        #Plot.signal(psr)
-        Plot.pulses(psr, number=psr.npulse)
+        Plot.signal(psr)
+        #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        Plot.lrfs(psr, darkness=0.5)
+        #Plot.lrfs(psr, darkness=0.3)
     end
 
 
@@ -323,7 +323,7 @@ module NoName
 
         #Plot.closed_lines(psr)
         Plot.anomalies(psr)
-        Plot.anomalies2D(psr)
+        #Plot.anomalies2D(psr)
         #Plot.polar_cap2D(psr)
 
        

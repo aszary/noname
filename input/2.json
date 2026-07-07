@@ -40,7 +40,7 @@
             "_phi_m,": "spherical coordiante phi, orientation of the anommaly [deg]",
             "r": 0.95,
             "theta": 3,
-            "phi": 0,
+            "phi": 90,
             "m" : 0.1,
             "theta_m": 45,
             "phi_m": 0
@@ -48,7 +48,7 @@
         {
             "r": 0.95,
             "theta": 11.0,
-            "phi": 180.0,
+            "phi": 270.0,
             "m" : 0.2,
             "theta_m": 0.0,
             "phi_m": 0.0
@@ -56,7 +56,7 @@
         {
             "r": 0.95,
             "theta": 5.0,
-            "phi": 90.0,
+            "phi": 180.0,
             "m" : 0.3,
             "theta_m": 0.0,
             "phi_m": 0.0
