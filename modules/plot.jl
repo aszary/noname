@@ -247,7 +247,7 @@ module Plot
         fv = psr.fields
         for line in fv.magnetic_lines
             xs, ys, zs = line[1], line[2], line[3]
-            lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
+            lines!(ax, xs, ys, zs, color=:blue, linewidth=1,fxaa=true)
         end
     end
 
@@ -1574,6 +1574,72 @@ module Plot
     end
 
 
+    function average_stokes(psr)
+        avg_I = vec(mean(psr.pulses, dims=1))
+        avg_Q = vec(mean(psr.stokes_q[1:psr.npulse, :], dims=1))
+        avg_U = vec(mean(psr.stokes_u[1:psr.npulse, :], dims=1))
+        avg_V = vec(mean(psr.stokes_v[1:psr.npulse, :], dims=1))
+        avg_L = sqrt.(avg_Q .^ 2 .+ avg_U .^ 2)
+
+        size_inches = (12 / 2.54, 16 / 2.54)
+        size_pt = 72 .* size_inches
+        fig = Figure(size=size_pt, fontsize=8, figure_padding=(4, 8, 4, 4))
+
+        ax_pa = Axis(fig[1, 1], ylabel="PA [deg]",
+                     xticklabelsvisible=false, xminorticksvisible=true, yminorticksvisible=true)
+        ax_flux = Axis(fig[2, 1], xlabel=L"Longitude ($^\circ$)", ylabel="Flux Density",
+                       xminorticksvisible=true, yminorticksvisible=true)
+
+        scatter!(ax_pa, psr.longitudes, psr.pa, color=:black, markersize=3)
+
+        # Test 3 & 4: RVM overlay + slope comparison at actual inflection point
+        α = deg2rad(psr.alpha)
+        β = deg2rad(psr.beta)
+        ζ = α + β
+        φ = deg2rad.(psr.longitudes)
+        n = length(psr.longitudes)
+        dφ_deg = psr.longitudes[2] - psr.longitudes[1]
+        # numerical dPA/dφ at every bin (central difference, skip edges)
+        dpa = [(psr.pa[i+1] - psr.pa[i-1]) / (2 * dφ_deg) for i in 2:n-1]
+        # inflection point = steepest slope (max |dPA/dφ|)
+        infl = argmax(abs.(dpa)) + 1  # +1 because dpa is indexed from bin 2
+        pa0 = psr.pa[infl]
+        φ0  = φ[infl]
+        # RVM centred on the inflection longitude
+        rvm_raw = rad2deg.(atan.(sin.(α) .* sin.(φ .- φ0),
+                                 sin.(ζ) .* cos.(α) .- cos.(ζ) .* sin.(α) .* cos.(φ .- φ0)))
+        slope_numerical  = dpa[infl - 1]  # dpa is offset by 1
+        rvm_sign = sign(slope_numerical) != sign(sin(α) / sin(β)) ? -1.0 : 1.0
+        pa_rvm = pa0 .+ rvm_sign .* rvm_raw
+        slope_analytical = rvm_sign * sin(α) / sin(β)
+        lines!(ax_pa, psr.longitudes, pa_rvm, color=:orange, linewidth=1.5, label="RVM")
+        vlines!(ax_pa, [psr.longitudes[infl]], color=:blue, linewidth=1, linestyle=:dash)
+        scatter!(ax_pa, [psr.longitudes[infl]], [pa0], color=:blue, markersize=7, marker=:diamond, label="inflection")
+        axislegend(ax_pa, position=:rt, framevisible=false, labelsize=8)
+
+        println("PA slope at inflection point (lon=$(round(psr.longitudes[infl], digits=2))°):")
+        println("  analytical  sin(α)/sin(β) = $(round(slope_analytical, digits=4)) deg/deg")
+        println("  numerical   dPA/dφ        = $(round(slope_numerical,  digits=4)) deg/deg")
+        println("  |difference|              = $(round(abs(slope_numerical - slope_analytical), digits=4)) deg/deg")
+        β_eff = rad2deg(asin(abs(sin(α) / slope_numerical)))
+        println("  effective β at r_em       = $(round(β_eff, digits=4))°  (input β = $(psr.beta)°)")
+
+        lines!(ax_flux, psr.longitudes, avg_I, color=:black,  linewidth=1.5, label="I")
+        lines!(ax_flux, psr.longitudes, avg_L, color=:red,    linewidth=1.5, label="L")
+        lines!(ax_flux, psr.longitudes, avg_V, color=:blue,   linewidth=1.5, label="V")
+
+        xlims!(ax_pa,   psr.longitudes[1], psr.longitudes[end])
+        xlims!(ax_flux, psr.longitudes[1], psr.longitudes[end])
+
+        axislegend(ax_flux, position=:rt, framevisible=false, labelsize=8)
+
+        rowsize!(fig.layout, 1, Relative(0.3))
+        rowgap!(fig.layout, 3)
+
+        display(fig)
+    end
+
+
     function polarization_vector_study(psr; delay=0.05)
         fig = Figure(size = (1400, 800))
         
@@ -1695,6 +1761,84 @@ module Plot
             end
         end
     end
+
+
+
+
+
+    """
+    closed_lines(psr)
+
+    Visualizes the pulsar magnetosphere with:
+    - Stellar surface (teal sphere) 
+    - Rotation axis (red) and Magnetic axis (blue)
+    - Anomalous dipole moments (orange arrows)
+    - General/Closed anomaly-aware field lines (blue) 
+    - Open field lines (green) 
+    - Line-of-sight paths (red) 
+    """
+    function closed_lines(psr)
+        # 1. Draw the stellar surface
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
+
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) 
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis) 
+        
+
+        rot_scaled = rot_vec .* 0.99
+        mag_scaled = mag_vec .* 0.99
+
+        arrows3d!(ax, [0, 0], [0, 0], [0, 0],
+                [rot_scaled[1], mag_scaled[1]],
+                [rot_scaled[2], mag_scaled[2]],
+                [rot_scaled[3], mag_scaled[3]],
+                color = [:red, :blue])
+        #drawing anomalies
+        if hasproperty(psr, :nsfield) && hasproperty(psr.nsfield, :anomalies)
+            for a in psr.nsfield.anomalies
+                pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+
+                dir_mag = norm(dir)
+                if dir_mag > 0
+                    dir_scaled = dir ./ dir_mag .* (psr.r * a.m * 10)
+                    arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]],
+                            [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]],
+                            color=:orange)
+                end
+            end
+        end
+
+        # 4. Draw closed field lines (blue)
+        for line in psr.nsfield.magnetic_lines
+            lines!(ax, line[1], line[2], line[3], color=:blue, linewidth=1, fxaa=true )
+        end
+
+        # 5. Draw open field lines (green)
+        if !isnothing(psr.open_lines)
+            for ml in psr.open_lines 
+                lines!(ax, ml[1], ml[2], ml[3], color=:green, linewidth=2,fxaa=true) 
+            end # <--- End of open lines loop
+        end # <--- End of if block
+
+        # 6. Draw line-of-sight magnetic field lines (red)
+        if !isnothing(psr.los_lines) 
+            for line in psr.los_lines
+                lines!(ax, line[1], line[2], line[3], color=:red, linewidth=1.5,fxaa=true) 
+                # Mark the specific emission point/cross at the end of the trace
+                scatter!(ax, line[1][end], line[2][end], line[3][end], color=:red, marker=:xcross)
+            end # <--- End of LOS lines loop
+        end # <--- End of if block
+
+        # Adjust camera for a close 3D view of the surface and anomalies
+        cam3d!(ax.scene, eyeposition=[psr.r*2.5, psr.r*2.5, psr.r*2.5], 
+               lookat=[0, 0, 0], upvector=[0,0,1], center=false)
+
+        display(fig) 
+    end
+
+
 
 
 
