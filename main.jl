@@ -15,7 +15,7 @@ module NoName
         model     = "solidbody",
         mc        = (n_steps = 2000, save_every = 40, speedup = 10.1),
         lbc       = (co_angl = 0.0,),
-        init      = (method = "ellipse", rfs = [0.2, 0.5, 0.79], num = 3),
+        init      = (method = "ellipse", rfs = [0.2, 0.5, 0.79], num = 3, spacing = "t"),
     )
 
     mutable struct Pulsar
@@ -253,9 +253,10 @@ module NoName
 
     function generate_signal()
         #psr = Pulsar("input/1.json")
-        psr = Pulsar("input/2.json")
+        #psr = Pulsar("input/2.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
+        psr = Pulsar("input/11.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
@@ -265,7 +266,7 @@ module NoName
         sc = psr.sparks_config
         si = sc.init
         if si.method == "ellipse"
-            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num)
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num, spacing=get(si, :spacing, "t"))
         elseif si.method == "dipolar"
             Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
         elseif si.method == "dipolar2"
@@ -297,13 +298,13 @@ module NoName
         Signal.generate_pulses(psr)
 
 
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=psr.npulse)
+        #Plot.signal(psr)
+        Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        #Plot.lrfs(psr, darkness=0.3)
+        Plot.lrfs(psr, darkness=0.3)
     end
 
 

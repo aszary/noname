@@ -379,7 +379,7 @@ module Sparks
     - num: number of sparks at the inner track
 
     """
-    function init_sparks1_ellipse!(psr; rfs=[0.295, 0.5], num=3)
+    function init_sparks1_ellipse!(psr; rfs=[0.295, 0.5], num=3, spacing="t")
         sp = Vector{Float64}[]
         ef = psr.ellipse_fit
 
@@ -417,6 +417,14 @@ module Sparks
             return result
         end
 
+        # Select n_sparks points at equal intervals of the ellipse parameter t.
+        # Equal-t spacing is stationary under the solid-body rotation (uniform in t),
+        # i.e. the E×B drift for the Ruderman-Sutherland gap potential V ∝ 1 - rf²,
+        # so the pattern repeats exactly every P3 and no circulation sidebands arise.
+        function place_equal_t(rf, n_sparks)
+            return [ellipse_3d(2pi * k / n_sparks, rf) for k in 0:(n_sparks-1)]
+        end
+
         c1 = nothing
         for (i, rf) in enumerate(rfs)
             pts, arcs = track_arc_lengths(rf)
@@ -428,7 +436,13 @@ module Sparks
                 num_new = convert(Int, ceil(ci / c1) * num)
                 println("Track no. $i: $num_new sparks (arc ratio $(round(ci/c1, digits=2)))")
             end
-            append!(sp, place_equal_arc(pts, arcs, num_new))
+            if spacing == "arc"
+                append!(sp, place_equal_arc(pts, arcs, num_new))
+            elseif spacing == "t"
+                append!(sp, place_equal_t(rf, num_new))
+            else
+                error("Unknown spark spacing: $spacing. Use \"arc\" or \"t\".")
+            end
         end
 
         psr.sparks = sp
