@@ -247,7 +247,7 @@ module Plot
         fv = psr.fields
         for line in fv.magnetic_lines
             xs, ys, zs = line[1], line[2], line[3]
-            lines!(ax, xs, ys, zs, color=:blue, linewidth=1,fxaa=true)
+            lines!(ax, xs, ys, zs, color=:blue, linewidth=1)
         end
     end
 
@@ -795,6 +795,7 @@ module Plot
 
     end
 
+   
     function record_signal_mp4(psr; filename="pulsar_signal.mp4", framerate=15)
         println("Setting up the scene for recording...")
 
@@ -1022,42 +1023,23 @@ module Plot
             meshscatter!(ax, spark_positions_obs, markersize=spark_radii_obs, color=:red)
         end
 
-        # ==========================================
-        # 4. 2D Layout Setup (PA and Intensity)
-        # ==========================================
-        # Tworzymy GridLayout i rozciągamy go na całą szerokość (żeby nie był ściśnięty)
+        # DODANIE PANELU POLARYZACJI I SYGNAŁU
         gl_bottom = fig[2, 1] = GridLayout()
-        
-        ax_pa = Axis(gl_bottom[1, 1], ylabel="PA [deg]", title="Pulsar Polarization Profile (Numerical RVM)")
-        ax_signal = Axis(gl_bottom[2, 1], xlabel="Longitude [deg]", ylabel="Intensity", title="Pulse Intensity Profile")
+        ax_pa = Axis(gl_bottom[1, 1], ylabel="PA [deg]", title="Polarization (RVM)")
+        ax_signal = Axis(gl_bottom[2, 1], xlabel="Longitude [deg]", ylabel="Intensity")
         
         linkxaxes!(ax_pa, ax_signal) 
         rowsize!(fig.layout, 2, Relative(0.4)) 
 
-        # ==========================================
-        # 5. Plotting 2D Data
-        # ==========================================
         signal_obs = Observable(psr.signal[1, :])
-        
-        # Rysujemy szare punkty i pod spodem cienką linię trendu - dokładnie tak jak w study!
-        scatter!(ax_pa, psr.longitudes, psr.pa, color = (:grey, 0.5), markersize = 4)
-        lines!(ax_pa, psr.longitudes, psr.pa, color = (:grey, 0.3), linewidth = 1)
-        
-        # Obserwator do animacji zółtej kropki na krzywej RVM (jak w study)
-        current_pa_obs = Observable(Point2f[Point2f(psr.longitudes[1], psr.pa[1])])
-        scatter!(ax_pa, current_pa_obs, color = :yellow, markersize = 12, strokewidth = 1, strokecolor = :black)
-
-        # Rysowanie czarnej linii profilu sygnału
+        scatter!(ax_pa, psr.longitudes, psr.pa, color=:red, markersize=3)
         lines!(ax_signal, psr.longitudes, signal_obs, color=:black, linewidth=2)
 
-        # Dynamiczne limity dla sygnału
         signal_max = maximum(psr.signal)
         ylims!(ax_signal, -0.1*signal_max, signal_max * 1.1)
-        
-        # KLUCZOWA ZMIANA: Brak sztywnego ylims dla PA, Makie dobierze je samo!
-        autolimits!(ax_pa) 
+        ylims!(ax_pa, -100, 100) 
 
-        # Ustawienie kamery na czapę polarną (zostawiamy bez zmian)
+        # camera
         pc_xs, pc_ys, pc_zs = psr.pc[1], psr.pc[2], psr.pc[3]
         pc_center = [mean(pc_xs), mean(pc_ys), mean(pc_zs)]
         pc_dir = pc_center / norm(pc_center)
@@ -1066,8 +1048,6 @@ module Plot
 
         display(fig)
 
-
-        # 6. Pętla animacji (identyczna jak w Plot.signal)[cite: 4]
         n_steps = length(psr.sparks_locations)
         i = 1
         while (i < n_steps)
@@ -1221,6 +1201,70 @@ module Plot
         #save(filename, fig, pt_per_unit=1)        
         
     end
+
+    
+     function pulses_P3(psr; start=1, number=100, times=1, cmap="viridis", darkness=0.5, name_mod="PSR_NAME", show_=false)
+
+        data = psr.pulses
+
+        # PREPARE DATA
+        num, bins = size(data)
+        if number === nothing
+            number = num - start + 1
+        end
+
+        da = data[start:start+number-1, :]
+        da = repeat(da, times) # repeat data X times
+        
+        # Wyliczenie dokładnych wektorów osi Y (numery pulsów)
+        total_pulses = size(da, 1)
+        pulse_indices = collect(start : start+total_pulses-1)
+
+        average = Tools.average_profile(da)
+        intensity, pulses_y = Tools.pulses_intensity(da)
+        intensity .-= minimum(intensity)
+        intensity ./= maximum(intensity)
+
+        pulses_y .+= start - 1  # julia
+
+        # CREATE FIGURE
+        fig, p = triple_panels()
+        p.left.ylabel = L"Pulse number $$"
+        p.left.xlabel = L"intensity $$"
+        p.bottom.xlabel = L"longitude ($^\circ$)"
+
+        # ========================================================
+        # ODWRÓCENIE OSI Y - KLUCZOWE DLA ZMIENNEGO P3!
+        # Dzięki temu czas (pulsy) leci z góry na dół, co jest
+        # absolutnym standardem w wykresach subpulse drift.
+        # ========================================================
+        p.left.yreversed = true
+        p.center.yreversed = true
+
+        # PLOTTING DATA
+        lines!(p.left, intensity, pulses_y, color=:grey, linewidth=0.5)
+        ylims!(p.left, [pulse_indices[1] - 0.5, pulse_indices[end] + 0.5])
+
+        # ========================================================
+        # POPRAWIONY HEATMAP - ŁĄCZY DANE Z OSIAMI X I Y
+        # Przekazanie `psr.longitudes` sprawia, że plamy z heat-mapy
+        # idealnie zgrywają się w pionie ze średnim profilem na dole!
+        # ========================================================
+        heatmap!(p.center, psr.longitudes, pulse_indices, transpose(da), colormap=cmap)
+
+        lines!(p.bottom, psr.longitudes, average, color=:grey, linewidth=0.5)
+        xlims!(p.bottom, [psr.longitudes[1], psr.longitudes[end]])
+
+        screen = display(fig)
+        readline(stdin; keep=false)
+        #resize!(screen, 500, 800)
+        
+        #filename = "$outdir/$(name_mod)_single.pdf"
+        #println(filename)
+        #save(filename, fig, pt_per_unit=1)        
+        
+    end
+
 
 
     struct Panels
@@ -1572,274 +1616,6 @@ module Plot
 
         display(fig)
     end
-
-
-    function average_stokes(psr)
-        avg_I = vec(mean(psr.pulses, dims=1))
-        avg_Q = vec(mean(psr.stokes_q[1:psr.npulse, :], dims=1))
-        avg_U = vec(mean(psr.stokes_u[1:psr.npulse, :], dims=1))
-        avg_V = vec(mean(psr.stokes_v[1:psr.npulse, :], dims=1))
-        avg_L = sqrt.(avg_Q .^ 2 .+ avg_U .^ 2)
-
-        size_inches = (12 / 2.54, 16 / 2.54)
-        size_pt = 72 .* size_inches
-        fig = Figure(size=size_pt, fontsize=8, figure_padding=(4, 8, 4, 4))
-
-        ax_pa = Axis(fig[1, 1], ylabel="PA [deg]",
-                     xticklabelsvisible=false, xminorticksvisible=true, yminorticksvisible=true)
-        ax_flux = Axis(fig[2, 1], xlabel=L"Longitude ($^\circ$)", ylabel="Flux Density",
-                       xminorticksvisible=true, yminorticksvisible=true)
-
-        scatter!(ax_pa, psr.longitudes, psr.pa, color=:black, markersize=3)
-
-        # Test 3 & 4: RVM overlay + slope comparison at actual inflection point
-        α = deg2rad(psr.alpha)
-        β = deg2rad(psr.beta)
-        ζ = α + β
-        φ = deg2rad.(psr.longitudes)
-        n = length(psr.longitudes)
-        dφ_deg = psr.longitudes[2] - psr.longitudes[1]
-        # numerical dPA/dφ at every bin (central difference, skip edges)
-        dpa = [(psr.pa[i+1] - psr.pa[i-1]) / (2 * dφ_deg) for i in 2:n-1]
-        # inflection point = steepest slope (max |dPA/dφ|)
-        infl = argmax(abs.(dpa)) + 1  # +1 because dpa is indexed from bin 2
-        pa0 = psr.pa[infl]
-        φ0  = φ[infl]
-        # RVM centred on the inflection longitude
-        rvm_raw = rad2deg.(atan.(sin.(α) .* sin.(φ .- φ0),
-                                 sin.(ζ) .* cos.(α) .- cos.(ζ) .* sin.(α) .* cos.(φ .- φ0)))
-        slope_numerical  = dpa[infl - 1]  # dpa is offset by 1
-        rvm_sign = sign(slope_numerical) != sign(sin(α) / sin(β)) ? -1.0 : 1.0
-        pa_rvm = pa0 .+ rvm_sign .* rvm_raw
-        slope_analytical = rvm_sign * sin(α) / sin(β)
-        lines!(ax_pa, psr.longitudes, pa_rvm, color=:orange, linewidth=1.5, label="RVM")
-        vlines!(ax_pa, [psr.longitudes[infl]], color=:blue, linewidth=1, linestyle=:dash)
-        scatter!(ax_pa, [psr.longitudes[infl]], [pa0], color=:blue, markersize=7, marker=:diamond, label="inflection")
-        axislegend(ax_pa, position=:rt, framevisible=false, labelsize=8)
-
-        println("PA slope at inflection point (lon=$(round(psr.longitudes[infl], digits=2))°):")
-        println("  analytical  sin(α)/sin(β) = $(round(slope_analytical, digits=4)) deg/deg")
-        println("  numerical   dPA/dφ        = $(round(slope_numerical,  digits=4)) deg/deg")
-        println("  |difference|              = $(round(abs(slope_numerical - slope_analytical), digits=4)) deg/deg")
-        β_eff = rad2deg(asin(abs(sin(α) / slope_numerical)))
-        println("  effective β at r_em       = $(round(β_eff, digits=4))°  (input β = $(psr.beta)°)")
-
-        lines!(ax_flux, psr.longitudes, avg_I, color=:black,  linewidth=1.5, label="I")
-        lines!(ax_flux, psr.longitudes, avg_L, color=:red,    linewidth=1.5, label="L")
-        lines!(ax_flux, psr.longitudes, avg_V, color=:blue,   linewidth=1.5, label="V")
-
-        xlims!(ax_pa,   psr.longitudes[1], psr.longitudes[end])
-        xlims!(ax_flux, psr.longitudes[1], psr.longitudes[end])
-
-        axislegend(ax_flux, position=:rt, framevisible=false, labelsize=8)
-
-        rowsize!(fig.layout, 1, Relative(0.3))
-        rowgap!(fig.layout, 3)
-
-        display(fig)
-    end
-
-
-    function polarization_vector_study(psr; delay=0.05)
-        fig = Figure(size = (1400, 800))
-        
-        sphere_mesh_left = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
-        sphere_mesh_right = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
-        
-        axis_scale = 6.0
-        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) .* axis_scale
-        mag_vec_static = Functions.spherical2cartesian(psr.magnetic_axis) .* axis_scale
-
-        mid_idx = div(length(psr.line_of_sight), 2)
-        p_los_center = psr.line_of_sight[mid_idx]
-
-        norm_los = norm(p_los_center)
-        dir_los = [p_los_center[1]/norm_los, p_los_center[2]/norm_los, p_los_center[3]/norm_los]
-        p_obs_right_static = Point3f(dir_los[1] * psr.r * 4.5, dir_los[2] * psr.r * 4.5, dir_los[3] * psr.r * 4.5)
-
-        vec_len_left = psr.r * 10.0  
-        vec_len_right = psr.r * 2.0  
-        
-        # ==========================================
-        # PANEL 1 (Top Left): Rotating Frame
-        # ==========================================
-        ax1 = Axis3(fig[1, 1], title = "Rotating Frame (Telescope Orbits)")
-        mesh!(ax1, sphere_mesh_left, color = (:teal, 0.7), transparency = true)
-        
-        for line in psr.los_lines
-            lines!(ax1, line[1], line[2], line[3], color = (:grey, 0.15), linewidth = 1)
-        end
-
-        # Fixed arrow sizes for slim proportions
-        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(rot_vec...)], color = :red, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
-        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(mag_vec_static...)], color = :blue, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
-        
-        active_line_obs_left = Observable(Point3f.(psr.los_lines[1][1], psr.los_lines[1][2], psr.los_lines[1][3]))
-        los_obs_left = Observable(Point3f(psr.los_lines[1][1][1], psr.los_lines[1][2][1], psr.los_lines[1][3][1]))
-        
-        pol_pos_left = Observable([Point3f(los_obs_left[])])
-        pol_dir_left = Observable([Vec3f(0,0,0)])
-        
-        lines!(ax1, active_line_obs_left, color = :blue, linewidth = 3)
-        scatter!(ax1, los_obs_left, color=:red, marker=:diamond, markersize=12)
-        
-        # Yellow polarization vector
-        arrows3d!(ax1, pol_pos_left, pol_dir_left, color = :yellow, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
-
-        # ==========================================
-        # PANEL 2 (Top Right): Observer Frame
-        # ==========================================
-        ax2 = Axis3(fig[1, 2], aspect = :data, title = "Observer Frame (Star Rotates)")
-        mesh!(ax2, sphere_mesh_right, color = (:teal, 0.7), transparency = true)
-        
-        arrows3d!(ax2, [Point3f(0,0,0)], [Vec3f(rot_vec...)], color = :red, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
-        arrows3d!(ax2, [Point3f(0,0,0)], [Vec3f(p_obs_right_static...)], color = :green, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
-        scatter!(ax2, [p_obs_right_static], color=:red, marker=:diamond, markersize=12)
-        
-        mag_pos_right = Observable([Point3f(0,0,0)])
-        mag_dir_right = Observable([Vec3f(mag_vec_static...)])
-        
-        pol_pos_right = Observable([p_obs_right_static])
-        pol_dir_right = Observable([Vec3f(0,0,0)])
-        
-        arrows3d!(ax2, mag_pos_right, mag_dir_right, color = :blue, shaftradius=0.01, tipradius=0.03, tiplength=0.1)
-        arrows3d!(ax2, pol_pos_right, pol_dir_right, color = :yellow, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
-
-        lim = psr.r * 6.0
-        limits!(ax2, -lim, lim, -lim, lim, -lim, lim)
-
-        # ==========================================
-        # PANEL 3 (Bottom): RVM Curve
-        # ==========================================
-        ax_pa = Axis(fig[2, 1:2], xlabel = "Longitude [deg]", ylabel = "PA [deg]", title = "RVM Polarization Curve")
-        scatter!(ax_pa, psr.longitudes, psr.pa, color = (:grey, 0.5), markersize = 4)
-        
-        current_pa_obs = Observable(Point2f[Point2f(psr.longitudes[1], psr.pa[1])])
-        scatter!(ax_pa, current_pa_obs, color = :yellow, markersize = 12, strokewidth = 1, strokecolor = :black)
-
-        rowsize!(fig.layout, 1, Relative(0.65))
-        display(fig)
-
-        # ==========================================
-        # ANIMATION LOOP
-        # ==========================================
-        n_bins = length(psr.longitudes)
-        
-        while events(fig).window_open[]
-            for i in 1:n_bins
-                if !events(fig).window_open[] break end
-                
-                phi_rad = deg2rad(psr.longitudes[i])
-                pa_rad = deg2rad(psr.pa[i])
-                
-                # --- Update Left Panel ---
-                line_data = psr.los_lines[i]
-                active_line_obs_left[] = Point3f.(line_data[1], line_data[2], line_data[3])
-                
-                p_los_left = Point3f(line_data[1][1], line_data[2][1], line_data[3][1])
-                los_obs_left[] = p_los_left
-                
-                dx_left = vec_len_left * cos(pa_rad)
-                dy_left = vec_len_left * sin(pa_rad)
-                
-                pol_pos_left[] = [p_los_left]
-                pol_dir_left[] = [Vec3f(dx_left, dy_left, 0.0)]
-                
-                # --- Update Right Panel ---
-                mag_vec_rotated = Functions.rotate_vector(mag_vec_static, rot_vec, -phi_rad)
-                mag_dir_right[] = [Vec3f(mag_vec_rotated...)]
-                
-                dx_right = vec_len_right * cos(pa_rad)
-                dy_right = vec_len_right * sin(pa_rad)
-                
-                pol_dir_right[] = [Vec3f(dx_right, dy_right, 0.0)]
-                
-                # --- Update RVM Plot ---
-                current_pa_obs[] = [Point2f(psr.longitudes[i], psr.pa[i])]
-                
-                sleep(delay)
-            end
-        end
-    end
-
-
-
-
-
-    """
-    closed_lines(psr)
-
-    Visualizes the pulsar magnetosphere with:
-    - Stellar surface (teal sphere) 
-    - Rotation axis (red) and Magnetic axis (blue)
-    - Anomalous dipole moments (orange arrows)
-    - General/Closed anomaly-aware field lines (blue) 
-    - Open field lines (green) 
-    - Line-of-sight paths (red) 
-    """
-    function closed_lines(psr)
-        # 1. Draw the stellar surface
-        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
-        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
-
-        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) 
-        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis) 
-        
-
-        rot_scaled = rot_vec .* 0.99
-        mag_scaled = mag_vec .* 0.99
-
-        arrows3d!(ax, [0, 0], [0, 0], [0, 0],
-                [rot_scaled[1], mag_scaled[1]],
-                [rot_scaled[2], mag_scaled[2]],
-                [rot_scaled[3], mag_scaled[3]],
-                color = [:red, :blue])
-        #drawing anomalies
-        if hasproperty(psr, :nsfield) && hasproperty(psr.nsfield, :anomalies)
-            for a in psr.nsfield.anomalies
-                pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
-                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
-
-                dir_mag = norm(dir)
-                if dir_mag > 0
-                    dir_scaled = dir ./ dir_mag .* (psr.r * a.m * 10)
-                    arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]],
-                            [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]],
-                            color=:orange)
-                end
-            end
-        end
-
-        # 4. Draw closed field lines (blue)
-        for line in psr.nsfield.magnetic_lines
-            lines!(ax, line[1], line[2], line[3], color=:blue, linewidth=1, fxaa=true )
-        end
-
-        # 5. Draw open field lines (green)
-        if !isnothing(psr.open_lines)
-            for ml in psr.open_lines 
-                lines!(ax, ml[1], ml[2], ml[3], color=:green, linewidth=2,fxaa=true) 
-            end # <--- End of open lines loop
-        end # <--- End of if block
-
-        # 6. Draw line-of-sight magnetic field lines (red)
-        if !isnothing(psr.los_lines) 
-            for line in psr.los_lines
-                lines!(ax, line[1], line[2], line[3], color=:red, linewidth=1.5,fxaa=true) 
-                # Mark the specific emission point/cross at the end of the trace
-                scatter!(ax, line[1][end], line[2][end], line[3][end], color=:red, marker=:xcross)
-            end # <--- End of LOS lines loop
-        end # <--- End of if block
-
-        # Adjust camera for a close 3D view of the surface and anomalies
-        cam3d!(ax.scene, eyeposition=[psr.r*2.5, psr.r*2.5, psr.r*2.5], 
-               lookat=[0, 0, 0], upvector=[0,0,1], center=false)
-
-        display(fig) 
-    end
-
-
-
 
 
 end # module end

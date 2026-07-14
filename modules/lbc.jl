@@ -4,7 +4,6 @@ module LBC
 using GLMakie
 using LinearAlgebra
 
-
 # -----------------------------------------------------------------------------
 # coortrans — 2-D coordinate rotation by angle θ (inverse / transpose matrix)
 #
@@ -265,12 +264,17 @@ function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45
     end
 
     mean_outer_radius = 0.5 * (a_cap + (a_cap - 2 * a_sprk))
-    del_theta_drift   = h_drft / mean_outer_radius
 
     positions = Vector{Vector{Vector{Float64}}}()
     sizes     = Vector{Vector{Float64}}()
 
     for step in 1:n_steps
+        
+        # =========================================================
+        # KLUCZOWA ZMIANA: POBIERANIE WŁAŚCIWEGO h_drft DLA TEGO KROKU
+        # =========================================================
+        current_h_drft = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
+        del_theta_drift = current_h_drft / mean_outer_radius
 
         # advance angles by one drift step
         for ring in 1:N_trk
@@ -296,8 +300,9 @@ function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45
             end
         end
 
+        # PRZEKAZUJEMY DO SPARKCONFIG TYLKO JEDNĄ, SKALARNA WARTOSC (current_h_drft)
         sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
-                                 h_sprk, h_drft, a_cap, b_cap, th_cap,
+                                 h_sprk, current_h_drft, a_cap, b_cap, th_cap,
                                  co_angl, x_cent, y_cent, N_trk, trk_max)
         sparks_3d = Vector{Vector{Float64}}()
         for i in eachindex(sx)
@@ -319,21 +324,6 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
     th_cap = deg2rad(th_cap)
     co_angl = deg2rad(co_angl)
 
-    #=
-    # Hard-coded defaults 
-    ntime   = 200      # number of animation frames
-    th_cap  = deg2rad(30.0)      # polar cap tilt angle [rad]  (0 = circular cap in display frame)
-    a_cap   = 15.0     # polar cap major semi-axis [m]
-    b_cap   = 5.0     # polar cap minor semi-axis [m]  (= a_cap → circular)
-    co_angl = deg2rad(45.0)      # co-rotation phase offset [rad]
-
-    # -------------------------------------------------------------------------
-    # Derived / physical parameters
-    # -------------------------------------------------------------------------
-    h_sprk = 2.6   # spark semi-axis (half-size) [m]
-    h_drft = 0.1   # raster grid step and drift increment per frame [m]
-    =#
-
     # Spark ellipticity follows the cap ellipticity
     a_sprk = h_sprk
     b_sprk = a_sprk * b_cap / a_cap
@@ -350,8 +340,6 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
 
     # -------------------------------------------------------------------------
     # Angular spacing between neighbouring sparks on each ring.
-    # The number of sparks N_s on a ring is estimated from ring area / spark area
-    # (with a 0.75 packing factor), giving spacing 2π / N_s.
     # -------------------------------------------------------------------------
     theta_sp = zeros(Float64, N_trk)
     let a_o = a_cap, a_i = a_o - 2*a_sprk,
@@ -366,8 +354,6 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
 
     # -------------------------------------------------------------------------
     # Flat (1-D) storage for angular positions of sparks on each ring.
-    # Ring `ring` (1-based) occupies slice (ring-1)*trk_max+1 .. (ring-1)*trk_max+trk_max.
-    # trk_max is an upper bound on how many sparks can fit on a single half-ring.
     # -------------------------------------------------------------------------
     trk_max = floor(Int,
         0.75 * (a_cap*b_cap - (a_cap - 2*a_sprk)*(b_cap - 2*b_sprk)) /
@@ -381,8 +367,6 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
 
     # -------------------------------------------------------------------------
     # Initialise spark angular positions.
-    # Upper track starts at π and steps down by theta_sp toward 0.
-    # Lower track starts at π and steps up by theta_sp toward 2π.
     # -------------------------------------------------------------------------
     for ring in 1:N_trk
         u_off = (ring - 1) * trk_max
@@ -434,22 +418,20 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
 
     display(fig)
 
-    # -------------------------------------------------------------------------
-    # Angular drift step per frame.
-    # Uses the average track radius of the outermost ring (faithful to the C
-    # original, where a_out/a_in are not recomputed inside the per-spark loop).
-    # -------------------------------------------------------------------------
     mean_outer_radius = 0.5 * (a_cap + (a_cap - 2 * a_sprk))
-    del_theta_drift   = h_drft / mean_outer_radius   # arc length → angle [rad/frame]
 
     # =========================================================================
     # Time-evolution loop
     # =========================================================================
     for step in 1:ntime
+        
+        # POBIERANIE DYNAMICZNEGO DRFITU DO ANIMACJI W RAMCE LBC
+        current_h_drft = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
+        del_theta_drift = current_h_drft / mean_outer_radius
 
         # Compute spark positions and sizes for the current angles
         sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
-                                  h_sprk, h_drft, a_cap, b_cap, th_cap,
+                                  h_sprk, current_h_drft, a_cap, b_cap, th_cap,
                                   co_angl, x_cent, y_cent, N_trk, trk_max)
 
         # Push new spark data to the plot and update the frame counter in the title
@@ -461,9 +443,6 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
 
         # ---------------------------------------------------------------------
         # Advance spark angles by one drift step and rebuild the spark lists.
-        # Upper track drifts clockwise (angle decreases).
-        # Lower track drifts anti-clockwise (angle increases).
-        # When the lead spark passes the boundary it wraps by +/- theta_sp.
         # ---------------------------------------------------------------------
         for ring in 1:N_trk
             u_off = (ring - 1) * trk_max
