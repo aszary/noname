@@ -368,8 +368,9 @@ module NoName
         Signal.generate_signal_ellipse_P3(psr; noise_level=psr.noise_level) 
         Signal.generate_pulses(psr)
 
-        Plot.signal(psr)
-        #Plot.pulses_P3(psr)
+        #Plot.signal(psr)
+        Plot.pulses_P3(psr)
+        Plot.lrfs(psr)
     end
 
     
