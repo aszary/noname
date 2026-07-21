@@ -3,7 +3,7 @@ output/*
 # sync this file
 !output/README
 
-input/*
+!input/*
 # sync this file
 !input/README
 !input/1.json
