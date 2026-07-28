@@ -106,7 +106,7 @@ module NoName
             return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
         end
         function Pulsar(json_file)
-            d = JSON3.read(json_file)
+            d = JSON3.read(read(json_file, String))
             #open("input/test.json", "w") do io
             #    JSON3.pretty(io, JSON3.write(d))
             #end
@@ -263,7 +263,8 @@ module NoName
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
         #psr = Pulsar("input/11.json")
-        psr = Pulsar("input/8.json")
+        #psr = Pulsar("input/8.json")
+        psr = Pulsar("input/10.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
