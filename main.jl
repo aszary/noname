@@ -55,7 +55,7 @@ module NoName
         pulses # single pulses generated from signal
         longitudes # single pulse longitudes
         ellipse_fit # ellipse fit to the polar cap points
-        p3 # drift repetation time
+        p3 # drift repetation time, one value per pulse (Vector{Float64}, length npulse); constant P3 is stored as a filled vector
         npulse # number of single pulses
         noise_level # noise level in single pulses
         output_num # output directory number for save_sparks/load_sparks
@@ -98,8 +98,8 @@ module NoName
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
-            p3 = 10
             npulse = 500
+            p3 = fill(10.0, npulse)
             noise_level = 0.05
             output_num = 1
             sparks_config = DEFAULT_SPARKS_CONFIG
@@ -147,8 +147,14 @@ module NoName
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
-            p3 = d.psr.P3
             npulse = d.psr.npulse
+
+            # P3 can be given as a single constant value, or as an array of
+            # values (one per pulse/period) to model a changing P3. Either way
+            # it is stored as a Vector{Float64} of length npulse.
+            raw_p3 = d.psr.P3
+            p3 = isa(raw_p3, AbstractArray) ? Float64.(collect(raw_p3)) : fill(Float64(raw_p3), npulse)
+
             noise_level = d.psr.noise_level
             output_num = d.psr.output_num
             sparks_config = haskey(d, :sparks) ? d.sparks : DEFAULT_SPARKS_CONFIG

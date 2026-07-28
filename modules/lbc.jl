@@ -265,12 +265,16 @@ function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45
     end
 
     mean_outer_radius = 0.5 * (a_cap + (a_cap - 2 * a_sprk))
-    del_theta_drift   = h_drft / mean_outer_radius
 
     positions = Vector{Vector{Vector{Float64}}}()
     sizes     = Vector{Vector{Float64}}()
 
     for step in 1:n_steps
+
+        # h_drft may be a single constant value, or an array with one value
+        # per step (to follow a P3 that changes from pulse to pulse)
+        current_h_drft  = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
+        del_theta_drift = current_h_drft / mean_outer_radius
 
         # advance angles by one drift step
         for ring in 1:N_trk
@@ -297,7 +301,7 @@ function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45
         end
 
         sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
-                                 h_sprk, h_drft, a_cap, b_cap, th_cap,
+                                 h_sprk, current_h_drft, a_cap, b_cap, th_cap,
                                  co_angl, x_cent, y_cent, N_trk, trk_max)
         sparks_3d = Vector{Vector{Float64}}()
         for i in eachindex(sx)
@@ -440,16 +444,20 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
     # original, where a_out/a_in are not recomputed inside the per-spark loop).
     # -------------------------------------------------------------------------
     mean_outer_radius = 0.5 * (a_cap + (a_cap - 2 * a_sprk))
-    del_theta_drift   = h_drft / mean_outer_radius   # arc length → angle [rad/frame]
 
     # =========================================================================
     # Time-evolution loop
     # =========================================================================
     for step in 1:ntime
 
+        # h_drft may be a single constant value, or an array with one value
+        # per frame (to follow a P3 that changes from pulse to pulse)
+        current_h_drft  = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
+        del_theta_drift = current_h_drft / mean_outer_radius   # arc length → angle [rad/frame]
+
         # Compute spark positions and sizes for the current angles
         sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,
-                                  h_sprk, h_drft, a_cap, b_cap, th_cap,
+                                  h_sprk, current_h_drft, a_cap, b_cap, th_cap,
                                   co_angl, x_cent, y_cent, N_trk, trk_max)
 
         # Push new spark data to the plot and update the frame counter in the title

@@ -895,11 +895,16 @@ module Plot
         # PREPARE DATA
         num, bins = size(data)
         if number === nothing
-            number = num - start  # missing one?
+            number = num - start + 1
         end
 
         da = data[start:start+number-1, :]
         da = repeat(da, times) # repeat data X times
+
+        # exact pulse numbers for the Y axis
+        total_pulses = size(da, 1)
+        pulse_indices = collect(start : start+total_pulses-1)
+
         average = Tools.average_profile(da)
         intensity, pulses = Tools.pulses_intensity(da)
         intensity .-= minimum(intensity)
@@ -913,12 +918,19 @@ module Plot
         p.left.xlabel = L"intensity $$"
         p.bottom.xlabel = L"longitude ($^\circ$)"
 
+        # reverse the Y axis so that pulse number (time) increases top to
+        # bottom, the standard convention for subpulse drift diagrams
+        p.left.yreversed = true
+        p.center.yreversed = true
+
         # PLOTTING DATA
         lines!(p.left, intensity, pulses, color=:grey, linewidth=0.5)
         #xlims!(left, [0.01, 1.01])
-        ylims!(p.left, [pulses[1] - 0.5, pulses[end] + 0.5])
+        ylims!(p.left, [pulse_indices[1] - 0.5, pulse_indices[end] + 0.5])
 
-        heatmap!(p.center, transpose(da))
+        # pass longitude/pulse axes explicitly so the heatmap lines up with
+        # the average profile and pulse-number panels
+        heatmap!(p.center, psr.longitudes, pulse_indices, transpose(da), colormap=cmap)
 
         lines!(p.bottom, psr.longitudes, average, color=:grey, linewidth=0.5)
         xlims!(p.bottom, [psr.longitudes[1], psr.longitudes[end]])
