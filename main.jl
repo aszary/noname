@@ -264,7 +264,10 @@ module NoName
         #psr = Pulsar("input/4.json")
         #psr = Pulsar("input/11.json")
         #psr = Pulsar("input/8.json")
-        psr = Pulsar("input/10.json")
+        #psr = Pulsar("input/10.json")
+        #psr = Pulsar("input/13.json")
+        #psr = Pulsar("input/14.json")
+        psr = Pulsar("input/15.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
@@ -306,7 +309,7 @@ module NoName
         Signal.generate_pulses(psr)
 
 
-        #Plot.signal(psr)
+        Plot.signal(psr)
         Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
