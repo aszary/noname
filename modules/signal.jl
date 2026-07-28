@@ -46,8 +46,9 @@
                     else
                         sigma = psr.spark_radii[j][k] / 3.72
                     end
+                    amp = (!isnothing(psr.amplitudes) && !isempty(psr.amplitudes)) ? psr.amplitudes[mod1(k, length(psr.amplitudes))] : 1.0
                     dist = norm(p - s)
-                    psr.signal[j, i] += exp(-dist^2 / (2 * sigma^2))
+                    psr.signal[j, i] += amp * exp(-dist^2 / (2 * sigma^2))
                 end
             end
         end
@@ -445,7 +446,9 @@ end
                         base_sigmas[j][k] * (r_dir / r_avg)
                     end
 
-                    psr.signal[j, i] += exp(-dist_ps^2 / (2 * local_sigma^2))
+                    amp = (!isnothing(psr.amplitudes) && !isempty(psr.amplitudes)) ? psr.amplitudes[mod1(k, length(psr.amplitudes))] : 1.0
+                    dist = norm(p - s)
+                    psr.signal[j, i] += amp * exp(-dist^2 / (2 * local_sigma^2))
                 end
             end
         end
