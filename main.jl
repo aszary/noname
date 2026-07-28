@@ -256,7 +256,8 @@ module NoName
         #psr = Pulsar("input/2.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
-        psr = Pulsar("input/11.json")
+        #psr = Pulsar("input/11.json")
+        psr = Pulsar("input/8.json")
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
@@ -305,6 +306,7 @@ module NoName
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
         Plot.lrfs(psr, darkness=0.3)
+        Plot.two_dfs(psr, darkness=0.3)
     end
 
 

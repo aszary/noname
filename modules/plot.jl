@@ -1609,5 +1609,158 @@ module Plot
     end
 
 
+"""
+    two_dfs(psr; mask_radius=2, darkness=0.8, feature_window=5)
+    
+    Generates a Two-Dimensional Fluctuation Spectrum (2DFS) plot with an isolated 
+    feature integration for the bottom panel.
+    
+    Layout improvements based on TPA conventions:
+    - Uses a color scale (:viridis) for better dynamic range visibility.
+    - Bottom panel integrates only the dominant spectral feature in 1/P3, 
+      rather than the entire noisy axis.
+    - Horizontal lines highlight the integration window.
+    """
+    function two_dfs(psr; mask_radius=2, darkness=0.8, feature_window=5)
+        # 1. Retrieve and center data
+        data = psr.pulses
+        n_pulses, n_bins = size(data)
+        
+        avg_profile = mean(data, dims=1)
+        data_centered = data .- avg_profile
+        
+        # 2. 2D Discrete Fourier Transform
+        fft_2d = fft(data_centered)
+        power_2d = abs2.(fftshift(fft_2d))
+        
+        # 3. Axis calibration
+        nu_3_full = fftshift(fftfreq(n_pulses))
+        d_lon = psr.longitudes[2] - psr.longitudes[1]
+        nu_2_full = fftshift(fftfreq(n_bins)) .* (360.0 / d_lon)
+        
+        # Keep only the positive half of 1/P3 (0.0 to 0.5 cpp)
+        idx_nu3_pos = findall(x -> x >= 0.0, nu_3_full)
+        nu_3 = nu_3_full[idx_nu3_pos]
+        power_half = power_2d[idx_nu3_pos, :]
+        
+        # 4. Mask the DC component
+        cx_2 = argmin(abs.(nu_2_full))
+        
+        rx = min(mask_radius, size(power_half, 1) - 1)
+        ry = min(mask_radius, cx_2 - 1, length(nu_2_full) - cx_2)
+        
+        power_half[1:1+rx, cx_2-ry:cx_2+ry] .= 0.0
+        
+        # --- ADDED CODE: Determine P2 and P3 from the 2DFS maximum ---
+        peak_cartesian = argmax(power_half)
+        peak_idx_3 = peak_cartesian[1]
+        peak_idx_2 = peak_cartesian[2]
+
+        f_3_peak = nu_3[peak_idx_3]
+        f_2_peak = nu_2_full[peak_idx_2]
+
+        # Calculate physical values (P_3 in periods, P_2 in degrees)
+        P3_val = f_3_peak != 0.0 ? 1.0 / f_3_peak : Inf
+        P2_val = f_2_peak != 0.0 ? 360.0 / abs(f_2_peak) : Inf
+
+        println("\n--------------------------------------------------")
+        println("Detected main 2DFS peak:")
+        println(" Temporal frequency (1/P3): $(round(f_3_peak, digits=4)) cpp => P3 = $(round(P3_val, digits=2)) periods (P_0)")
+        println(" Spatial frequency (1/P2): $(round(f_2_peak, digits=4)) cpp => P2 = $(round(P2_val, digits=2)) degrees")
+        println(" Drift direction: $(f_2_peak < 0 ? "negative (-)" : "positive (+)")")
+        println("--------------------------------------------------\n")
+        # -------------------------------------------------------------
+
+        # 5. Horizontally integrated spectrum (left panel)
+        int_power_3 = vec(sum(power_half, dims=2))
+        
+        # --- IMPROVEMENT: Feature detection for bottom plot ---
+        # Find the dominant frequency peak in 1/P3 (ignoring the DC mask region)
+        search_start = 1 + rx + 1
+        if search_start <= length(int_power_3)
+            peak_idx = argmax(int_power_3[search_start:end]) + search_start - 1
+            
+            # Define window around the peak
+            win_start = max(search_start, peak_idx - feature_window)
+            win_end = min(length(int_power_3), peak_idx + feature_window)
+            
+            # Vertically integrate ONLY the dominant feature slice
+            int_power_2 = vec(sum(power_half[win_start:win_end, :], dims=1))
+            
+            peak_freq_start = nu_3[win_start]
+            peak_freq_end = nu_3[win_end]
+        else
+            int_power_2 = vec(sum(power_half, dims=1))
+            peak_freq_start = 0.0
+            peak_freq_end = 0.5
+        end
+        
+        # 6. Plotting
+        size_inches = (10 / 2.54, 10 / 2.54)
+        dpi = 150
+        size_pt = dpi .* size_inches
+        
+        fig = Figure(size=size_pt, fontsize=10)
+        
+        # Left Panel
+        ax_left = Axis(fig[1:4, 1], ylabel=L"Temporal Frequency $1/P_3$ [cpp]", xlabel="Power",
+                       xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_left, int_power_3, nu_3, color=:gray30, linewidth=1.5)
+        ax_left.xreversed = true 
+        ylims!(ax_left, 0.0, 0.5)
+        
+        # Main Panel (Heatmap)
+        vmax = darkness * maximum(power_half)
+        ax_main = Axis(fig[1:4, 2:5], yticklabelsvisible=false, xticklabelsvisible=false,
+                       xminorticksvisible=true, yminorticksvisible=true)
+                       
+        # Changed to Viridis colormap for better faint feature distinction
+        heatmap!(ax_main, nu_2_full, nu_3, transpose(power_half), 
+                 colormap=:viridis, colorrange=(0, vmax))
+                 
+        # --- ADDED CODE: Draw a marker at the maximum intensity location ---
+        if f_2_peak != 0.0 && f_3_peak != 0.0
+            scatter!(ax_main, [f_2_peak], [f_3_peak], color=:red, marker=:cross, markersize=15)
+        end
+        # -------------------------------------------------------------------
+                 
+        # Draw horizontal lines to indicate the integration window
+        if peak_freq_start != 0.0
+            hlines!(ax_main, [peak_freq_start, peak_freq_end], color=:white, linestyle=:dot, linewidth=1.2)
+            hlines!(ax_left, [peak_freq_start, peak_freq_end], color=:red, linestyle=:dot, linewidth=1.2)
+        end
+        
+        ylims!(ax_main, 0.0, 0.5)
+        xlims!(ax_main, nu_2_full[1], nu_2_full[end])
+        
+        # Bottom Panel
+        ax_bottom = Axis(fig[5, 2:5], xlabel=L"Spatial Frequency $1/P_2$ [cpp]", ylabel="Power",
+                         xminorticksvisible=true, yminorticksvisible=true)
+                         
+        # Original integrated spectrum (from the feature window)
+        lines!(ax_bottom, nu_2_full, int_power_2, color=:black, linewidth=1.5)
+        
+        # Mirrored spectrum for drift asymmetry
+        lines!(ax_bottom, -nu_2_full, int_power_2, color=:red, linestyle=:dash, linewidth=1.2)
+        xlims!(ax_bottom, nu_2_full[1], nu_2_full[end])
+        
+        # Linking and formatting
+        linkyaxes!(ax_main, ax_left)
+        linkxaxes!(ax_main, ax_bottom)
+        
+        hidespines!(ax_main, :l, :b)
+        hidespines!(ax_left, :r)
+        hidespines!(ax_bottom, :t)
+        hidexdecorations!(ax_main, ticks=false, grid=false, minorticks=false)
+        hideydecorations!(ax_main, ticks=false, grid=false, minorticks=false)
+        
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+        
+        display(fig)
+        return fig
+    end
+
+
 
 end # module end
