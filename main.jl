@@ -336,12 +336,12 @@ module NoName
     end
 
     function generate_signal_P3()
-        psr = Pulsar("input/11.json") #constant P3 solid_body
+        #psr = Pulsar("input/11.json") #constant P3 solid_body
         #psr = Pulsar("input/8.json") #sinusoidal P3 solid_body
         #psr = Pulsar("input/10.json") #table of values P3 solid_body
 
         #psr = Pulsar("input/12.json") #constant P3 lbc
-        #psr = Pulsar("input/13.json") #sinusoidal P3 lbc
+        psr = Pulsar("input/13.json") #sinusoidal P3 lbc
         #psr = Pulsar("input/14.json") #table of values P3 lbc
 
         
@@ -370,7 +370,7 @@ module NoName
 
         #Plot.signal(psr)
         Plot.pulses_P3(psr)
-        Plot.lrfs(psr)
+        Plot.lrfs(psr, darkness=0.3)
     end
 
     
