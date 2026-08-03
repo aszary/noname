@@ -60,6 +60,7 @@ module NoName
         noise_level # noise level in single pulses
         output_num # output directory number for save_sparks/load_sparks
         sparks_config # spark simulation model and its parameters
+        amplitudes # spark amplitudes
         function Pulsar()
             r = 10_000 # 10 km in merters
             p = 1 # period in seconds
@@ -103,7 +104,8 @@ module NoName
             noise_level = 0.05
             output_num = 1
             sparks_config = DEFAULT_SPARKS_CONFIG
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            amplitudes = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config, amplitudes)
         end
         function Pulsar(json_file)
             d = JSON3.read(read(json_file, String))
@@ -158,7 +160,8 @@ module NoName
             noise_level = d.psr.noise_level
             output_num = d.psr.output_num
             sparks_config = haskey(d, :sparks) ? d.sparks : DEFAULT_SPARKS_CONFIG
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            amplitudes = haskey(sparks_config, :amplitudes) ? collect(sparks_config.amplitudes) : nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config, amplitudes)
         end
     end
 
@@ -261,13 +264,8 @@ module NoName
         #psr = Pulsar("input/1.json")
         #psr = Pulsar("input/2.json")
         #psr = Pulsar("input/3.json")
-        #psr = Pulsar("input/4.json")
-        #psr = Pulsar("input/11.json")
-        #psr = Pulsar("input/8.json")
-        #psr = Pulsar("input/10.json")
-        #psr = Pulsar("input/13.json")
-        #psr = Pulsar("input/14.json")
-        psr = Pulsar("input/15.json")
+        psr = Pulsar("input/4.json")
+        
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
@@ -315,8 +313,8 @@ module NoName
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        Plot.lrfs(psr, darkness=0.3)
-        Plot.two_dfs(psr, darkness=0.3)
+        #Plot.lrfs(psr, darkness=0.3)
+        #Plot.two_dfs(psr, darkness=0.3)
     end
 
 
