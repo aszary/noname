@@ -313,8 +313,8 @@ module NoName
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        #Plot.lrfs(psr, darkness=0.3)
-        #Plot.two_dfs(psr, darkness=0.3)
+        Plot.lrfs(psr, darkness=0.3)
+        Plot.two_dfs(psr, darkness=0.3)
     end
 
 
