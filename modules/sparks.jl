@@ -377,9 +377,12 @@ module Sparks
 
     - rfs: list of track radii as fractions of the polar cap semi-major axis
     - num: number of sparks at the inner track
+    - phase: initial azimuthal offset of the spark pattern in degrees
+      (e.g. half the spark spacing, 180/num, to center the empty space
+      between sparks on the line of sight)
 
     """
-    function init_sparks1_ellipse!(psr; rfs=[0.295, 0.5], num=3, spacing="t")
+    function init_sparks1_ellipse!(psr; rfs=[0.295, 0.5], num=3, spacing="t", phase=0.0)
         sp = Vector{Float64}[]
         ef = psr.ellipse_fit
 
@@ -410,7 +413,7 @@ module Sparks
             total = arcs[end]
             result = Vector{Float64}[]
             for k in 0:(n_sparks-1)
-                target = total * k / n_sparks
+                target = mod(total * (k / n_sparks + phase / 360), total)
                 idx = searchsortedfirst(view(arcs, 1:n), target)
                 push!(result, pts[clamp(idx, 1, n)])
             end
@@ -422,7 +425,7 @@ module Sparks
         # i.e. the E×B drift for the Ruderman-Sutherland gap potential V ∝ 1 - rf²,
         # so the pattern repeats exactly every P3 and no circulation sidebands arise.
         function place_equal_t(rf, n_sparks)
-            return [ellipse_3d(2pi * k / n_sparks, rf) for k in 0:(n_sparks-1)]
+            return [ellipse_3d(2pi * k / n_sparks + deg2rad(phase), rf) for k in 0:(n_sparks-1)]
         end
 
         c1 = nothing

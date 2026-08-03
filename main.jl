@@ -277,7 +277,7 @@ module NoName
         sc = psr.sparks_config
         si = sc.init
         if si.method == "ellipse"
-            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num, spacing=get(si, :spacing, "t"))
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num, spacing=get(si, :spacing, "t"), phase=get(si, :phase, 0.0))
         elseif si.method == "dipolar"
             Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
         elseif si.method == "dipolar2"
