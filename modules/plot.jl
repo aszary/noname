@@ -7,8 +7,8 @@ module Plot
     using Statistics
     using LinearAlgebra
     using FFTW
-    import Main.NoName.Functions
-    import Main.NoName.Sparks
+    include("functions.jl")
+    include("sparks.jl")
     include("tools.jl")
 
 
@@ -1165,11 +1165,16 @@ module Plot
         # PREPARE DATA
         num, bins = size(data)
         if number === nothing
-            number = num - start  # missing one?
+            number = num - start + 1
         end
 
         da = data[start:start+number-1, :]
         da = repeat(da, times) # repeat data X times
+
+        # exact pulse numbers for the Y axis
+        total_pulses = size(da, 1)
+        pulse_indices = collect(start : start+total_pulses-1)
+
         average = Tools.average_profile(da)
         intensity, pulses = Tools.pulses_intensity(da)
         intensity .-= minimum(intensity)
@@ -1183,12 +1188,19 @@ module Plot
         p.left.xlabel = L"intensity $$"
         p.bottom.xlabel = L"longitude ($^\circ$)"
 
+        # reverse the Y axis so that pulse number (time) increases top to
+        # bottom, the standard convention for subpulse drift diagrams
+        p.left.yreversed = true
+        p.center.yreversed = true
+
         # PLOTTING DATA
         lines!(p.left, intensity, pulses, color=:grey, linewidth=0.5)
         #xlims!(left, [0.01, 1.01])
-        ylims!(p.left, [pulses[1] - 0.5, pulses[end] + 0.5])
+        ylims!(p.left, [pulse_indices[1] - 0.5, pulse_indices[end] + 0.5])
 
-        heatmap!(p.center, transpose(da))
+        # pass longitude/pulse axes explicitly so the heatmap lines up with
+        # the average profile and pulse-number panels
+        heatmap!(p.center, psr.longitudes, pulse_indices, transpose(da), colormap=cmap)
 
         lines!(p.bottom, psr.longitudes, average, color=:grey, linewidth=0.5)
         xlims!(p.bottom, [psr.longitudes[1], psr.longitudes[end]])
@@ -1619,6 +1631,146 @@ module Plot
     end
 
 
+    function average_stokes(psr)
+        avg_I = vec(mean(psr.pulses, dims=1))
+        avg_Q = vec(mean(psr.stokes_q[1:psr.npulse, :], dims=1))
+        avg_U = vec(mean(psr.stokes_u[1:psr.npulse, :], dims=1))
+        avg_V = vec(mean(psr.stokes_v[1:psr.npulse, :], dims=1))
+        avg_L = sqrt.(avg_Q .^ 2 .+ avg_U .^ 2)
+
+        size_inches = (12 / 2.54, 16 / 2.54)
+        size_pt = 72 .* size_inches
+        fig = Figure(size=size_pt, fontsize=8, figure_padding=(4, 8, 4, 4))
+
+        ax_pa = Axis(fig[1, 1], ylabel="PA [deg]",
+                     xticklabelsvisible=false, xminorticksvisible=true, yminorticksvisible=true)
+        ax_flux = Axis(fig[2, 1], xlabel=L"Longitude ($^\circ$)", ylabel="Flux Density",
+                       xminorticksvisible=true, yminorticksvisible=true)
+
+        scatter!(ax_pa, psr.longitudes, psr.pa, color=:black, markersize=3)
+
+        # RVM overlay + slope comparison at actual inflection point
+        α = deg2rad(psr.alpha)
+        β = deg2rad(psr.beta)
+        φ = deg2rad.(psr.longitudes)
+        n = length(psr.longitudes)
+        dφ_deg = psr.longitudes[2] - psr.longitudes[1]
+        # numerical dPA/dφ at every bin (central difference, skip edges)
+        dpa = [(psr.pa[i+1] - psr.pa[i-1]) / (2 * dφ_deg) for i in 2:n-1]
+        # inflection point = steepest slope (max |dPA/dφ|)
+        infl = argmax(abs.(dpa)) + 1  # +1 because dpa is indexed from bin 2
+        pa0 = psr.pa[infl]
+        φ0  = φ[infl]
+        slope_numerical  = dpa[infl - 1]  # dpa is offset by 1
+        rvm_sign = sign(slope_numerical) != sign(sin(α) / sin(β)) ? -1.0 : 1.0
+        slope_analytical = rvm_sign * sin(α) / sin(β)
+        β_eff = rad2deg(asin(clamp(abs(sin(α) / slope_numerical), 0.0, 1.0)))
+        ζ_eff = α + sign(β) * deg2rad(β_eff)
+        rvm_raw = rad2deg.(atan.(sin(α) .* sin.(φ .- φ0),
+                                 sin(ζ_eff) .* cos(α) .- cos(ζ_eff) .* sin(α) .* cos.(φ .- φ0)))
+        # wrap to (-90°, 90°] to match the PA data normalisation
+        pa_rvm = rad2deg.(atan.(tan.(deg2rad.(pa0 .+ rvm_sign .* rvm_raw))))
+        lines!(ax_pa, psr.longitudes, pa_rvm, color=:orange, linewidth=1.5, label="RVM (β_eff)")
+        vlines!(ax_pa, [psr.longitudes[infl]], color=:blue, linewidth=1, linestyle=:dash)
+        scatter!(ax_pa, [psr.longitudes[infl]], [pa0], color=:blue, markersize=7, marker=:diamond, label="inflection")
+        axislegend(ax_pa, position=:rt, framevisible=false, labelsize=8)
+
+        println("PA slope at inflection point (lon=$(round(psr.longitudes[infl], digits=2))°):")
+        println("  analytical  sin(α)/sin(β) = $(round(slope_analytical, digits=4)) deg/deg")
+        println("  numerical   dPA/dφ        = $(round(slope_numerical,  digits=4)) deg/deg")
+        println("  |difference|              = $(round(abs(slope_numerical - slope_analytical), digits=4)) deg/deg")
+        println("  effective β at r_em       = $(round(β_eff, digits=4))°  (input β = $(psr.beta)°)")
+
+        lines!(ax_flux, psr.longitudes, avg_I, color=:black,  linewidth=1.5, label="I")
+        lines!(ax_flux, psr.longitudes, avg_L, color=:red,    linewidth=1.5, label="L")
+        lines!(ax_flux, psr.longitudes, avg_V, color=:blue,   linewidth=1.5, label="V")
+
+        xlims!(ax_pa,   psr.longitudes[1], psr.longitudes[end])
+        xlims!(ax_flux, psr.longitudes[1], psr.longitudes[end])
+
+        axislegend(ax_flux, position=:rt, framevisible=false, labelsize=8)
+
+        rowsize!(fig.layout, 1, Relative(0.3))
+        rowgap!(fig.layout, 3)
+
+        display(fig)
+    end
+
+
+    function polarization_vector_study(psr; delay=0.05)
+        fig = Figure(size = (1400, 800))
+        
+        sphere_mesh_left = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
+        sphere_mesh_right = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 64))
+        
+        axis_scale = 6.0
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) .* axis_scale
+        mag_vec_static = Functions.spherical2cartesian(psr.magnetic_axis) .* axis_scale
+
+        mid_idx = div(length(psr.line_of_sight), 2)
+        p_los_center = psr.line_of_sight[mid_idx]
+
+        norm_los = norm(p_los_center)
+        dir_los = [p_los_center[1]/norm_los, p_los_center[2]/norm_los, p_los_center[3]/norm_los]
+        p_obs_right_static = Point3f(dir_los[1] * psr.r * 4.5, dir_los[2] * psr.r * 4.5, dir_los[3] * psr.r * 4.5)
+
+        vec_len_left = psr.r * 10.0  
+        vec_len_right = psr.r * 2.0  
+        
+        # ==========================================
+        # PANEL 1 (Top Left): Rotating Frame
+        # ==========================================
+        ax1 = Axis3(fig[1, 1], title = "Rotating Frame (Telescope Orbits)")
+        mesh!(ax1, sphere_mesh_left, color = (:teal, 0.7), transparency = true)
+        
+        for line in psr.los_lines
+            lines!(ax1, line[1], line[2], line[3], color = (:grey, 0.15), linewidth = 1)
+        end
+
+        # Fixed arrow sizes for slim proportions
+        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(rot_vec...)], color = :red, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+        arrows3d!(ax1, [Point3f(0,0,0)], [Vec3f(mag_vec_static...)], color = :blue, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+        
+        active_line_obs_left = Observable(Point3f.(psr.los_lines[1][1], psr.los_lines[1][2], psr.los_lines[1][3]))
+        los_obs_left = Observable(Point3f(psr.los_lines[1][1][1], psr.los_lines[1][2][1], psr.los_lines[1][3][1]))
+        
+        pol_pos_left = Observable([Point3f(los_obs_left[])])
+        pol_dir_left = Observable([Vec3f(0,0,0)])
+        
+        lines!(ax1, active_line_obs_left, color = :blue, linewidth = 3)
+        scatter!(ax1, los_obs_left, color=:red, marker=:diamond, markersize=12)
+        
+        # Yellow polarization vector
+        arrows3d!(ax1, pol_pos_left, pol_dir_left, color = :yellow, shaftradius=0.025, tipradius=0.075, tiplength=0.25)
+
+        # Top Panel: Fluctuation phase
+        # Placed on the grid (row 1, columns 2:4)
+        ax_top = Axis(fig[1, 2:4], ylabel="Phase\n(deg)", xaxisposition=:top,
+                      xminorticksvisible=true, yminorticksvisible=true)
+        scatter!(ax_top, psr.longitudes, fluctuation_phase, color=:red, markersize=4)
+        xlims!(ax_top, psr.longitudes[1], psr.longitudes[end])
+        
+        # Synchronize axes so zooming/panning works across all relevant panels
+        linkyaxes!(ax_main, ax_left)
+        linkxaxes!(ax_main, ax_bottom, ax_top)
+        
+        hideydecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_top, ticks=false, minorticks=false, grid=false)
+   
+        hidespines!(ax_main, :l, :b) 
+        hidespines!(ax_left, :r)   
+        hidespines!(ax_bottom, :t)  
+        hidespines!(ax_top, :b)    
+        
+        # Adjust gaps between panels
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+        
+        display(fig)
+        readline(stdin; keep=false)
+        GLMakie.closeall()
+    end
 
     function lrfs(psr; start=1, number=nothing, darkness=1.0)
         data = psr.pulses
@@ -1735,6 +1887,348 @@ module Plot
         GLMakie.closeall()
     end
 
+
+"""
+    two_dfs(psr; mask_radius=2, darkness=0.8, feature_window=5)
+    
+    Generates a Two-Dimensional Fluctuation Spectrum (2DFS) plot with an isolated 
+    feature integration for the bottom panel.
+    
+    Layout improvements based on TPA conventions:
+    - Uses a color scale (:viridis) for better dynamic range visibility.
+    - Bottom panel integrates only the dominant spectral feature in 1/P3, 
+      rather than the entire noisy axis.
+    - Horizontal lines highlight the integration window.
+    """
+    function closed_lines(psr)
+        # 1. Draw the stellar surface
+        sphere_mesh = GeometryBasics.mesh(Tesselation(Sphere(Point3f(0, 0, 0), psr.r), 128))
+        fig, ax, p = mesh(sphere_mesh, color = (:teal, 0.7), transparency = true)
+
+        rot_vec = Functions.spherical2cartesian(psr.rotation_axis) 
+        mag_vec = Functions.spherical2cartesian(psr.magnetic_axis) 
+        
+
+        rot_scaled = rot_vec .* 0.99
+        mag_scaled = mag_vec .* 0.99
+
+        arrows3d!(ax, [0, 0], [0, 0], [0, 0],
+                [rot_scaled[1], mag_scaled[1]],
+                [rot_scaled[2], mag_scaled[2]],
+                [rot_scaled[3], mag_scaled[3]],
+                color = [:red, :blue])
+        #drawing anomalies
+        if hasproperty(psr, :nsfield) && hasproperty(psr.nsfield, :anomalies)
+            for a in psr.nsfield.anomalies
+                pos = Functions.spherical2cartesian([a.r * psr.r, a.theta_r, a.phi_r])
+                dir = Functions.spherical2cartesian([a.m * psr.r, a.theta_m, a.phi_m])
+
+                dir_mag = norm(dir)
+                if dir_mag > 0
+                    dir_scaled = dir ./ dir_mag .* (psr.r * a.m * 10)
+                    arrows3d!(ax, [pos[1]], [pos[2]], [pos[3]],
+                            [dir_scaled[1]], [dir_scaled[2]], [dir_scaled[3]],
+                            color=:orange)
+                end
+            end
+        end
+
+        # 4. Draw closed field lines (blue)
+        for line in psr.nsfield.magnetic_lines
+            lines!(ax, line[1], line[2], line[3], color=:blue, linewidth=1, fxaa=true )
+        end
+
+        # 5. Draw open field lines (green)
+        if !isnothing(psr.open_lines)
+            for ml in psr.open_lines 
+                lines!(ax, ml[1], ml[2], ml[3], color=:green, linewidth=2,fxaa=true) 
+            end # <--- End of open lines loop
+        end # <--- End of if block
+
+        # 6. Draw line-of-sight magnetic field lines (red)
+        if !isnothing(psr.los_lines) 
+            for line in psr.los_lines
+                lines!(ax, line[1], line[2], line[3], color=:red, linewidth=1.5,fxaa=true) 
+                # Mark the specific emission point/cross at the end of the trace
+                scatter!(ax, line[1][end], line[2][end], line[3][end], color=:red, marker=:xcross)
+            end # <--- End of LOS lines loop
+        end # <--- End of if block
+
+        # Adjust camera for a close 3D view of the surface and anomalies
+        cam3d!(ax.scene, eyeposition=[psr.r*2.5, psr.r*2.5, psr.r*2.5], 
+               lookat=[0, 0, 0], upvector=[0,0,1], center=false)
+
+        display(fig) 
+    end
+
+
+    function lrfs(psr; start=1, number=nothing, darkness=1.0)
+        data = psr.pulses
+        
+        num_total, bins = size(data)
+        if isnothing(number)
+            number = num_total - start + 1
+        end
+        
+        # Extract the relevant block of single pulses
+        da = data[start:start+number-1, :]
+        n_pulses, n_bins = size(da)
+        
+        # Step 1: Calculate the average profile for the bottom panel
+        avg_profile = vec(mean(da, dims=1))
+        
+        # Step 2: Subtract the mean from each phase bin 
+        # This removes the dominant DC component (at frequency f=0)
+        da_mean_sub = da .- avg_profile'
+        
+        # Step 3: Fourier Transform along the time (pulse) axis using FFTW
+        # We use rfft since the input data is strictly real.
+        # Dimension 1 means we perform FFT for each column (longitude bin) separately.
+        fft_complex = rfft(da_mean_sub, 1)
+        
+        # Calculate the power spectrum (squared amplitude)
+        lrfs_power = abs.(fft_complex).^2
+        
+        # Step 4: Integrated fluctuation spectrum (sum along the longitude axis)
+        int_spectrum = vec(sum(lrfs_power, dims=2))
+        
+        # Create the frequency axis (Y-axis) - Nyquist limit is always 0.5 c/P
+        n_freq = size(lrfs_power, 1)
+        freqs = range(0.0, 0.5, length=n_freq)
+        
+        # -----------------------------------------------------
+        # CALCULATIONS FOR THE TOP PANEL (FLUCTUATION PHASE)
+        # -----------------------------------------------------
+        # Find the index of the dominant frequency 
+        # (ignoring f=0, which is index 1, so we search from index 2 onwards)
+        peak_idx = argmax(int_spectrum[2:end]) + 1
+        
+        # Extract complex numbers for this specific frequency across all longitudes
+        peak_complex = fft_complex[peak_idx, :]
+        
+        # Calculate the phase (angle) in degrees
+        # Note: Advanced analysis often uses phase unwrapping algorithms here 
+        # to smooth out sudden jumps between 180 and -180 degrees.
+        fluctuation_phase = angle.(peak_complex) .* (180 / pi)
+        # -----------------------------------------------------
+        
+        
+        # --- PLOTTING WITH MAKIE (4-panel layout) ---
+        
+        # Size modeled after the typical 8cm x 13cm layout used in publications
+        size_inches = (8 / 2.54, 13 / 2.54) 
+        dpi = 150
+        size_pt = dpi .* size_inches
+        
+        fig = Figure(size=size_pt, fontsize=8)
+        
+        # Left Panel: Integrated fluctuation spectrum
+        # Placed on the grid (rows 2:5, column 1)
+        ax_left = Axis(fig[2:5, 1], ylabel=L"Frequency ($c/P$)", xlabel="Power",
+                       xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_left, int_spectrum, freqs, color=:gray50, linewidth=1.5)
+        ylims!(ax_left, 0.0, 0.5)
+        ax_left.xreversed = true # Reverse X-axis to "stick" it to the heatmap
+        
+        # Main Panel: LRFS Heatmap
+        # Placed on the grid (rows 2:5, columns 2:4)
+        vmax = darkness * maximum(lrfs_power)
+        ax_main = Axis(fig[2:5, 2:4], yticklabelsvisible=false,
+                       xminorticksvisible=true, yminorticksvisible=true)
+        heatmap!(ax_main, psr.longitudes, freqs, transpose(lrfs_power), colormap=:viridis, colorrange=(0, vmax))
+        xlims!(ax_main, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_main, 0.0, 0.5)
+        
+        # Bottom Panel: Average pulsar profile
+        # Placed on the grid (row 6, columns 2:4)
+        norm_avg_profile = (avg_profile .- minimum(avg_profile)) ./ maximum(avg_profile .- minimum(avg_profile))
+        ax_bottom = Axis(fig[6, 2:4], xlabel=L"Longitude ($^\circ$)", ylabel="Intensity",
+                         xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_bottom, psr.longitudes, norm_avg_profile, color=:gray50, linewidth=1.5)
+        xlims!(ax_bottom, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_bottom, 0.0, 1.1)
+
+        # Top Panel: Fluctuation phase
+        # Placed on the grid (row 1, columns 2:4)
+        ax_top = Axis(fig[1, 2:4], ylabel="Phase\n(deg)", xaxisposition=:top,
+                      xminorticksvisible=true, yminorticksvisible=true)
+        scatter!(ax_top, psr.longitudes, fluctuation_phase, color=:red, markersize=4)
+        xlims!(ax_top, psr.longitudes[1], psr.longitudes[end])
+        
+        # Synchronize axes so zooming/panning works across all relevant panels
+        linkyaxes!(ax_main, ax_left)
+        linkxaxes!(ax_main, ax_bottom, ax_top)
+        
+        hideydecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_top, ticks=false, minorticks=false, grid=false)
+   
+        hidespines!(ax_main, :l, :b) 
+        hidespines!(ax_left, :r)   
+        hidespines!(ax_bottom, :t)  
+        hidespines!(ax_top, :b)    
+        
+        # Adjust gaps between panels
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+        
+        display(fig)
+        readline(stdin; keep=false)
+        GLMakie.closeall()
+    end
+
+
+"""
+    two_dfs(psr; mask_radius=2, darkness=0.8, feature_window=5)
+    
+    Generates a Two-Dimensional Fluctuation Spectrum (2DFS) plot with an isolated 
+    feature integration for the bottom panel.
+    
+    Layout improvements based on TPA conventions:
+    - Uses a color scale (:viridis) for better dynamic range visibility.
+    - Bottom panel integrates only the dominant spectral feature in 1/P3, 
+      rather than the entire noisy axis.
+    - Horizontal lines highlight the integration window.
+    """
+    function two_dfs(psr; mask_radius=2, darkness=0.8, feature_window=5)
+        # 1. Retrieve and center data
+        data = psr.pulses
+        n_pulses, n_bins = size(data)
+        
+        avg_profile = mean(data, dims=1)
+        data_centered = data .- avg_profile
+        
+        # 2. 2D Discrete Fourier Transform
+        fft_2d = fft(data_centered)
+        power_2d = abs2.(fftshift(fft_2d))
+        
+        # 3. Axis calibration
+        nu_3_full = fftshift(fftfreq(n_pulses))
+        d_lon = psr.longitudes[2] - psr.longitudes[1]
+        nu_2_full = fftshift(fftfreq(n_bins)) .* (360.0 / d_lon)
+        
+        # Keep only the positive half of 1/P3 (0.0 to 0.5 cpp)
+        idx_nu3_pos = findall(x -> x >= 0.0, nu_3_full)
+        nu_3 = nu_3_full[idx_nu3_pos]
+        power_half = power_2d[idx_nu3_pos, :]
+        
+        # 4. Mask the DC component
+        cx_2 = argmin(abs.(nu_2_full))
+        
+        rx = min(mask_radius, size(power_half, 1) - 1)
+        ry = min(mask_radius, cx_2 - 1, length(nu_2_full) - cx_2)
+        
+        power_half[1:1+rx, cx_2-ry:cx_2+ry] .= 0.0
+        
+        # --- ADDED CODE: Determine P2 and P3 from the 2DFS maximum ---
+        peak_cartesian = argmax(power_half)
+        peak_idx_3 = peak_cartesian[1]
+        peak_idx_2 = peak_cartesian[2]
+
+        f_3_peak = nu_3[peak_idx_3]
+        f_2_peak = nu_2_full[peak_idx_2]
+
+        # Calculate physical values (P_3 in periods, P_2 in degrees)
+        P3_val = f_3_peak != 0.0 ? 1.0 / f_3_peak : Inf
+        P2_val = f_2_peak != 0.0 ? 360.0 / abs(f_2_peak) : Inf
+
+        println("\n--------------------------------------------------")
+        println("Detected main 2DFS peak:")
+        println(" Temporal frequency (1/P3): $(round(f_3_peak, digits=4)) cpp => P3 = $(round(P3_val, digits=2)) periods (P_0)")
+        println(" Spatial frequency (1/P2): $(round(f_2_peak, digits=4)) cpp => P2 = $(round(P2_val, digits=2)) degrees")
+        println(" Drift direction: $(f_2_peak < 0 ? "negative (-)" : "positive (+)")")
+        println("--------------------------------------------------\n")
+        # -------------------------------------------------------------
+
+        # 5. Horizontally integrated spectrum (left panel)
+        int_power_3 = vec(sum(power_half, dims=2))
+        
+        # --- IMPROVEMENT: Feature detection for bottom plot ---
+        # Find the dominant frequency peak in 1/P3 (ignoring the DC mask region)
+        search_start = 1 + rx + 1
+        if search_start <= length(int_power_3)
+            peak_idx = argmax(int_power_3[search_start:end]) + search_start - 1
+            
+            # Define window around the peak
+            win_start = max(search_start, peak_idx - feature_window)
+            win_end = min(length(int_power_3), peak_idx + feature_window)
+            
+            # Vertically integrate ONLY the dominant feature slice
+            int_power_2 = vec(sum(power_half[win_start:win_end, :], dims=1))
+            
+            peak_freq_start = nu_3[win_start]
+            peak_freq_end = nu_3[win_end]
+        else
+            int_power_2 = vec(sum(power_half, dims=1))
+            peak_freq_start = 0.0
+            peak_freq_end = 0.5
+        end
+        
+        # 6. Plotting
+        size_inches = (10 / 2.54, 10 / 2.54)
+        dpi = 150
+        size_pt = dpi .* size_inches
+        
+        fig = Figure(size=size_pt, fontsize=10)
+        
+        # Left Panel
+        ax_left = Axis(fig[1:4, 1], ylabel=L"Temporal Frequency $1/P_3$ [cpp]", xlabel="Power",
+                       xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_left, int_power_3, nu_3, color=:gray30, linewidth=1.5)
+        ax_left.xreversed = true 
+        ylims!(ax_left, 0.0, 0.5)
+        
+        # Main Panel (Heatmap)
+        vmax = darkness * maximum(power_half)
+        ax_main = Axis(fig[1:4, 2:5], yticklabelsvisible=false, xticklabelsvisible=false,
+                       xminorticksvisible=true, yminorticksvisible=true)
+                       
+        # Changed to Viridis colormap for better faint feature distinction
+        heatmap!(ax_main, nu_2_full, nu_3, transpose(power_half), 
+                 colormap=:viridis, colorrange=(0, vmax))
+                 
+        # --- ADDED CODE: Draw a marker at the maximum intensity location ---
+        if f_2_peak != 0.0 && f_3_peak != 0.0
+            scatter!(ax_main, [f_2_peak], [f_3_peak], color=:red, marker=:cross, markersize=15)
+        end
+        # -------------------------------------------------------------------
+                 
+        # Draw horizontal lines to indicate the integration window
+        if peak_freq_start != 0.0
+            hlines!(ax_main, [peak_freq_start, peak_freq_end], color=:white, linestyle=:dot, linewidth=1.2)
+            hlines!(ax_left, [peak_freq_start, peak_freq_end], color=:red, linestyle=:dot, linewidth=1.2)
+        end
+        
+        ylims!(ax_main, 0.0, 0.5)
+        xlims!(ax_main, nu_2_full[1], nu_2_full[end])
+        
+        # Bottom Panel
+        ax_bottom = Axis(fig[5, 2:5], xlabel=L"Spatial Frequency $1/P_2$ [cpp]", ylabel="Power",
+                         xminorticksvisible=true, yminorticksvisible=true)
+                         
+        # Original integrated spectrum (from the feature window)
+        lines!(ax_bottom, nu_2_full, int_power_2, color=:black, linewidth=1.5)
+        
+        # Mirrored spectrum for drift asymmetry
+        lines!(ax_bottom, -nu_2_full, int_power_2, color=:red, linestyle=:dash, linewidth=1.2)
+        xlims!(ax_bottom, nu_2_full[1], nu_2_full[end])
+        
+        # Linking and formatting
+        linkyaxes!(ax_main, ax_left)
+        linkxaxes!(ax_main, ax_bottom)
+        
+        hidespines!(ax_main, :l, :b)
+        hidespines!(ax_left, :r)
+        hidespines!(ax_bottom, :t)
+        hidexdecorations!(ax_main, ticks=false, grid=false, minorticks=false)
+        hideydecorations!(ax_main, ticks=false, grid=false, minorticks=false)
+        
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+        
+        display(fig)
+        return fig
+    end
 
 
 

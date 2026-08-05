@@ -26,7 +26,7 @@ module NoName
         model     = "solidbody",
         mc        = (n_steps = 2000, save_every = 40, speedup = 10.1),
         lbc       = (co_angl = 0.0,),
-        init      = (method = "ellipse", rfs = [0.2, 0.5, 0.79], num = 3),
+        init      = (method = "ellipse", rfs = [0.2, 0.5, 0.79], num = 3, spacing = "t"),
     )
 
     mutable struct Pulsar
@@ -66,12 +66,12 @@ module NoName
         pulses # single pulses generated from signal
         longitudes # single pulse longitudes
         ellipse_fit # ellipse fit to the polar cap points
-        p3 # drift repetation time (teraz jako wektor)
+        p3 # drift repetation time, one value per pulse (Vector{Float64}, length npulse); constant P3 is stored as a filled vector
         npulse # number of single pulses
         noise_level # noise level in single pulses
         output_num # output directory number for save_sparks/load_sparks
         sparks_config # spark simulation model and its parameters
-        
+        amplitudes # spark amplitudes
         function Pulsar()
             r = 10_000 
             p = 1 
@@ -110,16 +110,21 @@ module NoName
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
-            p3 = [10.0]
+            p3 = 10
             npulse = 500
+            p3 = fill(10.0, npulse)
             noise_level = 0.05
             output_num = 1
             sparks_config = DEFAULT_SPARKS_CONFIG
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            amplitudes = nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config, amplitudes)
         end
         
         function Pulsar(json_file)
-            d = JSON3.read(json_file)
+            d = JSON3.read(read(json_file, String))
+            #open("input/test.json", "w") do io
+            #    JSON3.pretty(io, JSON3.write(d))
+            #end
             r = d.psr.R
             p = d.psr.P0
             pdot = d.psr.PDOT
@@ -157,30 +162,19 @@ module NoName
             pulses = nothing
             longitudes = nothing
             ellipse_fit = nothing
-            
             npulse = d.psr.npulse
-            
-            # Wczytywanie P3 - elastyczna obsługa (stała, tablica, lub parametry fali)
+
+            # P3 can be given as a single constant value, or as an array of
+            # values (one per pulse/period) to model a changing P3. Either way
+            # it is stored as a Vector{Float64} of length npulse.
             raw_p3 = d.psr.P3
-            if isa(raw_p3, AbstractArray)
-                # Opcja 1: Gotowa kolumna/tablica z prawdziwymi danymi obserwacyjnymi
-                p3 = Float64.(raw_p3)
-            elseif isa(raw_p3, JSON3.Object) || isa(raw_p3, AbstractDict)
-                # Opcja 2: Generowanie sinusoidy matematycznej w locie
-                mean_val = Float64(get(raw_p3, :mean, 20.0))
-                amp_val = Float64(get(raw_p3, :amplitude, 0.0))
-                period_val = Float64(get(raw_p3, :period, 50.0))
-                p3 = [mean_val + amp_val * sin(2 * pi * i / period_val) for i in 1:npulse]
-            else
-                # Opcja 3: Pojedyncza, stała wartość P3
-                p3 = fill(Float64(raw_p3), npulse)
-            end
+            p3 = isa(raw_p3, AbstractArray) ? Float64.(collect(raw_p3)) : fill(Float64(raw_p3), npulse)
 
             noise_level = d.psr.noise_level
             output_num = d.psr.output_num
             sparks_config = haskey(d, :sparks) ? d.sparks : DEFAULT_SPARKS_CONFIG
-            
-            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config)
+            amplitudes = haskey(sparks_config, :amplitudes) ? collect(sparks_config.amplitudes) : nothing
+            return new(r, p, pdot, r_pc, r_lc, alpha, magnetic_axis, rotation_axis, nsfield, fields, polar_caps, pc, open_lines, sparks, grid, potential, electric_field, drift_velocity, pot_minmax, sparks_locations, sparks_velocity, potential_simulation, spark_radius, spark_radii, line_of_sight, r_em, beta, los_lines, signal, pa, stokes_q, stokes_u, stokes_v, pulses, longitudes, ellipse_fit, p3, npulse, noise_level, output_num, sparks_config, amplitudes)
         end
     end
 
@@ -297,13 +291,15 @@ module NoName
         sc = psr.sparks_config
         si = sc.init
         if si.method == "ellipse"
-            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num)
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(si.rfs), num=si.num, spacing=get(si, :spacing, "t"), phase=get(si, :phase, 0.0))
         elseif si.method == "dipolar"
             Sparks.init_sparks1!(psr; rfs=collect(si.rfs), num=si.num)
+        elseif si.method == "dipolar2"
+            Sparks.init_sparks2!(psr; rfs=collect(si.rfs), num=si.num)
         elseif si.method == "none"
             # skip spark initialization
         else
-            error("Unknown spark init method: $(si.method). Use \"ellipse\", \"dipolar\", or \"none\".")
+            error("Unknown spark init method: $(si.method). Use \"ellipse\", \"dipolar\", \"dipolar2\", or \"none\".")
         end
         if sc.model == "mc"
             Sparks.simulate_sparks_mc(psr; n_steps=sc.mc.n_steps, save_every=sc.mc.save_every, speedup=sc.mc.speedup)
@@ -321,18 +317,20 @@ module NoName
 
 
         #Signal.generate_signal(psr; noise_level=psr.noise_level) # old  obsolete same sizes! NO PA
-        #Signal.generate_signal_radii(psr; noise_level=psr.noise_level, v_scale=0.3) # new
-        Signal.generate_signal_solid_body(psr; noise_level=0.0)
+        #Signal.generate_signal_radii(psr; noise_level=psr.noise_level, v_scale=0.3) # new with full Stokes and radii
+        #Signal.generate_signal_ola(psr; noise_level=psr.noise_level, v_scale=0.3) # new with full Stokes and elliptical sparks
+        Signal.generate_signal_new(psr; noise_level=psr.noise_level, v_scale=0.3) # new with full Stokes and elliptical sparks based on ellipse fit
         Signal.generate_pulses(psr)
 
 
-        Plot.signal(psr)
-        #Plot.pulses(psr, number=psr.npulse)
+        #Plot.signal(psr)
+        Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        
+        Plot.lrfs(psr, darkness=0.3)
+        Plot.two_dfs(psr, darkness=0.3)
     end
 
     function generate_signal_P3()
@@ -390,8 +388,8 @@ module NoName
 
         #println(psr.nsfield)
 
-        Plot.closed_lines(psr)
-        #Plot.anomalies(psr)
+        #Plot.closed_lines(psr)
+        Plot.anomalies(psr)
         #Plot.anomalies2D(psr)
         #Plot.polar_cap2D(psr)
 

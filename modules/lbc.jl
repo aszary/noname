@@ -276,6 +276,11 @@ function generate_sparks(psr, ef; th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45
         current_h_drft = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
         del_theta_drift = current_h_drft / mean_outer_radius
 
+        # h_drft may be a single constant value, or an array with one value
+        # per step (to follow a P3 that changes from pulse to pulse)
+        current_h_drft  = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
+        del_theta_drift = current_h_drft / mean_outer_radius
+
         # advance angles by one drift step
         for ring in 1:N_trk
             u_off = (ring - 1) * trk_max
@@ -428,6 +433,11 @@ function animate(;ntime=200, th_cap=30.0, a_cap=15.0, b_cap=5.0, co_angl=45.0, h
         # POBIERANIE DYNAMICZNEGO DRFITU DO ANIMACJI W RAMCE LBC
         current_h_drft = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
         del_theta_drift = current_h_drft / mean_outer_radius
+
+        # h_drft may be a single constant value, or an array with one value
+        # per frame (to follow a P3 that changes from pulse to pulse)
+        current_h_drft  = isa(h_drft, AbstractArray) ? h_drft[mod1(step, length(h_drft))] : h_drft
+        del_theta_drift = current_h_drft / mean_outer_radius   # arc length → angle [rad/frame]
 
         # Compute spark positions and sizes for the current angles
         sx, sy, ss = sparkconfig(th_sprk_u, th_sprk_d, N_up, N_dn, theta_sp,

@@ -116,6 +116,13 @@ end
 
 Full pipeline for a single spark:
   3D → tangent 2D → ellipse frame → normalize → rotate → unscale → tangent 2D → 3D on sphere
+
+Rotation uniform in the ellipse parameter t is not just a parametrization choice:
+for a Ruderman-Sutherland gap with uniform charge density over an elliptical cap,
+the Poisson solution is V ∝ 1 - rf² (rf² = (x/a)² + (y/b)²), so equipotentials are
+the scaled ellipses rf = const and the E×B drift is exactly uniform in t, with the
+same angular rate on every track (rigid rotation in t). The linear speed is larger
+near the minor-axis ends by a/b — flux conservation of the incompressible drift.
 """
 function _rotate_single_spark(point_3d, ef::EllipseFit, cosφ, sinφ)
     # Project to tangent plane
