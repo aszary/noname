@@ -9,7 +9,7 @@
         "spark_radius": 20,
         "P3": {
             "mean": 20.0,
-            "amplitude": 3.0,
+            "amplitude": 10.0,
             "period": 50.0
         },
         "npulse": 150,

@@ -8,7 +8,7 @@
         "R_em": 500000,
         "spark_radius": 10,
         "P3": 20.0,
-        "npulse": 150,
+        "npulse": 500,
         "noise_level": 0.00,
         "output_num": 4
     },
