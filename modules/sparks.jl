@@ -380,9 +380,17 @@ module Sparks
     - phase: initial azimuthal offset of the spark pattern in degrees
       (e.g. half the spark spacing, 180/num, to center the empty space
       between sparks on the line of sight)
+    - num_mode: how the number of sparks at the outer tracks is derived
+        * "arc"   - equidistant sparks (Gil & Sendyk 2000): the outer tracks get
+                    ceil(l_o/l_i) * num sparks, so the arc-length spacing is
+                    roughly preserved. P3 then differs from track to track.
+        * "equal" - the same number of sparks on every track. Required by
+                    solid-body-like rotation (Eq. 3 in Szary et al. 2020) and the
+                    only choice that gives the observed phase locking, i.e. an
+                    identical P3 in all profile components (see Section 4.1).
 
     """
-    function init_sparks1_ellipse!(psr; rfs=[0.295, 0.5], num=3, spacing="t", phase=0.0)
+    function init_sparks1_ellipse!(psr; rfs=[0.295, 0.5], num=3, spacing="t", phase=0.0, num_mode="arc")
         sp = Vector{Float64}[]
         ef = psr.ellipse_fit
 
@@ -435,9 +443,14 @@ module Sparks
             if i == 1
                 c1 = ci
                 num_new = num
-            else
+            elseif num_mode == "equal"
+                num_new = num
+                println("Track no. $i: $num_new sparks (equal number, arc ratio $(round(ci/c1, digits=2)))")
+            elseif num_mode == "arc"
                 num_new = convert(Int, ceil(ci / c1) * num)
                 println("Track no. $i: $num_new sparks (arc ratio $(round(ci/c1, digits=2)))")
+            else
+                error("Unknown num_mode: $num_mode. Use \"arc\" or \"equal\".")
             end
             if spacing == "arc"
                 append!(sp, place_equal_arc(pts, arcs, num_new))
