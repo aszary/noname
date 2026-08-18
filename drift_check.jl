@@ -244,7 +244,8 @@ module DriftCheck
         for L in (isempty(model_L) ? L_OBS : sort(model_L))
             g, w = phase_gradient(psr.longitudes, power, phase, L)
             rel = w/pmax
-            s = (isnan(g) || rel < 0.05) ? "-" : (g > 0 ? "+" : "-")
+            # UWAGA: "?" = za malo mocy. Nie uzywac tu "-", bo koliduje ze znakiem ujemnym.
+            s = (isnan(g) || rel < 0.05) ? "?" : (g > 0 ? "+" : "-")
             push!(senses, s)
             println("    $(lpad(round(L,digits=1),8)) deg  $(lpad(round(rel,digits=2),5))  ",
                     "$(lpad(isnan(g) ? NaN : round(g,digits=2),12))            $s")
