@@ -1,7 +1,7 @@
 module Field
     using LinearAlgebra
 
-    include("functions.jl")
+    import ..Functions
 
 
     mutable struct Test

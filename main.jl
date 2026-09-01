@@ -2,13 +2,17 @@ module NoName
 
     using JSON3
     include("modules/functions.jl")
-    include("modules/plot.jl")
+    include("modules/tools.jl")
+    include("modules/geometry.jl")
+    include("modules/transformations.jl")
+    include("modules/solid_body.jl")
     include("modules/field.jl")
     include("modules/nsfield.jl")
+    include("modules/lbc.jl")
+    include("modules/signal.jl")
     include("modules/lines.jl")
     include("modules/sparks.jl")
-    include("modules/signal.jl")
-    include("modules/lbc.jl")
+    include("modules/plot.jl")
 
 
     const DEFAULT_SPARKS_CONFIG = (
@@ -262,10 +266,12 @@ module NoName
 
     function generate_signal()
         #psr = Pulsar("input/1.json")
-        #psr = Pulsar("input/2.json")
+        psr = Pulsar("input/2.json")
         #psr = Pulsar("input/3.json")
-        psr = Pulsar("input/4.json")
+        #psr = Pulsar("input/4.json")
+        #psr = Pulsar("input/TEST.json")
         
+        t0 = time()
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
         Lines.calculate_line_of_sight(psr)
@@ -306,6 +312,8 @@ module NoName
         Signal.generate_signal_new(psr; noise_level=psr.noise_level, v_scale=0.3) # new with full Stokes and elliptical sparks based on ellipse fit
         Signal.generate_pulses(psr)
 
+        c_time = time() - t0
+        println("\n Calculated in $(round(c_time, digits=3)) seconds")
 
         #Plot.signal(psr)
         Plot.pulses(psr, number=psr.npulse)
@@ -313,8 +321,8 @@ module NoName
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        Plot.lrfs(psr, darkness=0.3)
-        Plot.two_dfs(psr, darkness=0.3)
+        #Plot.lrfs(psr, darkness=0.3)
+        #Plot.two_dfs(psr, darkness=0.3)
     end
 
 
@@ -339,8 +347,50 @@ module NoName
 
        
     end
-
-
+function find_best_pattern()
+        println("Rozpoczynam automatyczne poszukiwanie najlepszego wzoru...")
+        
+        # Gęstsza siatka parametrów (co 2 stopnie od 0 do 27) 
+        # Pełny unikalny cykl dla 13 iskier to około 27.7 stopnia
+        phases = 0.0:2.0:27.0
+        
+        for ph in phases
+            println("\nGenerowanie symulacji dla fazy = $ph")
+            
+            # 1. Wczytanie konfiguracji i cała symulacja
+            psr = Pulsar("input/TEST.json") 
+            
+            Lines.init_line_of_sight(psr, num=512)
+            Lines.calculate_line_of_sight(psr)
+            Lines.generate_open!(psr, num=50)
+            
+            Sparks.init_sparks1_ellipse!(psr; rfs=[0.54], num=13, spacing="t", phase=ph)
+            Sparks.simulate_sparks_solidbody(psr)
+            Signal.generate_signal_new(psr; noise_level=0.05, v_scale=0.3)
+            Signal.generate_pulses(psr)
+            
+            # 2. Rysowanie i zapisywanie (dla ilości pulsów równej ilości wartości P3)
+            mktemp() do path, io
+                println(io, "") 
+                close(io)
+                
+                open(path, "r") do file_in
+                    redirect_stdin(file_in) do
+                        # Rysujemy od start=1 do końca wektora P3
+                        Plot.pulses(psr, start=1, number=length(psr.p3), name_mod="phase_$(ph)")
+                    end
+                end
+            end
+            
+            # 3. Zapis do pliku
+            fig = Plot.GLMakie.current_figure()
+            filename = "output/phase_$(ph).png"
+            Plot.GLMakie.save(filename, fig)
+            Plot.GLMakie.closeall()
+        end
+        
+        println("\nZakończono! Wszystkie wykresy czekają w folderze output.")
+    end
 
     function main()
 
@@ -350,7 +400,7 @@ module NoName
 
         #generate_signal_dipole()
         generate_signal()
-
+        #find_best_pattern()
         #model_field()
 
         println("Bye")

@@ -1,6 +1,5 @@
 module Transformations    
-
-    include("functions.jl")
+    import ..Functions
 
     """
         rotation_matrix_yx(α, β)

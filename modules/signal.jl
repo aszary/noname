@@ -1,7 +1,8 @@
  module Signal
     using LinearAlgebra
 
-    include("functions.jl")
+    import ..Functions
+
 
     function generate_signal(psr; noise_level=0.1)
         # line of sight points at the polar cap

@@ -7,9 +7,11 @@ module Plot
     using Statistics
     using LinearAlgebra
     using FFTW
-    include("functions.jl")
-    include("sparks.jl")
-    include("tools.jl")
+    
+    import ..Functions
+    import ..Sparks
+    import ..Tools
+
 
 
 

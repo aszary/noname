@@ -5,9 +5,11 @@ module Sparks
     using JLD2
     using FileIO
     import ..Lines
-    include("functions.jl")
-    include("field.jl")
-    include("lbc.jl")
+    
+    import  ..Functions
+    import  ..Field
+    import  ..LBC
+
 
 
     """
@@ -863,7 +865,7 @@ module Sparks
 
         h_drft = calculate_lbc_drift_distance(psr, psr.ellipse_fit)
 
-        println("h_drft (per pulse): ", h_drft)
+        #println("h_drft (per pulse): ", h_drft)
 
         positions, sizes = LBC.generate_sparks(psr, ef;
             a_cap   = ef.a,

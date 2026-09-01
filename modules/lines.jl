@@ -2,12 +2,12 @@ module Lines
     using LinearAlgebra
     import ..NSField
 
-    include("field.jl")
-    include("functions.jl")
-    include("transformations.jl")
-    include("signal.jl")
-    include("geometry.jl")
-    include("solid_body.jl")
+    import ..Field
+    import ..Functions
+    import ..Transformations
+    import ..Signal
+    import ..Geometry
+    import ..SolidBody
 
 
     """
