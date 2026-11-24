@@ -65,8 +65,14 @@ module DriftCheck
     end
 
     """Przeciecia toru rf z plasma line.
-    Zwraca [(dlugosc, dphi/dpsi [deg/rad] wazone, szerokosc pasma [deg], min. odleglosc)]."""
-    function crossings(psr, ef, rf, pts, lngs; nt=1440)
+    Zwraca [(dlugosc, dphi/dpsi [deg/rad] wazone, szerokosc pasma [deg], min. odleglosc,
+             okno widocznosci w psi [deg])].
+
+    `elliptical=true` odwzorowuje generate_signal_new: sigma skalowana kierunkowo
+    przez r_dir/sqrt(a*b), czyli w kierunku malej osi zmniejszona ~b/sqrt(ab).
+    `elliptical=false` odwzorowuje generate_signal_radii: okragly gauss o stalej
+    sigmie, jak sigma_S w publikacji."""
+    function crossings(psr, ef, rf, pts, lngs; nt=1440, elliptical=true)
         R = psr.r
         r_avg = sqrt(ef.a*ef.b); cs = cos(ef.θ); sn = sin(ef.θ)
         base_sigma = psr.spark_radius / 3.72
@@ -83,40 +89,49 @@ module DriftCheck
             u = dot(vec, ef.x_hat); v = dot(vec, ef.y_hat)
             ue = u*cs + v*sn; ve = -u*sn + v*cs
             r2d = hypot(ue, ve)
-            sig[k] = r2d < 1e-10 ? base_sigma :
+            sig[k] = (!elliptical || r2d < 1e-10) ? base_sigma :
                      base_sigma * (ef.a*ef.b/hypot(ef.b*ue/r2d, ef.a*ve/r2d)) / r_avg
         end
         w = [exp(-ds[k]^2/(2*sig[k]^2)) for k in 1:nt]
-        mins = Int[]
-        for k in 1:nt
-            km = mod1(k-1,nt); kp = mod1(k+1,nt)
-            if w[k] >= w[km] && w[k] > w[kp] && w[k] > 0.2; push!(mins, k); end
-        end
-        sort!(mins, by = k -> -w[k])
-        keep = Int[]
-        for k in mins
-            if all(min(abs(k-j), nt-abs(k-j)) > nt÷12 for j in keep); push!(keep, k); end
-            length(keep) == 2 && break
-        end
+
+        # Spojne obszary widocznosci (w > thr), z zawijaniem po orbicie.
+        # WAZNE: dwa przeciecia toru z plasma line moga byc polaczone plytkim
+        # garbem odleglosci. Jesli iskra jest wieksza niz ten garb, oba zlewaja
+        # sie w JEDNO dlugie okno o szerokim zakresie dlugosci -- i wlasnie tak
+        # powstaja szerokie pasma dryfu. Szukanie osobnych minimow to gubi.
+        thr = 0.05
+        vis = [w[k] > thr for k in 1:nt]
+        all(vis) && return [(_summary(phis, w, collect(1:nt), nt))]
+        !any(vis) && return []
+        start = findfirst(k -> vis[k] && !vis[mod1(k-1,nt)], 1:nt)
+        start === nothing && return []
         out = []
-        for k in keep
-            idx = Int[k]
-            for dir in (-1, 1), step in 1:(nt÷6)
-                j = mod1(k + dir*step, nt)
-                w[j] < 0.05*w[k] && break
-                push!(idx, j)
+        k = start
+        for _ in 1:nt
+            if vis[k]
+                idx = Int[]
+                while vis[k] && length(idx) < nt
+                    push!(idx, k); k = mod1(k+1, nt)
+                end
+                length(idx) >= 5 && push!(out, _summary(phis, w, idx, nt))
+            else
+                k = mod1(k+1, nt)
             end
-            length(idx) < 5 && continue
-            ψ = [2pi*(mod1(j-k+nt÷2, nt) - nt÷2)/nt for j in idx]
-            φ = phis[idx]; ww = w[idx]
-            Σw = sum(ww); mψ = sum(ww.*ψ)/Σw; mφ = sum(ww.*φ)/Σw
-            den = sum(ww.*(ψ .- mψ).^2)
-            den < 1e-12 && continue
-            slope = sum(ww.*(ψ .- mψ).*(φ .- mφ))/den
-            push!(out, (phis[k], slope, maximum(φ)-minimum(φ), ds[k]))
+            k == start && break
         end
         sort!(out, by = c -> c[1])
         return out
+    end
+
+    """Podsumowanie jednego okna widocznosci: (srodek w dlugosci, wazone dphi/dpsi,
+    zakres dlugosci = szerokosc pasma, min. odleglosc-zastepczo max wagi, okno w psi)."""
+    function _summary(phis, w, idx, nt)
+        ψ = [2pi*(mod1(j - idx[1] + nt÷2, nt) - nt÷2)/nt for j in idx]
+        φ = phis[idx]; ww = w[idx]
+        Σw = sum(ww); mψ = sum(ww.*ψ)/Σw; mφ = sum(ww.*φ)/Σw
+        den = sum(ww.*(ψ .- mψ).^2)
+        slope = den < 1e-12 ? 0.0 : sum(ww.*(ψ .- mψ).*(φ .- mφ))/den
+        return (mφ, slope, maximum(φ)-minimum(φ), maximum(ww), length(idx)*360/nt)
     end
 
     """LRFS na modelowanych impulsach: zwraca (czestosc P3, moc(bin), faza(bin) w stopniach)."""
@@ -186,17 +201,21 @@ module DriftCheck
         pts, lngs = plasma_line(psr)
         dpsi = 2pi/(N*P3)                       # przyrost azymutu iskry na okres
 
+        ell = get(si, :signal_model, "new") != "radii"
         println("\n[2] PRZECIECIA TOROW Z PLASMA LINE  (tempo wazone po oknie widocznosci)")
-        println("    tor      dlugosc     tempo dryfu     szer. pasma   min. odl.")
+        println("    model iskry: ", ell ? "eliptyczny (generate_signal_new)" :
+                                           "okragly (generate_signal_radii, jak sigma_S w publikacji)")
+        println("    tor      dlugosc     tempo dryfu     szer. pasma   max.waga   okno psi")
         model_L = Float64[]; model_R = Float64[]
         for rf in rfs
-            for c in crossings(psr, ef, rf, pts, lngs)
+            for c in crossings(psr, ef, rf, pts, lngs; elliptical=ell)
                 rate = c[2]*dpsi/P
                 push!(model_L, c[1]); push!(model_R, rate)
                 println("    rf=$(rpad(rf,5))  $(lpad(round(c[1],digits=1),7)) deg  ",
                         "$(lpad(round(rate,digits=3),8)) deg/s  ",
                         "$(lpad(round(c[3],digits=1),8)) deg  ",
-                        "$(lpad(round(c[4],digits=2),7)) m")
+                        "$(lpad(round(c[4],digits=2),7))    ",
+                        "$(lpad(round(c[5],digits=1),7)) deg")
             end
         end
         println("    OBSERWOWANE:  $(L_OBS) deg,  $(R_OBS) deg/s,  szer. $(C_OBS) deg")
@@ -208,7 +227,7 @@ module DriftCheck
         if do_scan
             println("\n[2b] SKAN rf  (do doboru \"rfs\": ktory tor tnie plasma line gdzie)")
             for rf in 0.20:0.02:0.98
-                cr = crossings(psr, ef, rf, pts, lngs)
+                cr = crossings(psr, ef, rf, pts, lngs; elliptical=ell)
                 isempty(cr) && continue
                 println("    rf=$(rpad(round(rf,digits=2),5))  ",
                         join(["$(lpad(round(c[1],digits=1),7))deg tempo=$(lpad(round(c[2]*dpsi/P,digits=3),7))" for c in cr], " | "))
@@ -223,7 +242,11 @@ module DriftCheck
             error("drift_check obsluguje na razie tylko init.method = \"ellipse\"")
         end
         Sparks.simulate_sparks_solidbody(psr)
-        Signal.generate_signal_new(psr; noise_level=psr.noise_level, v_scale=0.3)
+        if ell
+            Signal.generate_signal_new(psr; noise_level=psr.noise_level, v_scale=0.3)
+        else
+            Signal.generate_signal_radii(psr; noise_level=psr.noise_level, v_scale=0.3)
+        end
         Signal.generate_pulses(psr)
 
         # zrzut stosu impulsow -- do bezposredniego sledzenia subpulsow
@@ -250,7 +273,7 @@ module DriftCheck
             println("    $(lpad(round(L,digits=1),8)) deg  $(lpad(round(rel,digits=2),5))  ",
                     "$(lpad(isnan(g) ? NaN : round(g,digits=2),12))            $s")
         end
-        uniq = unique(filter(!=("-"), senses))
+        uniq = unique(filter(!=("?"), senses))     # "?" = za malo mocy; "-" to znak, nie brak danych
         println("\n    WERDYKT: ", length(uniq) > 1 ?
                 ">>> BI-DRIFT (gradient fazy zmienia znak miedzy komponentami) <<<" :
                 "brak bi-driftu (jeden kierunek w calym profilu)")
