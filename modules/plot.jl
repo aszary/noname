@@ -7,9 +7,10 @@ module Plot
     using Statistics
     using LinearAlgebra
     using FFTW
-    include("functions.jl")
-    include("sparks.jl")
-    include("tools.jl")
+    import ..Functions
+    import ..Sparks
+    import ..Tools
+  
 
 
 
@@ -2075,6 +2076,662 @@ module Plot
         display(fig)
         readline(stdin; keep=false)
         GLMakie.closeall()
+    end
+
+    function lrfs2(psr; start=1, number=nothing, darkness=1.0,
+                  n_peaks=2, min_df=0.02, peak_freqs=nothing,
+                  phase_thresh=0.05, flip_phase=false, show_mod_amp=true)
+        data = psr.pulses
+
+        num_total, bins = size(data)
+        if isnothing(number)
+            number = num_total - start + 1
+        end
+
+        # Extract the relevant block of single pulses
+        da = data[start:start+number-1, :]
+        n_pulses, n_bins = size(da)
+
+        # Step 1: Average profile
+        avg_profile = vec(mean(da, dims=1))
+
+        # Step 2: Mean subtraction (removes DC at f = 0)
+        da_mean_sub = da .- avg_profile'
+
+        # Step 3: 1D real FFT along the pulse-number axis
+        fft_complex = rfft(da_mean_sub, 1)
+        lrfs_power = abs.(fft_complex).^2
+
+        # Step 4: Integrated fluctuation spectrum and exact frequency axis
+        int_spectrum = vec(sum(lrfs_power, dims=2))
+        n_freq = size(lrfs_power, 1)
+        freqs = collect(rfftfreq(n_pulses))
+
+        # -----------------------------------------------------
+        # FIND TOP n_peaks DISTINCT MAXIMA (OR USE peak_freqs)
+        # -----------------------------------------------------
+        peak_indices = Int[]
+        if !isnothing(peak_freqs)
+            for f_target in peak_freqs
+                idx = argmin(abs.(freqs .- f_target))
+                push!(peak_indices, max(2, idx)) # avoid DC bin
+            end
+        else
+            df = n_freq > 1 ? (freqs[2] - freqs[1]) : 1.0
+            min_sep_bins = max(2, round(Int, min_df / df))
+
+            # Collect local maxima (skipping DC index 1)
+            candidates = Int[]
+            for i in 2:(n_freq - 1)
+                if int_spectrum[i] > int_spectrum[i-1] && int_spectrum[i] >= int_spectrum[i+1]
+                    push!(candidates, i)
+                end
+            end
+            if n_freq >= 2 && int_spectrum[end] > int_spectrum[end-1]
+                push!(candidates, n_freq)
+            end
+
+            # Sort strongest first and enforce minimum separation
+            sort!(candidates, by = i -> int_spectrum[i], rev = true)
+            for idx in candidates
+                if all(abs(idx - p) >= min_sep_bins for p in peak_indices)
+                    push!(peak_indices, idx)
+                    length(peak_indices) == n_peaks && break
+                end
+            end
+
+            # Fallback if no local max found
+            if isempty(peak_indices) && n_freq >= 2
+                push!(peak_indices, argmax(int_spectrum[2:end]) + 1)
+            end
+        end
+
+        println("LRFS detected peaks:")
+        for (k, idx) in enumerate(peak_indices)
+            f_pk = freqs[idx]
+            p3_pk = f_pk > 0 ? 1.0 / f_pk : Inf
+            println("  F$k: 1/P3 = $(round(f_pk, digits=4)) cpp  (P3 = $(round(p3_pk, digits=2)) P0)")
+        end
+
+        # Color/marker styling (matches F1=blue, F2=green, F3=red from Hsu et al. Fig. 4)
+        colors     = [:royalblue, :forestgreen, :crimson, :darkorange, :purple]
+        markers    = [:circle, :utriangle, :rect, :diamond, :star5]
+        linestyles = [:dash, :dashdot, :dot, :dashdotdot, :solid]
+
+        # --- PLOTTING WITH MAKIE (4-panel layout) ---
+        size_inches = (9 / 2.54, 14 / 2.54)
+        dpi = 150
+        size_pt = dpi .* size_inches
+
+        fig = Figure(size=size_pt, fontsize=8)
+
+        # Left Panel: Integrated fluctuation spectrum
+        ax_left = Axis(fig[2:5, 1], ylabel=L"Frequency ($c/P$)", xlabel="Power",
+                       xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_left, int_spectrum, freqs, color=:gray50, linewidth=1.5)
+        ylims!(ax_left, 0.0, 0.5)
+        ax_left.xreversed = true
+
+        # Main Panel: LRFS Heatmap
+        vmax = darkness * maximum(lrfs_power)
+        ax_main = Axis(fig[2:5, 2:4], yticklabelsvisible=false,
+                       xminorticksvisible=true, yminorticksvisible=true)
+        heatmap!(ax_main, psr.longitudes, freqs, transpose(lrfs_power),
+                 colormap=:viridis, colorrange=(0, vmax))
+        xlims!(ax_main, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_main, 0.0, 0.5)
+
+        # Bottom Panel: Average pulsar profile (+ optional modulation amplitudes)
+        prof_min = minimum(avg_profile)
+        prof_span = maximum(avg_profile) - prof_min
+        norm_avg_profile = prof_span > 0 ? (avg_profile .- prof_min) ./ prof_span : zeros(n_bins)
+
+        ax_bottom = Axis(fig[6, 2:4], xlabel=L"Longitude ($^\circ$)", ylabel="Intensity",
+                         xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_bottom, psr.longitudes, norm_avg_profile, color=:black, linewidth=1.5)
+        xlims!(ax_bottom, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_bottom, 0.0, 1.15)
+
+        # Top Panel: Fluctuation phase for F1, F2, ...
+        ax_top = Axis(fig[1, 2:4], ylabel="Phase\n(deg)", xaxisposition=:top,
+                      yticks=[-180, -90, 0, 90, 180],
+                      xminorticksvisible=true, yminorticksvisible=true)
+        xlims!(ax_top, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_top, -195, 195)
+
+        phase_sign = flip_phase ? -1.0 : 1.0
+
+        for (k, idx) in enumerate(peak_indices)
+            col = colors[mod1(k, length(colors))]
+            mkr = markers[mod1(k, length(markers))]
+            ls  = linestyles[mod1(k, length(linestyles))]
+            f_pk = freqs[idx]
+
+            # Fluctuation phase masked by local power
+            peak_complex = fft_complex[idx, :]
+            fluct_phase = phase_sign .* angle.(peak_complex) .* (180 / pi)
+
+            p_row = lrfs_power[idx, :]
+            p_max = maximum(p_row)
+            mask = p_max > 0 ? (p_row .>= phase_thresh * p_max) : trues(n_bins)
+
+            lbl = "F$k ($(round(f_pk, digits=3)))"
+            scatter!(ax_top, psr.longitudes[mask], fluct_phase[mask],
+                     color=col, marker=mkr, markersize=4.5, label=lbl)
+
+            # Matching frequency marker in the left integrated spectrum
+            hlines!(ax_left, [f_pk], color=(col, 0.8), linestyle=:dash, linewidth=1.0)
+
+            # Optional longitude-resolved modulation amplitude (Fig. 4 style)
+            if show_mod_amp && prof_span > 0
+                scale_factor = (idx == n_freq && iseven(n_pulses)) ? (1.0 / n_pulses) : (2.0 / n_pulses)
+                mod_amp = abs.(peak_complex) .* scale_factor
+                lines!(ax_bottom, psr.longitudes, mod_amp ./ prof_span,
+                       color=col, linestyle=ls, linewidth=1.2)
+            end
+        end
+
+        # Place legend in the empty top-left corner above the integrated spectrum
+        Legend(fig[1, 1], ax_top, framevisible=false, labelsize=6.5,
+               patchsize=(8, 8), rowgap=1, padding=(2, 2, 2, 2),
+               tellwidth=false, tellheight=false)
+
+        # Synchronize axes
+        linkyaxes!(ax_main, ax_left)
+        linkxaxes!(ax_main, ax_bottom, ax_top)
+
+        hideydecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_top, ticks=false, minorticks=false, grid=false)
+
+        hidespines!(ax_main, :l, :b)
+        hidespines!(ax_left, :r)
+        hidespines!(ax_bottom, :t)
+        hidespines!(ax_top, :b)
+
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+
+        display(fig)
+        readline(stdin; keep=false)
+        GLMakie.closeall()
+    end
+
+    """
+    compute_slrfs(data, longitudes; win=64, step=1, pad_factor=2,
+                  window=:hann, lon_range=nothing, normalize_windows=false)
+
+    Computes a Sliding Longitude-Resolved Fluctuation Spectrum (SLRFS) by running
+    a windowed 1D real FFT along the pulse-number axis and summing power across
+    the selected longitude bins.
+    """
+    function compute_slrfs(data, longitudes; win=64, step=1, pad_factor=2,
+                           window=:hann, lon_range=nothing, normalize_windows=false)
+        n_pulses, n_bins = size(data)
+        win = min(win, n_pulses)
+        @assert win >= 4 "Window length `win` must be at least 4 pulses."
+
+        # Optional longitude filter (e.g. isolate component C1 or C2)
+        if isnothing(lon_range)
+            bin_mask = trues(n_bins)
+        else
+            bin_mask = (longitudes .>= lon_range[1]) .& (longitudes .<= lon_range[2])
+            @assert any(bin_mask) "No longitude bins fall inside lon_range=$(lon_range)."
+        end
+        bin_idx = findall(bin_mask)
+
+        # Taper weights along pulse axis
+        w = if window == :hann
+            0.5 .* (1.0 .- cos.(2π .* (0:win-1) ./ (win - 1)))
+        elseif window == :hamming
+            0.54 .- 0.46 .* cos.(2π .* (0:win-1) ./ (win - 1))
+        elseif window == :rect
+            ones(Float64, win)
+        else
+            error("Unknown window `:$(window)`. Use :hann, :hamming, or :rect.")
+        end
+
+        n_fft  = win * max(1, Int(pad_factor))
+        freqs  = collect(rfftfreq(n_fft))
+        n_freq = length(freqs)
+
+        starts = collect(1:step:(n_pulses - win + 1))
+        n_win  = length(starts)
+        pulse_centers = starts .+ (win - 1) / 2.0
+
+        slrfs_map = zeros(Float64, n_freq, n_win)
+        buf = zeros(Float64, n_fft, length(bin_idx))
+
+        for (k, s) in enumerate(starts)
+            block = @view data[s:(s + win - 1), bin_idx]
+            block_mean = mean(block, dims=1)
+
+            fill!(buf, 0.0)
+            @views buf[1:win, :] .= (block .- block_mean) .* w
+
+            ft = rfft(buf, 1)
+            pwr = vec(sum(abs2.(ft), dims=2))
+            pwr[1] = 0.0 # explicitly zero DC bin
+
+            if normalize_windows
+                pmax = maximum(pwr)
+                pmax > 0 && (pwr ./= pmax)
+            end
+
+            slrfs_map[:, k] = pwr
+        end
+
+        return (
+            pulse_centers = pulse_centers,
+            freqs         = freqs,
+            power         = slrfs_map,
+            starts        = starts,
+            win           = win,
+            n_fft         = n_fft,
+            weights       = w,
+            bin_mask      = bin_mask
+        )
+    end
+
+
+    # Shared peak-finder for lrfs and slrfs_interactive
+    function _find_lrfs_peaks(int_spectrum, freqs; n_peaks=2, min_df=0.02, peak_freqs=nothing)
+        n_freq = length(freqs)
+        peak_indices = Int[]
+
+        if !isnothing(peak_freqs)
+            for f_target in peak_freqs
+                idx = argmin(abs.(freqs .- f_target))
+                push!(peak_indices, max(2, idx))
+            end
+            return peak_indices
+        end
+
+        df = n_freq > 1 ? (freqs[2] - freqs[1]) : 1.0
+        min_sep_bins = max(2, round(Int, min_df / df))
+
+        candidates = Int[]
+        for i in 2:(n_freq - 1)
+            if int_spectrum[i] > int_spectrum[i-1] && int_spectrum[i] >= int_spectrum[i+1]
+                push!(candidates, i)
+            end
+        end
+        if n_freq >= 2 && int_spectrum[end] > int_spectrum[end-1]
+            push!(candidates, n_freq)
+        end
+
+        sort!(candidates, by = i -> int_spectrum[i], rev = true)
+        for idx in candidates
+            if all(abs(idx - p) >= min_sep_bins for p in peak_indices)
+                push!(peak_indices, idx)
+                length(peak_indices) == n_peaks && break
+            end
+        end
+
+        if isempty(peak_indices) && n_freq >= 2
+            push!(peak_indices, argmax(int_spectrum[2:end]) + 1)
+        end
+        return peak_indices
+    end
+
+    """
+    slrfs(psr; start=1, number=nothing, win=64, step=1, pad_factor=2,
+          window=:hann, lon_range=nothing, normalize_windows=false,
+          darkness=0.8, cmap=:viridis, show_true_p3=true, yreversed=false)
+
+    Static 4-panel Sliding LRFS plot:
+      - Top-left:     Single-pulse stack (longitude vs pulse number)
+      - Top-right:    SLRFS spectrogram (1/P3 vs pulse number) + optional true 1/P3 overlay
+      - Bottom-left:  Normalized average pulse profile (highlighting lon_range if set)
+      - Bottom-right: Time-averaged fluctuation spectrum
+    """
+    function slrfs(psr; start=1, number=nothing, win=64, step=1, pad_factor=2,
+                   window=:hann, lon_range=nothing, normalize_windows=false,
+                   darkness=0.8, cmap=:viridis, show_true_p3=true, yreversed=false)
+        data = psr.pulses
+        num_total, _ = size(data)
+        if isnothing(number)
+            number = num_total - start + 1
+        end
+
+        da = data[start:(start + number - 1), :]
+        n_pulses = size(da, 1)
+        pulse_indices = collect(start:(start + n_pulses - 1))
+
+        res = compute_slrfs(da, psr.longitudes;
+                            win=win, step=step, pad_factor=pad_factor,
+                            window=window, lon_range=lon_range,
+                            normalize_windows=normalize_windows)
+
+        # Shift window centers into global pulse numbers
+        p_centers = res.pulse_centers .+ (start - 1)
+
+        # Bottom-panel reference curves
+        avg_profile = vec(mean(da, dims=1))
+        pmin, pmax = extrema(avg_profile)
+        norm_prof = (pmax > pmin) ? (avg_profile .- pmin) ./ (pmax - pmin) : zeros(length(avg_profile))
+
+        mean_spec = vec(mean(res.power, dims=2))
+        smax = maximum(mean_spec)
+        norm_spec = smax > 0 ? mean_spec ./ smax : mean_spec
+
+        # --- Figure Layout (2×2 linked grid) ---
+        size_inches = (14 / 2.54, 13 / 2.54)
+        fig = Figure(size = 150 .* size_inches, fontsize = 9)
+
+        # Top-Left: Pulse stack
+        ax_stack = Axis(fig[1:4, 1:2], ylabel = "Pulse number",
+                        xticklabelsvisible = false,
+                        xminorticksvisible = true, yminorticksvisible = true)
+        heatmap!(ax_stack, psr.longitudes, pulse_indices, permutedims(da), colormap = cmap)
+        xlims!(ax_stack, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_stack, pulse_indices[1], pulse_indices[end])
+
+        # Top-Right: SLRFS Spectrogram
+        ax_slrfs = Axis(fig[1:4, 3:5],
+                        title = "Sliding LRFS (win=$(res.win), step=$step, $(window))",
+                        xticklabelsvisible = false, yticklabelsvisible = false,
+                        xminorticksvisible = true, yminorticksvisible = true)
+        vmax = max(darkness * maximum(res.power), 1e-12)
+        heatmap!(ax_slrfs, res.freqs, p_centers, res.power,
+                 colormap = cmap, colorrange = (0.0, vmax))
+        xlims!(ax_slrfs, 0.0, 0.5)
+        ylims!(ax_slrfs, pulse_indices[1], pulse_indices[end])
+
+        # Optional overlay of ground-truth simulated 1/P3(t) from psr.p3
+        if show_true_p3 && !isnothing(psr.p3) && isa(psr.p3, AbstractVector) && length(psr.p3) >= start + n_pulses - 1
+            p3_slice = psr.p3[start:(start + n_pulses - 1)]
+            f3_true = [abs(v) > 0 ? abs(1.0 / v) : NaN for v in p3_slice]
+            lines!(ax_slrfs, f3_true, Float64.(pulse_indices),
+                   color = (:white, 0.9), linestyle = :dash, linewidth = 1.5,
+                   label = L"True $1/P_3(t)$")
+            axislegend(ax_slrfs, position = :rt, framevisible = false,
+                       labelcolor = :white, labelsize = 8)
+        end
+
+        # Bottom-Left: Average pulse profile
+        ax_prof = Axis(fig[5, 1:2], xlabel = L"Longitude ($^\circ$)", ylabel = "Intensity",
+                       xminorticksvisible = true, yminorticksvisible = true)
+        lines!(ax_prof, psr.longitudes, norm_prof, color = :black, linewidth = 1.5)
+        xlims!(ax_prof, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_prof, 0.0, 1.1)
+
+        # Highlight longitude slice if lon_range was specified
+        if !isnothing(lon_range)
+            vlines!(ax_stack, [lon_range[1], lon_range[2]], color = (:white, 0.8), linestyle = :dash, linewidth = 1.0)
+            vspan!(ax_prof, lon_range[1], lon_range[2], color = (:orange, 0.25))
+        end
+
+        # Bottom-Right: Time-averaged fluctuation spectrum
+        ax_spec = Axis(fig[5, 3:5], xlabel = L"Frequency $1/P_3$ ($c/P$)", ylabel = "Avg Power",
+                       yticklabelsvisible = false,
+                       xminorticksvisible = true, yminorticksvisible = true)
+        lines!(ax_spec, res.freqs, norm_spec, color = :black, linewidth = 1.5)
+        xlims!(ax_spec, 0.0, 0.5)
+        ylims!(ax_spec, 0.0, 1.1)
+
+        if yreversed
+            ax_stack.yreversed = true
+            ax_slrfs.yreversed = true
+        end
+
+        linkyaxes!(ax_stack, ax_slrfs)
+        linkxaxes!(ax_stack, ax_prof)
+        linkxaxes!(ax_slrfs, ax_spec)
+
+        colgap!(fig.layout, 4)
+        rowgap!(fig.layout, 2)
+
+        screen = display(fig)
+        wait(screen)
+        return fig
+    end
+
+    """
+    slrfs_interactive(psr; start=1, number=nothing, win=64, step=2, pad_factor=2,
+                      window=:hann, lon_range=nothing, darkness=0.5,
+                      n_peaks=3, min_df=0.02, peak_freqs=nothing,
+                      phase_thresh=0.05, flip_phase=false,
+                      show_true_p3=true, delay=0.08)
+
+    Interactive GLMakie SLRFS explorer:
+      - Left:  SLRFS spectrogram with a live shaded indicator of the active pulse window
+      - Right: Live 4-panel LRFS (multi-peak fluctuation phases, 2D power heatmap,
+               integrated spectrum, and local vs. global average profile)
+      - Bottom: Window slider + Play/Pause animation button
+    """
+    function slrfs_interactive(psr; start=1, number=nothing, win=64, step=2, pad_factor=2,
+                               window=:hann, lon_range=nothing, darkness=0.5,
+                               n_peaks=3, min_df=0.02, peak_freqs=nothing,
+                               phase_thresh=0.05, flip_phase=false,
+                               show_true_p3=true, delay=0.08)
+        data = psr.pulses
+        num_total, n_bins = size(data)
+        if isnothing(number)
+            number = num_total - start + 1
+        end
+
+        da = data[start:(start + number - 1), :]
+        n_pulses = size(da, 1)
+        pulse_indices = collect(start:(start + n_pulses - 1))
+
+        res = compute_slrfs(da, psr.longitudes;
+                            win=win, step=step, pad_factor=pad_factor,
+                            window=window, lon_range=lon_range)
+
+        p_centers = res.pulse_centers .+ (start - 1)
+        n_win     = length(res.starts)
+        n_freq    = length(res.freqs)
+        phase_sign = flip_phase ? -1.0 : 1.0
+        n_tracks  = isnothing(peak_freqs) ? n_peaks : length(peak_freqs)
+
+        # Global normalized average profile (static grey reference in bottom-right panel)
+        global_prof = vec(mean(da, dims=1))
+        gmin, gmax = extrema(global_prof)
+        norm_global = (gmax > gmin) ? (global_prof .- gmin) ./ (gmax - gmin) : zeros(n_bins)
+
+        # Helper to compute one window's full 2D LRFS + multi-peak phases
+        buf = zeros(Float64, res.n_fft, n_bins)
+        function eval_window(k::Int)
+            s = res.starts[k]
+            block = @view da[s:(s + res.win - 1), :]
+            loc_prof = vec(mean(block, dims=1))
+
+            fill!(buf, 0.0)
+            @views buf[1:res.win, :] .= (block .- loc_prof') .* res.weights
+
+            ft = rfft(buf, 1)
+            pwr = abs2.(ft)
+            pwr[1, :] .= 0.0
+
+            # Sum over selected longitude bins for peak finding
+            int_spec = vec(sum(@view(pwr[:, res.bin_mask]), dims=2))
+            pks = _find_lrfs_peaks(int_spec, res.freqs;
+                                   n_peaks=n_peaks, min_df=min_df, peak_freqs=peak_freqs)
+
+            # Normalize local heatmap & integrated spectrum for steady color/axis limits
+            p_max = maximum(pwr)
+            pwr_norm = p_max > 0 ? permutedims(pwr) ./ p_max : zeros(Float64, n_bins, n_freq)
+
+            s_max = maximum(int_spec)
+            spec_norm = s_max > 0 ? int_spec ./ s_max : zeros(Float64, n_freq)
+
+            lmin, lmax = extrema(loc_prof)
+            prof_norm = (lmax > lmin) ? (loc_prof .- lmin) ./ (lmax - lmin) : zeros(n_bins)
+
+            # Build per-peak phase Point2f vectors and frequency markers
+            phase_pts = Vector{Vector{Point2f}}(undef, n_tracks)
+            pk_freqs_out = fill(NaN, n_tracks)
+            for j in 1:n_tracks
+                if j <= length(pks)
+                    idx = pks[j]
+                    pk_freqs_out[j] = res.freqs[idx]
+                    ph_deg = phase_sign .* angle.(ft[idx, :]) .* (180 / pi)
+                    row_p  = pwr[idx, :]
+                    rmax   = maximum(row_p)
+                    mask   = rmax > 0 ? (row_p .>= phase_thresh * rmax) : falses(n_bins)
+                    if any(mask)
+                        phase_pts[j] = Point2f.(psr.longitudes[mask], ph_deg[mask])
+                    else
+                        phase_pts[j] = Point2f[Point2f(NaN, NaN)]
+                    end
+                else
+                    phase_pts[j] = Point2f[Point2f(NaN, NaN)]
+                end
+            end
+
+            p_lo = Float64(start + s - 1)
+            p_hi = Float64(start + s + res.win - 2)
+            return pwr_norm, spec_norm, prof_norm, phase_pts, pk_freqs_out, p_lo, p_hi
+        end
+
+        # Evaluate initial window (k = 1)
+        pwr0, spec0, prof0, pts0, f0, lo0, hi0 = eval_window(1)
+
+        # --- Observables ---
+        heatmap_obs = Observable(pwr0)
+        spec_obs    = Observable(spec0)
+        prof_obs    = Observable(prof0)
+        lo_obs      = Observable(lo0)
+        hi_obs      = Observable(hi0)
+        phase_obs   = [Observable(pts0[j]) for j in 1:n_tracks]
+        freq_obs    = [Observable([f0[j]]) for j in 1:n_tracks]
+
+        function format_status(lo, hi, fvals)
+            parts = String[]
+            for (j, fv) in enumerate(fvals)
+                if isfinite(fv) && fv > 0
+                    push!(parts, "F$j=$(round(fv, digits=3)) cpp (P3=$(round(1/fv, digits=1)))")
+                end
+            end
+            return "Window: pulses $(Int(lo))–$(Int(hi))   |   " * join(parts, "   ")
+        end
+        status_obs = Observable(format_status(lo0, hi0, f0))
+
+        # --- Figure Layout ---
+        fig = Figure(size = (1200, 720), fontsize = 10)
+        gl_left  = fig[1, 1] = GridLayout()
+        gl_right = fig[1, 2] = GridLayout()
+        gl_ctrl  = fig[2, 1:2] = GridLayout()
+
+        # Left Panel: SLRFS Overview
+        ax_slrfs = Axis(gl_left[1, 1],
+                        title = "SLRFS Overview (win=$(res.win))",
+                        xlabel = L"Frequency $1/P_3$ ($c/P$)",
+                        ylabel = "Pulse number",
+                        xminorticksvisible = true, yminorticksvisible = true)
+        vmax_s = max(darkness * maximum(res.power), 1e-12)
+        heatmap!(ax_slrfs, res.freqs, p_centers, res.power,
+                 colormap = :viridis, colorrange = (0.0, vmax_s))
+        xlims!(ax_slrfs, 0.0, 0.5)
+        ylims!(ax_slrfs, pulse_indices[1], pulse_indices[end])
+
+        if show_true_p3 && !isnothing(psr.p3) && isa(psr.p3, AbstractVector) && length(psr.p3) >= start + n_pulses - 1
+            p3_slice = psr.p3[start:(start + n_pulses - 1)]
+            f3_true = [abs(v) > 0 ? abs(1.0 / v) : NaN for v in p3_slice]
+            lines!(ax_slrfs, f3_true, Float64.(pulse_indices),
+                   color = (:white, 0.85), linestyle = :dash, linewidth = 1.5)
+        end
+
+        # Live window highlight box on SLRFS
+        hspan!(ax_slrfs, lo_obs, hi_obs, color = (:white, 0.22))
+        hlines!(ax_slrfs, lo_obs, color = :white, linewidth = 1.2)
+        hlines!(ax_slrfs, hi_obs, color = :white, linewidth = 1.2)
+
+        # Right Panels: Live 4-Panel LRFS
+        ax_top = Axis(gl_right[1, 2:4], ylabel = "Phase (deg)", xaxisposition = :top,
+                      yticks = [-180, -90, 0, 90, 180],
+                      xminorticksvisible = true, yminorticksvisible = true)
+        xlims!(ax_top, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_top, -195, 195)
+
+        ax_int = Axis(gl_right[2:5, 1], ylabel = L"Frequency ($c/P$)", xlabel = "Power",
+                      xminorticksvisible = true, yminorticksvisible = true)
+        lines!(ax_int, spec_obs, res.freqs, color = :gray40, linewidth = 1.5)
+        ax_int.xreversed = true
+        xlims!(ax_int, 0.0, 1.08)
+        ylims!(ax_int, 0.0, 0.5)
+
+        ax_main = Axis(gl_right[2:5, 2:4], yticklabelsvisible = false,
+                       xminorticksvisible = true, yminorticksvisible = true)
+        heatmap!(ax_main, psr.longitudes, res.freqs, heatmap_obs,
+                 colormap = :viridis, colorrange = (0.0, darkness))
+        xlims!(ax_main, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_main, 0.0, 0.5)
+
+        ax_bot = Axis(gl_right[6, 2:4], xlabel = L"Longitude ($^\circ$)", ylabel = "Intensity",
+                      xminorticksvisible = true, yminorticksvisible = true)
+        lines!(ax_bot, psr.longitudes, norm_global, color = (:gray60, 0.7), linestyle = :dash, linewidth = 1.2)
+        lines!(ax_bot, psr.longitudes, prof_obs, color = :black, linewidth = 1.5)
+        xlims!(ax_bot, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_bot, 0.0, 1.15)
+
+        colors  = [:royalblue, :forestgreen, :crimson, :darkorange, :purple]
+        markers = [:circle, :utriangle, :rect, :diamond, :star5]
+        for j in 1:n_tracks
+            col = colors[mod1(j, length(colors))]
+            mkr = markers[mod1(j, length(markers))]
+            scatter!(ax_top, phase_obs[j], color = col, marker = mkr, markersize = 6, label = "F$j")
+            hlines!(ax_int, freq_obs[j], color = (col, 0.85), linestyle = :dash, linewidth = 1.2)
+        end
+
+        Legend(gl_right[1, 1], ax_top, framevisible = false, labelsize = 9,
+               tellwidth = false, tellheight = false)
+
+        linkyaxes!(ax_main, ax_int)
+        linkxaxes!(ax_main, ax_bot, ax_top)
+        hideydecorations!(ax_main, ticks = false, minorticks = false, grid = false)
+        hidexdecorations!(ax_main, ticks = false, minorticks = false, grid = false)
+        hidexdecorations!(ax_top, ticks = false, minorticks = false, grid = false)
+        hidespines!(ax_main, :l, :b)
+        hidespines!(ax_int, :r)
+        hidespines!(ax_bot, :t)
+        hidespines!(ax_top, :b)
+        colgap!(gl_right, 0)
+        rowgap!(gl_right, 0)
+
+        colsize!(fig.layout, 1, Relative(0.38))
+        rowsize!(fig.layout, 2, Auto())
+
+        # --- Bottom Controls: Play/Pause + Slider + Status ---
+        playing = Ref(false)
+        btn_play = Button(gl_ctrl[1, 1], label = "Play", width = 75)
+        sl = Slider(gl_ctrl[1, 2], range = 1:n_win, startvalue = 1)
+        Label(gl_ctrl[2, 1:2], status_obs, fontsize = 10, halign = :left)
+
+        on(sl.value) do k
+            pwr_k, spec_k, prof_k, pts_k, f_k, lo_k, hi_k = eval_window(k)
+            heatmap_obs[] = pwr_k
+            spec_obs[]    = spec_k
+            prof_obs[]    = prof_k
+            lo_obs[]      = lo_k
+            hi_obs[]      = hi_k
+            for j in 1:n_tracks
+                phase_obs[j][] = pts_k[j]
+                freq_obs[j][]  = [f_k[j]]
+            end
+            status_obs[] = format_status(lo_k, hi_k, f_k)
+        end
+
+        on(btn_play.clicks) do _
+            playing[] = !playing[]
+            btn_play.label = playing[] ? "Pause" : "Play"
+        end
+
+        screen = display(fig)
+
+        @async begin
+            while events(fig).window_open[]
+                if playing[] && n_win > 1
+                    next_k = sl.value[] >= n_win ? 1 : sl.value[] + 1
+                    set_close_to!(sl, next_k)
+                end
+                sleep(delay)
+            end
+        end
+
+        wait(screen)
+        return fig
     end
 
 

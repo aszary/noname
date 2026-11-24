@@ -1,6 +1,6 @@
 module Transformations    
 
-    include("functions.jl")
+    import ..Functions
 
 
     """

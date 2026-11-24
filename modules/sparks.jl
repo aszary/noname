@@ -8,7 +8,7 @@ module Sparks
     import ..Functions
     import ..Field
     import ..Transformations
-    include("lbc.jl")
+    import ..LBC
 
 
     """
@@ -763,39 +763,6 @@ module Sparks
         return 2 * pi / N_outer
     end
 
-    """
-    Calculates the correct azimuthal rotation angle (delta_phi) per step 
-    for the SolidBody model based on the P3 parameter and actual spark geometry.
-    """
-    function calculate_solidbody_track_angle(psr, ef)
-        rfs = Float64[]
-        for s in psr.sparks
-            # Project 3D points onto the 2D tangent plane
-            k = dot(ef.centroid, ef.z_hat) / dot(s, ef.z_hat)
-            p_tangent = k .* s
-            
-            # Local coordinates in the tangent plane (u, v)
-            d = p_tangent - ef.centroid
-            u = dot(d, ef.x_hat)
-            v = dot(d, ef.y_hat)
-            
-            # Transform to the ellipse axis system (rotate by -θ)
-            du = u - ef.center_local[1]
-            dv = v - ef.center_local[2]
-            ue = du * cos(ef.θ) + dv * sin(ef.θ)
-            ve = -du * sin(ef.θ) + dv * cos(ef.θ)
-            
-            # Calculate the normalized "elliptical radius" (rf)
-            push!(rfs, sqrt((ue / ef.a)^2 + (ve / ef.b)^2))
-        end
-
-        # Find the outermost ring and count sparks on it
-        max_rf = maximum(rfs)
-        N_outer = count(rf -> abs(rf - max_rf) < 0.01 * max_rf, rfs)
-        
-        # Zwracamy bazowy kąt geometryczny pomiędzy iskrami na pierścieniu (bez dzielenia przez P3)
-        return (2 * pi / N_outer)
-    end
 
 
 

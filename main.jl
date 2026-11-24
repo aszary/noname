@@ -2,6 +2,7 @@ module NoName
 
     using JSON3
     using GLMakie
+    using Statistics
     
     include("modules/functions.jl")
     include("modules/transformations.jl")
@@ -274,12 +275,64 @@ module NoName
         
     end
 
+    function fast_beta_scanner()
+        psr = Pulsar("input/B1839-04.json")
+        
+        println("Generowanie pola magnetycznego (wykonuje sie tylko raz, prosze czekac)...")
+        Lines.generate_open!(psr, num=psr.nsfield.nopen)
+        
+        println("Skanowanie parametru beta w poszukiwaniu Bi-driftingu...")
+        beta_range = 0.4:0.1:3.5
+        
+        for b in beta_range
+            psr.beta = b
+            
+            # Przeliczamy tylko Linię Wzroku (LOS) - to operacja natychmiastowa
+            empty!(psr.los_lines)
+            Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
+            Lines.calculate_line_of_sight(psr)
+            
+            # Symulacja rotacji iskier na wybranej linii LOS
+            Sparks.init_sparks1_ellipse!(psr; rfs=collect(psr.sparks_config.init.rfs), num=psr.sparks_config.init.num, phase=psr.sparks_config.init.phase)
+            Sparks.simulate_sparks_solidbody(psr)
+            Signal.generate_signal_new(psr; noise_level=0.0)
+            
+            # Automatyczna analiza nachylenia (slope)
+            signal = psr.signal
+            npulse, nbins = size(signal)
+            
+            # Zabezpieczenie przed pustym sygnałem (gdy LOS nie trafia w iskry)
+            if maximum(signal) == 0.0
+                continue
+            end
+            
+            half_bin = div(nbins, 2)
+            left_peaks = zeros(Int, npulse)
+            right_peaks = zeros(Int, npulse)
+            
+            for i in 1:npulse
+                left_peaks[i]  = argmax(signal[i, 1:half_bin])
+                right_peaks[i] = argmax(signal[i, half_bin+1:end]) + half_bin
+            end
+            
+            x = 1:npulse
+            slope_left = sum((x .- mean(x)) .* (left_peaks .- mean(left_peaks))) / sum((x .- mean(x)).^2)
+            slope_right = sum((x .- mean(x)) .* (right_peaks .- mean(right_peaks))) / sum((x .- mean(x)).^2)
+            
+            # Sprawdzamy czy znaki są przeciwne (jeden plus, drugi minus)
+            if (slope_left * slope_right < 0) && (abs(slope_left) > 0.03) && (abs(slope_right) > 0.03)
+                println(">>> BINGO! ZNALEZIONO BI-DRIFTING dla Beta = $b <<<")
+                println("Lewe pasmo: $(round(slope_left, digits=3)), Prawe pasmo: $(round(slope_right, digits=3))")
+            end
+        end
+        println("Koniec skanowania.")
+    end
     
 
     function generate_signal()
         #psr = Pulsar("input/1.json")
-        psr = Pulsar("input/15.json")
-        #psr = Pulsar("input/3.json")
+        #psr = Pulsar("input/B1839-04.json")
+        psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
         
 
@@ -324,13 +377,23 @@ module NoName
 
 
         #Plot.signal(psr)
-        Plot.pulses(psr, number=psr.npulse)
+        #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        Plot.lrfs(psr, darkness=0.3)
-        Plot.two_dfs(psr, darkness=0.3)
+        #Plot.lrfs(psr, darkness=0.3)
+
+        #Automatic — finds the 3 strongest distinct peaks (Standard FFT)
+        Plot.lrfs2(psr, darkness=0.3, n_peaks=3, min_df=0.02, phase_thresh=0.05)
+
+        #Manual — ignores n_peaks/min_df and plots the exact frequencies you list (Standard FFT)
+        #Plot.lrfs2(psr, darkness=0.3, peak_freqs=[0.081, 0.163])
+
+        #Automatic — relies on the built-in defaults min_df=0.02 and phase_thresh=0.05 (Flipped — matches PSRSALSA)
+        #Plot.lrfs2(psr, darkness=0.3, n_peaks=3, flip_phase=true)
+
+        #Plot.two_dfs(psr, darkness=0.3)
     end
 
     function generate_signal_P3()
@@ -534,8 +597,9 @@ module NoName
         #full_plus_smallgrids()
 
         #generate_signal_dipole()
-        #generate_signal()
-        generate_signal_P3()
+        #fast_beta_scanner()
+        generate_signal()
+        #generate_signal_P3()
         #compare_signals()
         #animate_signals()
         #generate_polarized_signal()
