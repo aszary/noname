@@ -1775,4 +1775,220 @@ module Plot
 
 
 
+    function lrfs2(psr; start=1, number=nothing, darkness=1.0,
+                  n_peaks=2, min_df=0.02, peak_freqs=nothing,
+                  phase_thresh=0.05, flip_phase=false, show_mod_amp=true)
+        data = psr.pulses
+
+
+        num_total, bins = size(data)
+        if isnothing(number)
+            number = num_total - start + 1
+        end
+
+
+        # Extract the relevant block of single pulses
+        da = data[start:start+number-1, :]
+        n_pulses, n_bins = size(da)
+
+
+        # Step 1: Average profile
+        avg_profile = vec(mean(da, dims=1))
+
+
+        # Step 2: Mean subtraction (removes DC at f = 0)
+        da_mean_sub = da .- avg_profile'
+
+
+        # Step 3: 1D real FFT along the pulse-number axis
+        fft_complex = rfft(da_mean_sub, 1)
+        lrfs_power = abs.(fft_complex).^2
+
+
+        # Step 4: Integrated fluctuation spectrum and exact frequency axis
+        int_spectrum = vec(sum(lrfs_power, dims=2))
+        n_freq = size(lrfs_power, 1)
+        freqs = collect(rfftfreq(n_pulses))
+
+
+        # -----------------------------------------------------
+        # FIND TOP n_peaks DISTINCT MAXIMA (OR USE peak_freqs)
+        # -----------------------------------------------------
+        peak_indices = Int[]
+        if !isnothing(peak_freqs)
+            for f_target in peak_freqs
+                idx = argmin(abs.(freqs .- f_target))
+                push!(peak_indices, max(2, idx)) # avoid DC bin
+            end
+        else
+            df = n_freq > 1 ? (freqs[2] - freqs[1]) : 1.0
+            min_sep_bins = max(2, round(Int, min_df / df))
+
+
+            # Collect local maxima (skipping DC index 1)
+            candidates = Int[]
+            for i in 2:(n_freq - 1)
+                if int_spectrum[i] > int_spectrum[i-1] && int_spectrum[i] >= int_spectrum[i+1]
+                    push!(candidates, i)
+                end
+            end
+            if n_freq >= 2 && int_spectrum[end] > int_spectrum[end-1]
+                push!(candidates, n_freq)
+            end
+
+
+            # Sort strongest first and enforce minimum separation
+            sort!(candidates, by = i -> int_spectrum[i], rev = true)
+            for idx in candidates
+                if all(abs(idx - p) >= min_sep_bins for p in peak_indices)
+                    push!(peak_indices, idx)
+                    length(peak_indices) == n_peaks && break
+                end
+            end
+
+
+            # Fallback if no local max found
+            if isempty(peak_indices) && n_freq >= 2
+                push!(peak_indices, argmax(int_spectrum[2:end]) + 1)
+            end
+        end
+
+
+        println("LRFS detected peaks:")
+        for (k, idx) in enumerate(peak_indices)
+            f_pk = freqs[idx]
+            p3_pk = f_pk > 0 ? 1.0 / f_pk : Inf
+            println("  F$k: 1/P3 = $(round(f_pk, digits=4)) cpp  (P3 = $(round(p3_pk, digits=2)) P0)")
+        end
+
+
+        # Color/marker styling (matches F1=blue, F2=green, F3=red from Hsu et al. Fig. 4)
+        colors     = [:royalblue, :forestgreen, :crimson, :darkorange, :purple]
+        markers    = [:circle, :utriangle, :rect, :diamond, :star5]
+        linestyles = [:dash, :dashdot, :dot, :dashdotdot, :solid]
+
+
+        # --- PLOTTING WITH MAKIE (4-panel layout) ---
+        size_inches = (9 / 2.54, 14 / 2.54)
+        dpi = 150
+        size_pt = dpi .* size_inches
+
+
+        fig = Figure(size=size_pt, fontsize=8)
+
+
+        # Left Panel: Integrated fluctuation spectrum
+        ax_left = Axis(fig[2:5, 1], ylabel=L"Frequency (c/P)", xlabel="Power",
+                       xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_left, int_spectrum, freqs, color=:gray50, linewidth=1.5)
+        ylims!(ax_left, 0.0, 0.5)
+        ax_left.xreversed = true
+
+
+        # Main Panel: LRFS Heatmap
+        vmax = darkness * maximum(lrfs_power)
+        ax_main = Axis(fig[2:5, 2:4], yticklabelsvisible=false,
+                       xminorticksvisible=true, yminorticksvisible=true)
+        heatmap!(ax_main, psr.longitudes, freqs, transpose(lrfs_power),
+                 colormap=:viridis, colorrange=(0, vmax))
+        xlims!(ax_main, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_main, 0.0, 0.5)
+
+
+        # Bottom Panel: Average pulsar profile (+ optional modulation amplitudes)
+        prof_min = minimum(avg_profile)
+        prof_span = maximum(avg_profile) - prof_min
+        norm_avg_profile = prof_span > 0 ? (avg_profile .- prof_min) ./ prof_span : zeros(n_bins)
+
+
+        ax_bottom = Axis(fig[6, 2:4], xlabel=L"Longitude ($^\circ$)", ylabel="Intensity",
+                         xminorticksvisible=true, yminorticksvisible=true)
+        lines!(ax_bottom, psr.longitudes, norm_avg_profile, color=:black, linewidth=1.5)
+        xlims!(ax_bottom, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_bottom, 0.0, 1.15)
+
+
+        # Top Panel: Fluctuation phase for F1, F2, ...
+        ax_top = Axis(fig[1, 2:4], ylabel="Phase\n(deg)", xaxisposition=:top,
+                      yticks=[-180, -90, 0, 90, 180],
+                      xminorticksvisible=true, yminorticksvisible=true)
+        xlims!(ax_top, psr.longitudes[1], psr.longitudes[end])
+        ylims!(ax_top, -195, 195)
+
+
+        phase_sign = flip_phase ? -1.0 : 1.0
+
+
+        for (k, idx) in enumerate(peak_indices)
+            col = colors[mod1(k, length(colors))]
+            mkr = markers[mod1(k, length(markers))]
+            ls  = linestyles[mod1(k, length(linestyles))]
+            f_pk = freqs[idx]
+
+
+            # Fluctuation phase masked by local power
+            peak_complex = fft_complex[idx, :]
+            fluct_phase = phase_sign .* angle.(peak_complex) .* (180 / pi)
+
+
+            p_row = lrfs_power[idx, :]
+            p_max = maximum(p_row)
+            mask = p_max > 0 ? (p_row .>= phase_thresh * p_max) : trues(n_bins)
+
+
+            lbl = "F$k ($(round(f_pk, digits=3)))"
+            scatter!(ax_top, psr.longitudes[mask], fluct_phase[mask],
+                     color=col, marker=mkr, markersize=4.5, label=lbl)
+
+
+            # Matching frequency marker in the left integrated spectrum
+            hlines!(ax_left, [f_pk], color=(col, 0.8), linestyle=:dash, linewidth=1.0)
+
+
+            # Optional longitude-resolved modulation amplitude (Fig. 4 style)
+            if show_mod_amp && prof_span > 0
+                scale_factor = (idx == n_freq && iseven(n_pulses)) ? (1.0 / n_pulses) : (2.0 / n_pulses)
+                mod_amp = abs.(peak_complex) .* scale_factor
+                lines!(ax_bottom, psr.longitudes, mod_amp ./ prof_span,
+                       color=col, linestyle=ls, linewidth=1.2)
+            end
+        end
+
+
+        # Place legend in the empty top-left corner above the integrated spectrum
+        Legend(fig[1, 1], ax_top, framevisible=false, labelsize=6.5,
+               patchsize=(8, 8), rowgap=1, padding=(2, 2, 2, 2),
+               tellwidth=false, tellheight=false)
+
+
+        # Synchronize axes
+        linkyaxes!(ax_main, ax_left)
+        linkxaxes!(ax_main, ax_bottom, ax_top)
+
+
+        hideydecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_main, ticks=false, minorticks=false, grid=false)
+        hidexdecorations!(ax_top, ticks=false, minorticks=false, grid=false)
+
+
+        hidespines!(ax_main, :l, :b)
+        hidespines!(ax_left, :r)
+        hidespines!(ax_bottom, :t)
+        hidespines!(ax_top, :b)
+
+
+        colgap!(fig.layout, 0)
+        rowgap!(fig.layout, 0)
+
+
+        display(fig)
+        readline(stdin; keep=false)
+        GLMakie.closeall()
+    end
+
+
+
+
+
+
 end # module end

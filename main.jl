@@ -112,12 +112,12 @@ module NoName
     function generate_signal()
         #psr = Pulsar("input/1.json")
         #psr = Pulsar("input/2.json")
-        #psr = Pulsar("input/3.json")
+        psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
         #psr = Pulsar("input/15.json")
         #psr = Pulsar("input/B1839-04.json")
         #psr = Pulsar("input/B1839-04_fit.json")
-        psr = Pulsar("input/B1839-04_tuned.json")
+        #psr = Pulsar("input/B1839-04_tuned.json")
         
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
@@ -169,13 +169,25 @@ module NoName
         Signal.generate_pulses(psr)
 
 
-        Plot.signal(psr)
-        Plot.pulses(psr, number=psr.npulse)
+        #Plot.signal(psr)
+        #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
         #Plot.polarization_vector_study(psr)
-        Plot.lrfs(psr, darkness=0.3)
+        #Plot.lrfs(psr, darkness=0.3)
+
+        #Plot.lrfs2(psr, darkness=0.3, n_peaks=3, min_df=0.02, phase_thresh=0.05)
+
+        #Manual — ignores n_peaks/min_df and plots the exact frequencies you list (Standard FFT)
+        Plot.lrfs2(psr, darkness=0.3, peak_freqs=[0.05, 0.1])
+
+
+        #Automatic — relies on the built-in defaults min_df=0.02 and phase_thresh=0.05 (Flipped — matches PSRSALSA)
+        #Plot.lrfs2(psr, darkness=0.3, n_peaks=3, flip_phase=true)
+
+
+
         #Plot.two_dfs(psr, darkness=0.3)
     end
 
@@ -209,10 +221,10 @@ module NoName
 
         #full_grid()
         #small_grids()
-        full_plus_smallgrids()
+        #full_plus_smallgrids()
 
         #generate_signal_dipole()
-        #generate_signal()
+        generate_signal()
 
         #model_field()
 
