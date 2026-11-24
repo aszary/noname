@@ -20,7 +20,7 @@
         "size":1000,
         "nlos":100,
         "nopen":50,
-        "nclosed":10
+        "nclosed":6
     },
 
     "sparks":
