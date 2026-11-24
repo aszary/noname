@@ -393,6 +393,15 @@ module NoName
         #Automatic — relies on the built-in defaults min_df=0.02 and phase_thresh=0.05 (Flipped — matches PSRSALSA)
         #Plot.lrfs2(psr, darkness=0.3, n_peaks=3, flip_phase=true)
 
+        # Static 4-panel SLRFS (great for sinusoidal/variable P3 runs)
+        #Plot.slrfs(psr; win=64, step=1, pad_factor=2, darkness=0.6, show_true_p3=true)
+
+        # Isolate a single profile component (e.g. leading vs trailing)
+        #Plot.slrfs(psr; win=64, lon_range=(-25.0, -5.0), normalize_windows=true)
+
+        # Interactive dashboard with live window LRFS + multi-peak phase tracks
+        #Plot.slrfs_interactive(psr; win=64, step=2, n_peaks=3, flip_phase=true, darkness=0.4)
+
         #Plot.two_dfs(psr, darkness=0.3)
     end
 
