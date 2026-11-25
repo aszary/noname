@@ -332,8 +332,8 @@ module NoName
     function generate_signal()
         #psr = Pulsar("input/1.json")
         #psr = Pulsar("input/B1839-04.json")
-        psr = Pulsar("input/J1555-3134.json")
-        #psr = Pulsar("input/J1555-3134_2peaks.json")
+        #psr = Pulsar("input/J1555−3134.json")
+        psr = Pulsar("input/J1555-3134_2peaks.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
         
@@ -417,8 +417,10 @@ module NoName
         Plot.slrfs(psr; win=256, step=50, pad_factor=1, window=:rect,
                 darkness=0.8, show_true_p3=false)
 
+        Plot.lrfs3(psr; start=1, number=256, n_peaks=2, min_df=0.02, darkness=0.5, flip_phase=true)
+
         # Interactive SLRFS explorer to inspect how the two peaks behave window by window
-        Plot.slrfs_interactive(psr; win=256, step=25, n_peaks=2, min_df=0.02, darkness=0.5)
+        #Plot.slrfs_interactive(psr; win=256, step=25, n_peaks=2, min_df=0.02, darkness=0.5)
     end
 
     function generate_signal_P3()
