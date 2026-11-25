@@ -332,7 +332,9 @@ module NoName
     function generate_signal()
         #psr = Pulsar("input/1.json")
         #psr = Pulsar("input/B1839-04.json")
-        psr = Pulsar("input/3.json")
+        psr = Pulsar("input/J1555-3134.json")
+        #psr = Pulsar("input/J1555-3134_2peaks.json")
+        #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
         
 
@@ -385,7 +387,7 @@ module NoName
         #Plot.lrfs(psr, darkness=0.3)
 
         #Automatic — finds the 3 strongest distinct peaks (Standard FFT)
-        Plot.lrfs2(psr, darkness=0.3, n_peaks=3, min_df=0.02, phase_thresh=0.05)
+        #Plot.lrfs2(psr, darkness=0.3, n_peaks=3, min_df=0.02, phase_thresh=0.05)
 
         #Manual — ignores n_peaks/min_df and plots the exact frequencies you list (Standard FFT)
         #Plot.lrfs2(psr, darkness=0.3, peak_freqs=[0.081, 0.163])
@@ -395,7 +397,6 @@ module NoName
 
         # Static 4-panel SLRFS (great for sinusoidal/variable P3 runs)
         #Plot.slrfs(psr; win=64, step=1, pad_factor=2, darkness=0.6, show_true_p3=true)
-
         # Isolate a single profile component (e.g. leading vs trailing)
         #Plot.slrfs(psr; win=64, lon_range=(-25.0, -5.0), normalize_windows=true)
 
@@ -403,6 +404,21 @@ module NoName
         #Plot.slrfs_interactive(psr; win=64, step=2, n_peaks=3, flip_phase=true, darkness=0.4)
 
         #Plot.two_dfs(psr, darkness=0.3)
+
+
+        #POD TEN 555
+        # Fig. 1 equivalent: 256-pulse stack (set yreversed=false if you want pulse 1 at bottom)
+        Plot.pulses_P3(psr; start=1, number=256)
+
+        # Fig. 4 (right) equivalent: LRFS with both peaks F1 (~0.057) and F2 (~0.098)
+        Plot.lrfs2(psr; start=1, number=256, n_peaks=2, min_df=0.02, darkness=0.5)
+
+        # Fig. 4 (left) equivalent: Sliding LRFS with 256-pulse FFT shifted by 50 pulses
+        Plot.slrfs(psr; win=256, step=50, pad_factor=1, window=:rect,
+                darkness=0.8, show_true_p3=false)
+
+        # Interactive SLRFS explorer to inspect how the two peaks behave window by window
+        Plot.slrfs_interactive(psr; win=256, step=25, n_peaks=2, min_df=0.02, darkness=0.5)
     end
 
     function generate_signal_P3()
