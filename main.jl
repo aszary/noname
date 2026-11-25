@@ -333,7 +333,8 @@ module NoName
         #psr = Pulsar("input/1.json")
         #psr = Pulsar("input/B1839-04.json")
         #psr = Pulsar("input/J1555−3134.json")
-        psr = Pulsar("input/J1555-3134_2peaks.json")
+        #psr = Pulsar("input/J1555-3134_2peaks.json")
+        psr = Pulsar("input/J1555−31342values.json")
         #psr = Pulsar("input/3.json")
         #psr = Pulsar("input/4.json")
         
@@ -408,7 +409,8 @@ module NoName
 
         #POD TEN 555
         # Fig. 1 equivalent: 256-pulse stack (set yreversed=false if you want pulse 1 at bottom)
-        Plot.pulses_P3(psr; start=1, number=256)
+        Plot.pulses(psr; start=1, number=256)
+        #Plot.pulses(psr, number=psr.npulse)
 
         # Fig. 4 (right) equivalent: LRFS with both peaks F1 (~0.057) and F2 (~0.098)
         Plot.lrfs2(psr; start=1, number=256, n_peaks=2, min_df=0.02, darkness=0.5)
