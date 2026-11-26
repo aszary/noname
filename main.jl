@@ -271,7 +271,7 @@ module NoName
         #psr = Pulsar("input/4.json")
         #psr = Pulsar("input/TEST.json")
         #psr = Pulsar("input/TEST_PSR_J1750-3503.json")
-        psr = Pulsar("input/model_solidbody_PSR J1901−0906.json")
+        psr = Pulsar("input/model_lbc_PSR J1901−0906.json")
         t0 = time()
 
         Lines.init_line_of_sight(psr, num=psr.nsfield.nlos)
@@ -317,8 +317,8 @@ module NoName
         println("\n Calculated in $(round(c_time, digits=3)) seconds")
         
 
-        #Plot.signal(psr)
-        Plot.pulses(psr, number=psr.npulse)
+        Plot.signal(psr)
+        #Plot.pulses(psr, number=psr.npulse)
         #Plot.pulses0(psr)
         #Plot.pulses1(psr)
         #Plot.average_stokes(psr)
@@ -327,7 +327,7 @@ module NoName
         #Plot.two_dfs(psr, darkness=0.3)
 
         #Automatic — finds the 3 strongest distinct peaks (Standard FFT)
-        #Plot.lrfs2(psr, darkness=0.3, n_peaks=3, min_df=0.02, phase_thresh=0.05)
+        #Plot.lrfs2(psr, darkness=0.3, n_peaks=2, min_df=0.02, phase_thresh=0.05)
 
         #Manual — ignores n_peaks/min_df and plots the exact frequencies you list (Standard FFT)
         #Plot.lrfs2(psr, darkness=0.3, peak_freqs=[0.345, 0.328])

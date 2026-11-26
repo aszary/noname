@@ -1,16 +1,16 @@
 {
-  "psr": {
+    "psr": {
         "P0": 1.78,
         "R": 10000,
         "PDOT": 1.6e-15,
-        "alpha": 142.0,
-        "beta": 2.9,
+        "alpha": 135.0,
+        "beta": -2.7,
         "R_em": 250000,
-        "spark_radius": 24.0,
+        "spark_radius": 30.0,
         "P3": 3.05,
-        "npulse": 512,
-        "noise_level": 0.015,
-        "output_num": 11
+        "npulse": 100,
+        "noise_level": 0.035,
+        "output_num": 23
     },
     "field": {
         "size": 10000,
@@ -19,7 +19,7 @@
         "nclosed": 10
     },
     "sparks": {
-        "model": "lbc",
+        "model": "solidbody",
         "mc": {
             "n_steps": 2000,
             "save_every": 40,
@@ -31,9 +31,10 @@
         "init": {
             "method": "ellipse",
             "rfs": [
-                0.65
+                0.84,
+                0.58
             ],
-            "num": 10
+            "num": 11
         }
     },
     "anomalies": []
